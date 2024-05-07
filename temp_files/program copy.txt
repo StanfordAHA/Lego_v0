@@ -1,0 +1,3 @@
+"B" : ap_memop(tile_B, B, kB)
+"C" : ap_memop(tile_C, C, kC)
+

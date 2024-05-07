@@ -1,0 +1,7 @@
+numops: 2
+stmt: A(ij) = B(ik) * C(kj)
+schedule_ap:   [ikj]
+schedule_cp:   [ikj]
+schedule_cgra: [ijk]
+splits: [[240, 30] [240, 30] [240, 30]]
+ssplit: [ijk]
