@@ -2,7 +2,7 @@
 
 ### Setup
 
-On Kiwi clone sam inside the Lego_v0 and checkout branch with fixes: 
+On Kiwi clone sam inside the Lego_v0 repository and checkout branch with fixes: 
 
 ```
 git clone https://github.com/weiya711/sam.git
