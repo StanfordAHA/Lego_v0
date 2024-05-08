@@ -3,5 +3,6 @@ stmt: A(ij) = B(ik) * C(kj)
 schedule_ap:   [ikj]
 schedule_cp:   [ikj]
 schedule_cgra: [ijk]
-splits: [[240, 30] [240, 30] [240, 30]]
-ssplit: [ijk]
+i:split:240:30
+j:split:240:30
+k:split:240:30

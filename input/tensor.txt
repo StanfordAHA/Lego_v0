@@ -1,5 +1,2 @@
-B, C
-nemeth01
-nemeth02
-ss
-ss
+B:ss:nemeth01
+C:ss:nemeth02

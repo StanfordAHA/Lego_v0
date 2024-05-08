@@ -20,15 +20,12 @@ def tensor_path_type_dict(tensor_path_input):
     data = [i for i in data]
     data = [i.replace(" ", "") for i in data]
 
-    tensor_path_dict_keys = data[0].split(",")
-
-    num_tensors = len(tensor_path_dict_keys)
-
-    for i in range(0, num_tensors):
-        tensor_path_dict[tensor_path_dict_keys[i]] = data[i + 1]
-    
-    for i in range(0, num_tensors):
-        tensor_type_dict[tensor_path_dict_keys[i]] = data[i + num_tensors + 1]
+    for i in range(0, len(data)):
+        if(data[i] == ""):
+            data.pop(i)
+        parsed_data = data[i].split(":")
+        tensor_type_dict[parsed_data[0]] = parsed_data[1]
+        tensor_path_dict[parsed_data[0]] = parsed_data[2]   
 
     return tensor_path_dict, tensor_type_dict
 
@@ -98,19 +95,13 @@ def data_parser(data):
 
     num_ids = len(schedule_1)
 
-    split_factor_rule = Word(alphas) + ':' + "["
-        
-    for i in range(num_ids):
-        split_factor_rule += "[" + Word(alphanums) + "," + Word(alphanums) + "]"
-        
-    schedule_split_rule = Word(alphas) + ":" + "[" + Word(alphas) + "]"
-    schedule_split = list(schedule_split_rule.parseString(data[6])[3])
+    split_factor_rule = Word(alphas) + ':split:' + Word(alphanums) + ':' + Word(alphanums)
 
     split_factor = {}
 
     for i in range(num_ids):
-        split_factor[schedule_split[i]] = [int(split_factor_rule.parseString(data[5])[4 + 5 * i])]
-        split_factor[schedule_split[i]].append(int(split_factor_rule.parseString(data[5])[6 + 5 * i]))
+        parsed_split = split_factor_rule.parseString(data[5 + i])
+        split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4])]
     
     return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor
 
@@ -385,8 +376,6 @@ if __name__ == "__main__":
     
 
     mode = sys.argv[1]
-
-    print(mode)
 
     main_file = open("main.cpp", "w+")
 
