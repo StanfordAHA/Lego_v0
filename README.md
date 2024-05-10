@@ -38,20 +38,16 @@ stmt: A(ij) = B(ik) * C(kj)                       // Expression
 schedule_ap:   [ikj]                              // Schedule on tile-coordinates
 schedule_cp:   [ikj]                              // Schedule on subtile-coordinates
 schedule_cgra: [ijk]                              // Schedule on cgra-coordinates
-splits: [[240, 30] [240, 30] [240, 30]]           // Splits of the indices i, j, k
-ssplit: [ijk]                                     // Mapping for the aforementioned splits 
+i:split:240:30                                    // Split for the index i
+j:split:240:30                                    // Split for the index j
+k:split:240:30                                    // Split for the index k
 ```
-
 ####
 -- tensor.txt 
 ```
-B, C              // Tensor name
-nemeth01          // App name - B
-nemeth02          // App name - C
-ss                // App type - B - Suitesparse
-ss                // App type - C - Suitesparse
+B:ss:nemeth01     // tensor_name:app_type:app_name (ss - Suitesparse, nemeth01 - app_name)
+C:ss:nemeth02
 ```
-
 ####
 -- To run: 
 ```
@@ -61,5 +57,3 @@ chmod  +x lego_run.sh
 
 ####
 Output tiles/sub-tiles are available at ```lego_scratch/data_files/```. 
-
-
