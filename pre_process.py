@@ -15,7 +15,8 @@ import sys
 from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
-    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
+    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
+    InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 
 def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
@@ -147,10 +148,14 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict):
         tensor_path = os.path.join(FROSTT_PATH, input_path + ".tns")
         frostt_tensor = FrosttTensor(tensor_path)
         tensor = inputCache.load(frostt_tensor, False)
+    elif tensor_type == "sparse_ml":
+        inputCache = InputCacheSparseML()
+        tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
+        sparse_ml_tensor = SparseMLTensor(tensor_path)
+        tensor = inputCache.load(sparse_ml_tensor, False)
+        breakpoint()
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
-
-    # Add a numpy statement 
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
