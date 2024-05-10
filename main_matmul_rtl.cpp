@@ -139,14 +139,32 @@ int tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
                         if(jC0 == j){
                             subtile_C = tile_mem_op_2(tile_C, jC);
                             mkdir(data_path, 0777);
-                            subtile_path = out_dir + "/subtile_pair_" + std::to_string(curr_subtile_num);
+
+                            subtile_path = out_dir + "/set_i_" + std::to_string(i);
+                            subtile_path += "_j_" + std::to_string(j);
+                            mkdir(subtile_path.c_str(), 0777);
+
+                            subtile_path += "/subtile_pair_" + std::to_string(curr_subtile_num);
                             const char *subtile_path_str = subtile_path.c_str();
                             mkdir(subtile_path_str, 0777);
                             output_gold_path = subtile_path + "/output_gold.h";
                             output_gold_file.open(output_gold_path, std::ios_base::app);
                             subtile_gold(subtile_B, subtile_C, curr_subtile_num, output_gold_file);
-                            rtl_subtile2_print(subtile_B, subtile_path, "B", 30, 30);
-                            rtl_subtile2_print(subtile_C, subtile_path, "C", 30, 30);
+
+                            rtl_mode_data_printer(subtile_B.pos1, subtile_path, "B", "seg", "0");
+                            rtl_mode_data_printer(subtile_B.crd1, subtile_path, "B", "crd", "0");
+                            rtl_mode_data_printer(subtile_B.pos2, subtile_path, "B", "seg", "1");
+                            rtl_mode_data_printer(subtile_B.crd2, subtile_path, "B", "crd", "1");
+                            rtl_vals_data_printer(subtile_B.vals, subtile_path, "B");
+                            rtl_size_data_printer_2(subtile_path, "B", 30, 30);
+
+                            rtl_mode_data_printer(subtile_C.pos1, subtile_path, "C", "seg", "1");
+                            rtl_mode_data_printer(subtile_C.crd1, subtile_path, "C", "crd", "1");
+                            rtl_mode_data_printer(subtile_C.pos2, subtile_path, "C", "seg", "0");
+                            rtl_mode_data_printer(subtile_C.crd2, subtile_path, "C", "crd", "0");
+                            rtl_vals_data_printer(subtile_C.vals, subtile_path, "C");
+                            rtl_size_data_printer_2(subtile_path, "C", 30, 30);
+
                             curr_subtile_num++;
                             output_gold_file.close();
                         }
@@ -284,11 +302,11 @@ int main() {
                         int j = jC0;
                         if(jC0 == j){
                             tile_C = tensor_mem_op_2(tensor_C, jC);
-                            tile_name = "tile_";
-                            tile_name += "iB_" + std::to_string(i) + "_";
-                            tile_name += "kB_" + std::to_string(k) + "_";
-                            tile_name += "kC_" + std::to_string(k) + "_";
-                            tile_name += "jC_" + std::to_string(j) + "_";
+                            tile_name = "tile";
+                            tile_name += "_iB_" + std::to_string(i);
+                            tile_name += "_kB_" + std::to_string(k);
+                            tile_name += "_kC_" + std::to_string(k);
+                            tile_name += "_jC_" + std::to_string(j);
                             tile_operate(tile_B, tile_C, tile_name);
                         }
                         jC += (int)(jC0 == j);

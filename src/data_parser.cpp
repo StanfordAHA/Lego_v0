@@ -80,6 +80,41 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
     return 0;
 }
 
+int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name) {
+
+	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_" + mode_name + "_" + mode_type;
+	ofstream output_file(output_file_name.c_str());
+
+	for (int pA = 0; pA < mode_0.size(); pA++) {
+		output_file << mode_0[pA];
+		output_file << "\n";
+	}
+
+	return 0;
+}
+
+int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, std::string tensor_name) {
+
+	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_vals";
+	ofstream output_file(output_file_name.c_str());
+
+	for (int pA = 0; pA < mode_0.size(); pA++) {
+		output_file << mode_0[pA];
+		output_file << "\n";
+	}
+	return 0;
+}
+
+int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, int dim1, int dim2) {
+
+	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_shape";
+	ofstream output_file(output_file_name.c_str());
+
+	output_file << dim1 << "\n";
+	output_file << dim2 << "\n";
+
+	return 0;
+}
 
 int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file) {
 

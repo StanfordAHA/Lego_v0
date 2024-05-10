@@ -412,7 +412,7 @@ if __name__ == "__main__":
     cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id)
 
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", split_factor, cg_dest_id, mode, cg_source_id):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     cp_tensor_decleration(main_file, cp_source_id, split_factor, mode)
     main_file.write("\n")
     
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -467,7 +467,7 @@ if __name__ == "__main__":
     main_file.write("int main() {\n")
     ap_tensor_decleration(main_file, ap_source_id)
     main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", split_factor, ap_dest_id, mode, cp_source_id):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")

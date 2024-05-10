@@ -501,12 +501,12 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
 
     
     stmt += "    " * (level + 2)
-    stmt += "tile_name = \"tile_\";"
+    stmt += "tile_name = \"tile\";"
     stmt += "\n"
     for key in id_dict_true.keys():
         for id in id_dict_true[key]:
             stmt += "    " * (level + 2)
-            stmt += "tile_name += " + "\"" + id + key + "_\"" + " + std::to_string(" + id + ") + " + "\"_\";"
+            stmt += "tile_name += " + "\"_" + id + key + "_\"" + " + std::to_string(" + id + ");"
             stmt += "\n"    
 
     if(valid_op_list != []):
@@ -523,11 +523,14 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map):
     
         stmt = ""
     
         valid_op_list = [] 
+
+        for keys in dest.keys():
+            dest_read = keys
         
         for op in op_list: 
             if not (curr_id in id_dict[op]): 
@@ -577,10 +580,22 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "    " * (level + 2)
                 stmt += "mkdir(data_path, 0777);"
                 stmt += "\n"
+                stmt += "\n"
 
                 if(mode == "rtl"):
                     stmt += "    " * (level + 2)
-                    stmt += "subtile_path = out_dir + \"/subtile_pair_\" + std::to_string(curr_subtile_num);"
+                    stmt += "subtile_path = out_dir + \"/set_" + dest[dest_read][0] + "_\" + std::to_string(" + dest[dest_read][0] + ");"
+                    stmt += "\n"
+                    for id in dest[dest_read][1:]:
+                        stmt += "    " * (level + 2)
+                        stmt += "subtile_path += \"_" + id + "_\" + std::to_string(" + id + ");"
+                        stmt += "\n"
+                    stmt += "    " * (level + 2)
+                    stmt += "mkdir(subtile_path.c_str(), 0777);"
+                    stmt += "\n"
+                    stmt += "\n"
+                    stmt += "    " * (level + 2)
+                    stmt += "subtile_path += \"/subtile_pair_\" + std::to_string(curr_subtile_num);"
                     stmt += "\n"
                     stmt += "    " * (level + 2)
                     stmt += "const char *subtile_path_str = subtile_path.c_str();"
@@ -597,21 +612,39 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "\n"
                 stmt += "    " * (level + 2)
                 stmt += "subtile_gold" + "(" + "subtile_" + op_list[0]
-    
+
                 for op in op_list[1:]:
                     stmt += ", " + "subtile_" + op 
                     
                 stmt += ", curr_subtile_num, output_gold_file);"    
                 stmt += "\n"
-
+                stmt += "\n"
 
                 if(mode == "rtl"):
                     for op in op_list:
+                        
+                        tensor_dim = len(id_dict_true[op])
+
+                        for i in range(tensor_dim):
+                            stmt += "    " * (level + 2)
+                            stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
+                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                            stmt += "\n"    
+                            stmt += "    " * (level + 2)
+                            stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
+                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                            stmt += "\n"
+                        
                         stmt += "    " * (level + 2)
-                        stmt += "rtl_subtile" + str(len(id_dict_true[op])) + "_print(" + "subtile_" + op + ", subtile_path" + ", " + "\"" + op + "\""
+                        stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
+                        stmt += "\n"
+                        
+                        stmt += "    " * (level + 2)
+                        stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
                         for id in cg_source_id[op]:
                             stmt += ", " + str(split_dict[id][1]) 
                         stmt += ");"
+                        stmt += "\n"
                         stmt += "\n"
 
                 stmt += "    " * (level + 2)
@@ -672,7 +705,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, level, curr_id, expr, dest, split_di
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map):
 
     curr_id = schedule[0]
     stmt_list = []
@@ -713,11 +746,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, level, curr_id, stmt, dest, split_dict))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         
