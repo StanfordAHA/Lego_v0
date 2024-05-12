@@ -44,7 +44,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 
     # Create n_levels * n_dim lists to store the coordinates and data
     n_lists = np.zeros(((n_levels + 1) * n_dim, num_values), dtype=int)
-    d_list = np.zeros((num_values), dtype=float)
+    d_list = np.zeros((num_values), dtype=np.float32)
 
     # Creating the COO representation for the tiled tensor at each level
     for i in range(num_values):
@@ -153,7 +153,6 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict):
         tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
-        breakpoint()
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
 

@@ -1,4 +1,6 @@
 #include "data_parser.h"
+#include <csignal>
+#include <iomanip>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -12,9 +14,10 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
 
 int build_vec_val(std::vector<double> &vec, std::string file_path) {
     double val;
-
     ifstream input_file(file_path);   
-    while(input_file >> val){
+    while(input_file >> setprecision(30) >> val){
+		// FIXME: Temporary fix to avoid precision loss
+		// TODO: Find a better way to set the digit precision
         vec.push_back(val);
     }
     return 0;
@@ -99,7 +102,9 @@ int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, s
 	ofstream output_file(output_file_name.c_str());
 
 	for (int pA = 0; pA < mode_0.size(); pA++) {
-		output_file << mode_0[pA];
+		// FIXME: Temporary fix to avoid precision loss
+		// TODO: Find a better way to set the digit precision
+		output_file << setprecision(30) << mode_0[pA];
 		output_file << "\n";
 	}
 	return 0;
