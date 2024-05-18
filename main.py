@@ -17,33 +17,31 @@ def tensor_path_type_dict(tensor_path_input):
     with open(tensor_path_input, 'r') as f:
         data = f.read().splitlines()
     
+    
+    data = [i for i in data]
+    data = [i.replace(" ", "") for i in data]
+
+
     data = [i for i in data]
     data = [i.replace(" ", "") for i in data]
 
     for i in range(0, len(data)):
-        if(data[i] == ""):
-            data.pop(i)
         parsed_data = data[i].split(":")
         tensor_type_dict[parsed_data[0]] = parsed_data[1]
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
 
     return tensor_path_dict, tensor_type_dict
 
-def file_parser(input_file):
-    with open(input_file, 'r') as f:
-        data = f.read().splitlines()
-    return data
-
 def data_parser(data):
 
-    data = [i for i in data]
     data = [i.replace(" ", "") for i in data]
 
     arith_op = one_of("+ - * /")
 
     num_op_rule = Word(alphas) + ":" + Word(alphanums)
     num_op = num_op_rule.parseString(data[0])[2]
-
+    # TODO this seems to only support 2 or 3 operands
+    # need to generalize this
     if(num_op == '2'):
         expr_rule = Word(alphas) + ":" + Word(alphas) + '(' + Word(alphas) + ')' +  '=' + \
             Word(alphas) + '(' + Word(alphas) + ')' + \
@@ -107,7 +105,8 @@ def data_parser(data):
 
 def parse(input_file, level):
 
-    data = file_parser(input_file)
+    with open(input_file, 'r') as f:
+        data = f.read().splitlines()
     num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor = data_parser(data)
 
     if(level == "ap"): 
@@ -142,7 +141,8 @@ def parse(input_file, level):
             if id in dest[tensor]:
                 dest_id[tensor].append(id)
                 dest_map[tensor].append(dest[tensor].index(id))
-
+    # TODO: this only handles 2 or 3 operands
+    # need to generalize this
     if(num_op == "3"):
         expr = "((" + op_list[0][0] + " " + op_list[1][0] + " " + op_list[2][0] + ") " + op_list[3][0] + " " + op_list[4][0] + ")"
         op_list = [op_list[0][0], op_list[2][0], op_list[4][0]]
@@ -408,7 +408,7 @@ if __name__ == "__main__":
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
-    main_file.write("int subtile_gold" + stmt + " {\n")
+    main_file.write("double* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id)
 
 
@@ -430,7 +430,9 @@ if __name__ == "__main__":
     main_file.write(stmt)
     main_file.write("\n")
     main_file.write("\n")
-    main_file.write("    return 0;\n")
+    for key in cg_dest_id.keys():
+        return_key = key
+    main_file.write("    return " + return_key + "_vals;\n")
     main_file.write("\n")
     main_file.write("}\n")
     main_file.write("\n")
@@ -446,9 +448,11 @@ if __name__ == "__main__":
     stmt += ", std::string curr_tile"
     stmt = stmt + ")"
 
-    main_file.write("int tile_operate" + stmt + " {\n")
+    main_file.write("double* tile_operate" + stmt + " {\n")
 
     cp_tensor_decleration(main_file, cp_source_id, split_factor, mode)
+    main_file.write("\n")
+    main_file.write(codegen.workspace_declaration(split_factor, "cp", cp_dest_id))
     main_file.write("\n")
     
     for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
@@ -457,9 +461,15 @@ if __name__ == "__main__":
             main_file.write("\n")
 
     cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
+    main_file.write("\n")
+    stmt = codegen.workspace_reduction(split_factor, "cp", cp_dest_id)
+    for line in stmt:
+        main_file.write(line)
     
     main_file.write("\n")
-    main_file.write("    return 0;\n")
+    for key in cg_dest_id.keys():
+        return_key = key
+    main_file.write("    return " + return_key + "_vals;\n")
     main_file.write("}\n")
     main_file.write("\n")
 

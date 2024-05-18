@@ -611,12 +611,20 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
                 stmt += "\n"
                 stmt += "    " * (level + 2)
-                stmt += "subtile_gold" + "(" + "subtile_" + op_list[0]
+                stmt += "double* partial = subtile_gold" + "(" + "subtile_" + op_list[0]
 
                 for op in op_list[1:]:
                     stmt += ", " + "subtile_" + op 
                     
                 stmt += ", curr_subtile_num, output_gold_file);"    
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "subtile_workspace[" + dest[dest_read][0]
+                for dim_count, id in enumerate(dest[dest_read][1:]):
+                    for i in range(dim_count + 1, len(dest[dest_read])):
+                        stmt += " * " + str(int(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1]))
+                    stmt += " + " + id
+                stmt += "].push_back(partial);"       
                 stmt += "\n"
                 stmt += "\n"
 
@@ -760,6 +768,101 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
         stmt_list.append(while_stmt_close(point, id_dict, level))   
 
     return stmt_list
+
+def workspace_declaration(split_factor, target, dest_id):
+    # calcualate the number of subtiles that constitute the next level tile
+    # this determines the number of slots in the workspace
+    if target == "cp":
+        n_subtiles = 0;
+        for name, id in dest_id.items():
+            for i in id:
+                if n_subtiles == 0:
+                    n_subtiles = split_factor[i][0] / split_factor[i][1]
+                else: 
+                    n_subtiles *= split_factor[i][0] / split_factor[i][1]
+        return "    std::vector<std::vector<double *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<double *>());\n"
+
+def workspace_reduction(split_factor, target, dest_id):
+    # allcoate the array that is going to store the recombined tile
+    # determine the size of the tile first
+    stmt = []
+    tile_size = 0;
+    dest_name = None
+    for name, id in dest_id.items():
+        dest_name = name
+        for i in id:
+            if tile_size == 0:
+                tile_size = split_factor[i][0]
+            else:
+                tile_size *= split_factor[i][0]
+    stmt.append("    double* " + dest_name + "_vals = (double*)malloc(sizeof(double) * " + str(tile_size) + ");\n")
+    stmt.append("\n")
+    # initialize the recombined tile to zero 
+    stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(tile_size) + "; " + "p" + dest_name + " ++) {\n")
+    stmt.append("        " + dest_name + "[p" + dest_name + "] = 0;\n")
+    stmt.append("    }\n")
+    
+    level = 1
+    dim_n_subtile = {}
+    subtile_size = {}
+    tile_size = {}
+    for id in dest_id[dest_name]:
+        dim_n_subtile[id] = int(split_factor[id][0] / split_factor[id][1])
+        loop_index = "subtile_" + id
+        stmt.append(("    " * level) + "for (int " + loop_index + "= 0; " + loop_index + " < " + str(dim_n_subtile[id]) + "; " + loop_index + " ++) {\n")
+        level = level + 1
+    for id in dest_id[dest_name]:
+        subtile_size[id] = split_factor[id][1]
+        tile_size[id] = split_factor[id][0]
+        stmt.append(("    " * level) + "int base_" + id + " = " + "subtile_" + id + " * " + str(subtile_size[id]) + ";\n")
+    workspace_index_str = ""
+    workspace_index_str += "subtile_" + dest_id[dest_name][0]
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            workspace_index_str += " * " + str(dim_n_subtile[offset_id])
+        workspace_index_str += " + " + id
+    stmt.append(("    " * level) + "for (std::vector<double*>::iterator it = subtile_workspace[" + workspace_index_str + "].begin(); it != subtile_workspace[" + workspace_index_str + "].end(); it++) {\n")
+    level = level + 1
+    for id in dest_id[dest_name]:
+        stmt.append(("    " * level) + "for (int " + id + " = 0; "  + id + " < " + str(subtile_size[id]) + "; " + id + " ++) {\n")
+        level = level + 1
+    
+    # generate the index that store the reduced value in to A_Vals
+    output_index_str = ""
+    output_index_str += "(base_" + dest_id[dest_name][0] + " + " +  dest_id[dest_name][0] + ")"
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            output_index_str += " * " + str(tile_size[offset_id])
+        output_index_str += " + (base_" + id + " + " + id + ")"
+
+    # generate the index that is used to access the partial product in the workspace
+    partial_index_str = ""
+    partial_index_str += dest_id[dest_name][0]
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            partial_index_str += " * " + str(subtile_size[offset_id])
+        partial_index_str += " + " + id
+    
+    stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")
+    # close the subtile partial product loop
+    for id in dest_id[dest_name]:
+        level = level - 1
+        stmt.append(("    " * level + "}\n"))
+    stmt.append(("    " * level) + "free(*it);\n")
+    # close the iterator loop
+    level = level - 1
+    stmt.append(("    " * level + "}\n"))
+
+    # close the workspace loop
+    for id in dest_id[dest_name]:
+        level = level - 1
+        stmt.append(("    " * level + "}\n"))
+
+    return stmt
+
 
     """
     if __name__ == '__main__':
