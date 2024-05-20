@@ -7,10 +7,18 @@
 #include <string>
 using namespace std;
 
+tile1 tensor_mem_op_1(int **tensor_op, int index);
 tile2 tensor_mem_op_2(int **tensor_op, int index);
-subtile2 tile_mem_op_2(tile2 tile_op, int index); 
-cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, tile2 tile_op, int index, int id_store_op); 
+tile3 tensor_mem_op_3(int **tensor_op, int index);
+subtile1 tile_mem_op_1(tile1 tile_op, int index);
+subtile2 tile_mem_op_2(tile2 tile_op, int index);
+subtile3 tile_mem_op_3(tile3 tile_op, int index);
+cg_subtile1 cg_tile_mem_op_1(cg_subtile1 cg_subtile_op, int **store_subtile_op, tile1 tile_op, int index, int id_store_op); 
+cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, tile2 tile_op, int index, int id_store_op);
+cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, tile3 tile_op, int index, int id_store_op); 
+cg_extents1 build_extents_1(cg_extents1 op_extents, int **store_subtile_op, int id_store_op);
 cg_extents2 build_extents_2(cg_extents2 op_extents, int **store_subtile_op, int id_store_op);
+cg_extents3 build_extents_3(cg_extents3 op_extents, int **store_subtile_op, int id_store_op);
 int rtl_output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file);
 int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string mode_name, int dim1, int dim2);
 

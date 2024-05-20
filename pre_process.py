@@ -35,6 +35,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 
     # The number of values in the tensor
     num_values = len(data)
+    n_dim = len(coords)
 
     # The number of dimensions in the tensor
     n_dim = len(coords)
@@ -124,7 +125,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict):
+def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, transpose):
 
     tensor = None
     cwd = os.getcwd()
@@ -159,7 +160,12 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict):
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
 
-    tensor = sparse.COO(tensor)
+    if(transpose == "1"):
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        trans_shifted = shifted.transpose()
+        tensor = sparse.COO(trans_shifted)
+    else: 
+        tensor = sparse.COO(tensor)
 
     process_coo(tensor, tile_size, output_dir_path, schedule_dict)
 

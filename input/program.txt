@@ -1,8 +1,8 @@
 numops: 2
-stmt: A(ij) = B(ik) * C(kj)
-schedule_ap:   [ikj]
-schedule_cp:   [ikj]
+stmt: A(ij) = B(ijk) * C(k) 
+schedule_ap:   [ijk]
+schedule_cp:   [ijk]
 schedule_cgra: [ijk]
-i:split:240:30
-j:split:240:30
-k:split:240:30
+i:split:12000:30
+j:split:12000:30
+k:split:12000:30
