@@ -11,6 +11,7 @@ def tensor_path_type_dict(tensor_path_input):
 
     tensor_path_dict = {}
     tensor_type_dict = {}
+    tensor_transpose_dict = {}
 
     tensor_path_dict_keys = [] 
 
@@ -26,8 +27,9 @@ def tensor_path_type_dict(tensor_path_input):
         parsed_data = data[i].split(":")
         tensor_type_dict[parsed_data[0]] = parsed_data[1]
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
+        tensor_transpose_dict[parsed_data[0]] = parsed_data[3]
 
-    return tensor_path_dict, tensor_type_dict
+    return tensor_path_dict, tensor_type_dict, tensor_transpose_dict
 
 def file_parser(input_file):
     with open(input_file, 'r') as f:
@@ -339,7 +341,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
 if __name__ == "__main__":
 
     tensor_path_input = "input/tensor.txt"
-    tensor_path_dict, tensor_type_dict = tensor_path_type_dict(tensor_path_input)
+    tensor_path_dict, tensor_type_dict, tensor_transpose_dict = tensor_path_type_dict(tensor_path_input)
 
     program_spec_input = "input/program.txt"
 
@@ -362,7 +364,7 @@ if __name__ == "__main__":
         tensor_size = []
         id_list = op[key]
 
-        for id in id_list:
+        for i in range(0, 2):
             tensor_size.append([])
         
         for i in range(0, len(id_list)):
@@ -370,11 +372,11 @@ if __name__ == "__main__":
             tensor_size[1].append(int(split_factor[id_list[i]][1]))
 
         input_dir_path = tensor_path_dict[key]
-        tensor_type    = tensor_type_dict[key]    
+        tensor_type    = tensor_type_dict[key]
+        transpose      = tensor_transpose_dict[key]    
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule)    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, transpose)    
     
-
     mode = sys.argv[1]
 
     main_file = open("main.cpp", "w+")
@@ -425,7 +427,7 @@ if __name__ == "__main__":
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
     else: 
-        stmt = "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num);"
+        stmt = "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
 
     main_file.write(stmt)
     main_file.write("\n")

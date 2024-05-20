@@ -54,11 +54,11 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	header_file << "\n";
 
 	boost::format hex03("%03x");
-	header_file << "0x" << hex03 % mode_0[0];
+	header_file << "0x" << hex03 % int(mode_0[0]);
 
 	for(int i = 1; i < mode_0.size(); i++) {
 		header_file << ", ";
-		header_file << mode_0[i]; // 0x" << hex03 % mode_0[i];
+		header_file << "0x" << hex03 % int(mode_0[i]);
 	}
 	header_file << "\n";
 	header_file << "};"; 
@@ -121,7 +121,7 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     output_gold_file << "const uint16_t gold_" << curr_subtile_num << "_[" << output_subtile_size << "] = {";
 
     for (int pA = 0; pA < output_subtile_size; pA++) {
-        output_gold_file << op_vals[pA];
+        output_gold_file << int(op_vals[pA]);
         if(pA != output_subtile_size - 1){
             output_gold_file << ", ";
         }

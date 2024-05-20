@@ -1,2 +1,2 @@
-B:ss:nemeth01
-C:ss:nemeth02
+B:ss:football:0
+C:ss:football:1
