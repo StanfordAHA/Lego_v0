@@ -93,29 +93,34 @@ def data_parser(data):
 
     num_ids = len(schedule_1)
 
-    split_factor_rule = Word(alphas) + ':split:' + Word(alphanums) + ':' + Word(alphanums)
+    split_factor_rule = Word(alphas) + ':split:' + Word(alphanums) + ':' + Word(alphanums) + ':' + Word(alphanums)
 
     split_factor = {}
 
     for i in range(num_ids):
         parsed_split = split_factor_rule.parseString(data[5 + i])
-        split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4])]
-    
+        split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
+
     return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor = data_parser(data)
+    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor= data_parser(data)
 
     if(level == "ap"): 
         schedule = schedule_1
+        for id in split_factor:
+            split_factor[id].pop()
     elif(level == "cp"):
         schedule = schedule_2
+        for id in split_factor:
+            split_factor[id].pop(0)
     else:
         schedule = schedule_3
-
+        for id in split_factor:
+            split_factor[id].pop(0)
     dest_id = {}
     dest_map = {}
 
@@ -335,6 +340,22 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
 
         main_file.write("\n")
         main_file.write("    " + "int p" + key + ";\n")
+        
+def write_output(main_file, ap_split_factor, dest_id):
+    output_tile_size = 0;
+    dest_name = None
+    for name, id in dest_id.items():
+        dest_name = name
+        for i in id:
+            if output_tile_size == 0:
+                output_tile_size = ap_split_factor[i][0]
+            else:
+                output_tile_size *= ap_split_factor[i][0]
+    main_file.write("    std::string output_path = \"lego_scratch/data_files/output.txt\";\n")
+    main_file.write("    std::ofstream output_file;\n")
+    main_file.write("    output_file.open(output_path, std::ios::app);\n")
+    main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
+    main_file.write("    output_file.close();\n")
 
 if __name__ == "__main__":
 
@@ -344,13 +365,13 @@ if __name__ == "__main__":
     program_spec_input = "input/program.txt"
 
     level = "ap"
-    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, split_factor, op_list, ap_schedule = parse(program_spec_input, level)
+    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(program_spec_input, level)
 
     level = "cp"
-    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, _, _, cp_schedule = parse(program_spec_input, level)
+    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule = parse(program_spec_input, level)
 
     level = "cg"
-    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, _, _, cg_schedule = parse(program_spec_input, level)
+    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule = parse(program_spec_input, level)
 
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -366,8 +387,8 @@ if __name__ == "__main__":
             tensor_size.append([])
         
         for i in range(0, len(id_list)):
-            tensor_size[0].append(int(split_factor[id_list[i]][0]))
-            tensor_size[1].append(int(split_factor[id_list[i]][1]))
+            tensor_size[0].append(int(cp_split_factor[id_list[i]][0]))
+            tensor_size[1].append(int(cp_split_factor[id_list[i]][1]))
 
         input_dir_path = tensor_path_dict[key]
         tensor_type    = tensor_type_dict[key]    
@@ -409,10 +430,10 @@ if __name__ == "__main__":
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
     main_file.write("double* subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id)
+    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id)
 
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -450,19 +471,19 @@ if __name__ == "__main__":
 
     main_file.write("double* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, split_factor, mode)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode)
     main_file.write("\n")
-    main_file.write(codegen.workspace_declaration(split_factor, "cp", cp_dest_id))
+    main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id))
     main_file.write("\n")
     
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
     cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
     main_file.write("\n")
-    stmt = codegen.workspace_reduction(split_factor, "cp", cp_dest_id)
+    stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id)
     for line in stmt:
         main_file.write(line)
     
@@ -477,10 +498,17 @@ if __name__ == "__main__":
     main_file.write("int main() {\n")
     ap_tensor_decleration(main_file, ap_source_id)
     main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
+    main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id))
+    main_file.write("\n")
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
+    stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id)
+    for line in stmt:
+        main_file.write(line)
+    main_file.write("\n")
+    write_output(main_file, ap_split_factor, ap_dest_id)
     main_file.write("\n")
     main_file.write("    return 0;\n")
     main_file.write("}\n")

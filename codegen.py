@@ -1,3 +1,5 @@
+import math
+
 class Operation(object):
     def __init__(self, op, left, right):
         self.op = op
@@ -469,7 +471,7 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
     
         return [stmt]
 
-def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
+def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict):
 
     stmt = ""
 
@@ -512,15 +514,23 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
     if(valid_op_list != []):
         if(len(valid_op_list) != 1):
             stmt += "    " * (level + 2)
-            stmt += "tile_operate" + "(" + "tile_" + op_list[0]
+            stmt += "double* partial = tile_operate" + "(" + "tile_" + op_list[0]
             op_list = op_list[1:]
 
             for op in op_list:
                 stmt += ", " + "tile_" + op 
 
             stmt += ", tile_name);"
-    
-
+            stmt += "\n"
+        for name in dest: 
+            dest_name = name
+        stmt += "    " * (level + 2)
+        stmt += "subtile_workspace[" + dest[dest_name][0]
+        for dim_count, id in enumerate(dest[dest_name][1:]):
+            for i in range(dim_count + 1, len(dest[dest_name])):
+                stmt += " * " + str(int(math.ceil(split_dict[dest[dest_name][i]][0] / split_dict[dest[dest_name][i]][1])))
+            stmt += " + " + id
+        stmt += "].push_back(partial);"       
     return [stmt]
 
 def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map):
@@ -622,7 +632,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "subtile_workspace[" + dest[dest_read][0]
                 for dim_count, id in enumerate(dest[dest_read][1:]):
                     for i in range(dim_count + 1, len(dest[dest_read])):
-                        stmt += " * " + str(int(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1]))
+                        stmt += " * " + str(int(math.ceil(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1])))
                     stmt += " + " + id
                 stmt += "].push_back(partial);"       
                 stmt += "\n"
@@ -752,7 +762,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 
             if(len(schedule) == 1):
                 if(target == "ap"):
-                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id))
+                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict))
                 elif(target == "cp"):
                     stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map))
                 elif(target == "cg"):
@@ -772,42 +782,42 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 def workspace_declaration(split_factor, target, dest_id):
     # calcualate the number of subtiles that constitute the next level tile
     # this determines the number of slots in the workspace
-    if target == "cp":
-        n_subtiles = 0;
-        for name, id in dest_id.items():
-            for i in id:
-                if n_subtiles == 0:
-                    n_subtiles = split_factor[i][0] / split_factor[i][1]
-                else: 
-                    n_subtiles *= split_factor[i][0] / split_factor[i][1]
-        return "    std::vector<std::vector<double *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<double *>());\n"
+    n_subtiles = 0;
+    for name, id in dest_id.items():
+        for i in id:
+            if n_subtiles == 0:
+                n_subtiles = math.ceil(split_factor[i][0] / split_factor[i][1])
+            else: 
+                n_subtiles *= math.ceil(split_factor[i][0] / split_factor[i][1])
+    return "    std::vector<std::vector<double *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<double *>());\n"
 
 def workspace_reduction(split_factor, target, dest_id):
     # allcoate the array that is going to store the recombined tile
     # determine the size of the tile first
     stmt = []
-    tile_size = 0;
+    output_tile_size = 0;
     dest_name = None
     for name, id in dest_id.items():
         dest_name = name
         for i in id:
-            if tile_size == 0:
-                tile_size = split_factor[i][0]
+            if output_tile_size == 0:
+                output_tile_size = split_factor[i][0]
             else:
-                tile_size *= split_factor[i][0]
-    stmt.append("    double* " + dest_name + "_vals = (double*)malloc(sizeof(double) * " + str(tile_size) + ");\n")
+                output_tile_size *= split_factor[i][0]
+    stmt.append("    double* " + dest_name + "_vals = (double*)malloc(sizeof(double) * " + str(output_tile_size) + ");\n")
     stmt.append("\n")
     # initialize the recombined tile to zero 
-    stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(tile_size) + "; " + "p" + dest_name + " ++) {\n")
-    stmt.append("        " + dest_name + "[p" + dest_name + "] = 0;\n")
+    stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(output_tile_size) + "; " + "p" + dest_name + " ++) {\n")
+    stmt.append("        " + dest_name + "_vals[p" + dest_name + "] = 0;\n")
     stmt.append("    }\n")
+    stmt.append("\n")
     
     level = 1
     dim_n_subtile = {}
     subtile_size = {}
     tile_size = {}
     for id in dest_id[dest_name]:
-        dim_n_subtile[id] = int(split_factor[id][0] / split_factor[id][1])
+        dim_n_subtile[id] = int(math.ceil(split_factor[id][0] / split_factor[id][1]))
         loop_index = "subtile_" + id
         stmt.append(("    " * level) + "for (int " + loop_index + "= 0; " + loop_index + " < " + str(dim_n_subtile[id]) + "; " + loop_index + " ++) {\n")
         level = level + 1
@@ -821,7 +831,7 @@ def workspace_reduction(split_factor, target, dest_id):
         for i in range(dim_count + 1, len(dest_id[dest_name])):
             offset_id = dest_id[dest_name][i]
             workspace_index_str += " * " + str(dim_n_subtile[offset_id])
-        workspace_index_str += " + " + id
+        workspace_index_str += " +  subtile_" + id
     stmt.append(("    " * level) + "for (std::vector<double*>::iterator it = subtile_workspace[" + workspace_index_str + "].begin(); it != subtile_workspace[" + workspace_index_str + "].end(); it++) {\n")
     level = level + 1
     for id in dest_id[dest_name]:
@@ -845,8 +855,14 @@ def workspace_reduction(split_factor, target, dest_id):
             offset_id = dest_id[dest_name][i]
             partial_index_str += " * " + str(subtile_size[offset_id])
         partial_index_str += " + " + id
-    
+    # For ap, the tile size may not perfectly align with the actual output tensor size
+    # Need to put guard here so padded values in the tiles are not written to the output matrix
+    if target == "ap":
+        stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
+        level = level + 1
     stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")
+    if target == "ap":
+        level = level - 1
     # close the subtile partial product loop
     for id in dest_id[dest_name]:
         level = level - 1
