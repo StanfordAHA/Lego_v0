@@ -779,7 +779,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 
     return stmt_list
 
-def workspace_declaration(split_factor, target, dest_id):
+def workspace_declaration(split_factor, dest_id):
     # calcualate the number of subtiles that constitute the next level tile
     # this determines the number of slots in the workspace
     n_subtiles = 0;

@@ -8,12 +8,13 @@
 #include <boost/format.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <csignal>
 using namespace std;
 
 #include "src/data_parser.h"
 #include "src/mem_op.h"
 
-int subtile_gold(subtile2 subtile_B, subtile2 subtile_C, int curr_subtile_num, ofstream &output_gold_file) {
+double* subtile_gold(subtile2 subtile_B, subtile2 subtile_C, int curr_subtile_num, ofstream &output_gold_file) {
 
     int *B1_pos = subtile_B.pos1.data();
     int *B1_crd = subtile_B.crd1.data();
@@ -72,13 +73,12 @@ int subtile_gold(subtile2 subtile_B, subtile2 subtile_C, int curr_subtile_num, o
         iB += (int)(iB0 == i);
     }
 
-    rtl_output_subtile_printer(A_vals, output_subtile_size, curr_subtile_num, output_gold_file);
-
-    return 0;
+    // rtl_output_subtile_printer(A_vals, output_subtile_size, curr_subtile_num, output_gold_file);
+    return A_vals;
 
 }
 
-int tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
+double* tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
 
     int *B1_pos = tile_B.pos1.data();
     int *B1_crd = tile_B.crd1.data();
@@ -117,6 +117,10 @@ int tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
 
     int iB = B1_pos[0];
     int pB1_end = B1_pos[1];
+     
+    // allocate memory for the reduction/recombination workspace
+    std::vector<std::vector<double *>>subtile_workspace(64, std::vector<double *>());
+
     while(iB < pB1_end){
         int iB0 = B1_crd[iB];
         int i = iB0;
@@ -138,35 +142,36 @@ int tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
                         int j = jC0;
                         if(jC0 == j){
                             subtile_C = tile_mem_op_2(tile_C, jC);
-                            mkdir(data_path, 0777);
+                            // mkdir(data_path, 0777);
 
                             subtile_path = out_dir + "/set_i_" + std::to_string(i);
                             subtile_path += "_j_" + std::to_string(j);
-                            mkdir(subtile_path.c_str(), 0777);
+                            // mkdir(subtile_path.c_str(), 0777);
 
                             subtile_path += "/subtile_pair_" + std::to_string(curr_subtile_num);
                             const char *subtile_path_str = subtile_path.c_str();
-                            mkdir(subtile_path_str, 0777);
+                            // mkdir(subtile_path_str, 0777);
                             output_gold_path = subtile_path + "/output_gold.h";
-                            output_gold_file.open(output_gold_path, std::ios_base::app);
-                            subtile_gold(subtile_B, subtile_C, curr_subtile_num, output_gold_file);
+                            // output_gold_file.open(output_gold_path, std::ios_base::app);
+                            double* partial = subtile_gold(subtile_B, subtile_C, curr_subtile_num, output_gold_file);
+                            subtile_workspace[i * 8 + j].push_back(partial);
 
-                            rtl_mode_data_printer(subtile_B.pos1, subtile_path, "B", "seg", "0");
-                            rtl_mode_data_printer(subtile_B.crd1, subtile_path, "B", "crd", "0");
-                            rtl_mode_data_printer(subtile_B.pos2, subtile_path, "B", "seg", "1");
-                            rtl_mode_data_printer(subtile_B.crd2, subtile_path, "B", "crd", "1");
-                            rtl_vals_data_printer(subtile_B.vals, subtile_path, "B");
-                            rtl_size_data_printer_2(subtile_path, "B", 30, 30);
+                            // rtl_mode_data_printer(subtile_B.pos1, subtile_path, "B", "seg", "0");
+                            // rtl_mode_data_printer(subtile_B.crd1, subtile_path, "B", "crd", "0");
+                            // rtl_mode_data_printer(subtile_B.pos2, subtile_path, "B", "seg", "1");
+                            // rtl_mode_data_printer(subtile_B.crd2, subtile_path, "B", "crd", "1");
+                            // rtl_vals_data_printer(subtile_B.vals, subtile_path, "B");
+                            // rtl_size_data_printer_2(subtile_path, "B", 30, 30);
 
-                            rtl_mode_data_printer(subtile_C.pos1, subtile_path, "C", "seg", "1");
-                            rtl_mode_data_printer(subtile_C.crd1, subtile_path, "C", "crd", "1");
-                            rtl_mode_data_printer(subtile_C.pos2, subtile_path, "C", "seg", "0");
-                            rtl_mode_data_printer(subtile_C.crd2, subtile_path, "C", "crd", "0");
-                            rtl_vals_data_printer(subtile_C.vals, subtile_path, "C");
-                            rtl_size_data_printer_2(subtile_path, "C", 30, 30);
+                            // rtl_mode_data_printer(subtile_C.pos1, subtile_path, "C", "seg", "1");
+                            // rtl_mode_data_printer(subtile_C.crd1, subtile_path, "C", "crd", "1");
+                            // rtl_mode_data_printer(subtile_C.pos2, subtile_path, "C", "seg", "0");
+                            // rtl_mode_data_printer(subtile_C.crd2, subtile_path, "C", "crd", "0");
+                            // rtl_vals_data_printer(subtile_C.vals, subtile_path, "C");
+                            // rtl_size_data_printer_2(subtile_path, "C", 30, 30);
 
                             curr_subtile_num++;
-                            output_gold_file.close();
+                            // output_gold_file.close();
                         }
                         jC += (int)(jC0 == j);
                     }
@@ -177,8 +182,29 @@ int tile_operate(tile2 tile_B, tile2 tile_C, std::string curr_tile) {
         }
         iB += (int)(iB0 == i);
     }
+    double* A_vals = (double*)malloc(sizeof(double) * 57600);
 
-    return 0;
+    for (int pA = 0; pA < 57600; pA++) {
+        A_vals[pA] = 0;
+    }
+    // perform reduction on the workspace and recombine the matrix tiles
+    for (int subtile_i = 0; subtile_i < 8; subtile_i ++) {
+        for (int subtile_j = 0; subtile_j < 8; subtile_j ++) {
+            int base_i = subtile_i * 30;
+            int base_j = subtile_j * 30;
+            for (std::vector<double *>::iterator it = subtile_workspace[subtile_i*8 + subtile_j].begin(); it != subtile_workspace[subtile_i * 8 + subtile_j].end(); it++) {
+                for (int i = 0; i < 30; i++) {
+                    for (int j = 0; j < 30; j ++) {
+                        // std::cout << (base_i + i) * 240 + base_j + j << std::endl;
+                        A_vals[(base_i + i) * 240 + base_j + j] += (*it)[i * 30 + j];
+                    }
+                }
+                free(*it);
+            }
+        }
+    }
+
+    return A_vals;
 }
 
 int main() {
@@ -278,6 +304,8 @@ int main() {
     tile2 tile_C;
 
     std::string tile_name;
+    // allocate memory for the reduction/recombination workspace
+    std::vector<std::vector<double *>>subtile_workspace(14*16, std::vector<double *>());
 
     int iB = B1_pos[0];
     int pB1_end = B1_pos[1];
@@ -301,13 +329,15 @@ int main() {
                         int jC0 = C2_crd[jC];
                         int j = jC0;
                         if(jC0 == j){
+                            std::cout << "Processing: " << "i: " << i << " j: " << j << " k: " << k << std::endl;
                             tile_C = tensor_mem_op_2(tensor_C, jC);
                             tile_name = "tile";
                             tile_name += "_iB_" + std::to_string(i);
                             tile_name += "_kB_" + std::to_string(k);
                             tile_name += "_kC_" + std::to_string(k);
                             tile_name += "_jC_" + std::to_string(j);
-                            tile_operate(tile_B, tile_C, tile_name);
+                            double * partial = tile_operate(tile_B, tile_C, tile_name);
+                            subtile_workspace[i * 16 + j].push_back(partial);
                         }
                         jC += (int)(jC0 == j);
                     }
@@ -318,6 +348,38 @@ int main() {
         }
         iB += (int)(iB0 == i);
     }
+
+    double* A_vals = (double*)malloc(sizeof(double) * 12319881);
+    for (int pA = 0; pA < 12319881; pA++) {
+        A_vals[pA] = 0;
+    }
+
+    for (int subtile_i = 0; subtile_i < 14; subtile_i ++) {
+        for (int subtile_j = 0; subtile_j < 16; subtile_j ++) {
+            int base_i = subtile_i * 240;
+            int base_j = subtile_j * 240;
+            for (std::vector<double *>::iterator it = subtile_workspace[subtile_i*16 + subtile_j].begin(); it != subtile_workspace[subtile_i * 16 + subtile_j].end(); it++) {
+                for (int i = 0; i < 240; i++) {
+                    for (int j = 0; j < 240; j ++) {
+                        if ((base_i + i) < 3327 && (base_j + j) < 3703) {
+                            A_vals[(base_i + i) * 3703 + base_j + j] += (*it)[i * 240 + j];
+                        }
+                    }
+                }
+                free(*it);
+            }
+        }
+    }
+
+    int output_subtile_size = 12319881;
+    std::string out_dir = "lego_scratch/data_files";
+    const char *data_path = out_dir.c_str();
+
+    std::string output_gold_path = out_dir + "/output_gold.h";
+    std::ofstream output_gold_file;
+    output_gold_file.open(output_gold_path, std::ios_base::app);
+    rtl_output_subtile_printer(A_vals, output_subtile_size, 0, output_gold_file);
+    output_gold_file.close();
 
     return 0;
 }
