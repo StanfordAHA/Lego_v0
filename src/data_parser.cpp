@@ -136,3 +136,17 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
 
     return 0;
 }
+
+int subtile_paths_printer (const std::vector<std::string> &subtile_paths, ofstream &subtile_paths_file) { 
+	
+	subtile_paths_file << "[sam_config]" << "\n";
+	subtile_paths_file << "sam_path = [ \n";
+
+	for (std::vector<std::string>::const_iterator it = subtile_paths.begin(); it != subtile_paths.end(); it ++) {
+		subtile_paths_file << "    \"" <<(*it) << "\",\n";
+	}
+	
+	subtile_paths_file << "    ]";
+
+	return 0;
+}
