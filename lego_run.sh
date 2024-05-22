@@ -3,5 +3,5 @@ mkdir lego_scratch/
 mkdir lego_scratch/data_files
 rm -rf main.cpp
 python3 main.py $1
-g++ -o main main_matmul_rtl.cpp src/data_parser.cpp src/mem_op.cpp 
+g++ -o main main.cpp src/data_parser.cpp src/mem_op.cpp 
 ./main

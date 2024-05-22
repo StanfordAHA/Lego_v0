@@ -471,7 +471,7 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
     
         return [stmt]
 
-def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict):
+def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode):
 
     stmt = ""
 
@@ -520,8 +520,12 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
             for op in op_list:
                 stmt += ", " + "tile_" + op 
 
-            stmt += ", tile_name);"
-            stmt += "\n"
+            stmt += ", tile_name"
+            
+            if mode == "rtl":
+                stmt += ", subtile_paths"
+
+            stmt += ");\n"
         for name in dest: 
             dest_name = name
         stmt += "    " * (level + 2)
@@ -665,6 +669,10 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         stmt += "\n"
                         stmt += "\n"
 
+                    stmt += "    " * (level + 2)
+                    stmt += "subtile_paths.push_back(subtile_path);\n"
+                    stmt += "\n"
+
                 stmt += "    " * (level + 2)
                 stmt += "curr_subtile_num++;\n"
                 stmt += "    " * (level + 2)
@@ -713,7 +721,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, level, curr_id, expr, dest, split_di
     
         stmt += ";"
         stmt += "\n"
-
+ 
         if(len(valid_op_list) == 1):
             stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + valid_op_list[0] + "_vals[" + id_dict[valid_op_list[0]][-1] +  "];"
             stmt += "\n"
@@ -762,7 +770,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 
             if(len(schedule) == 1):
                 if(target == "ap"):
-                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict))
+                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode))
                 elif(target == "cp"):
                     stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map))
                 elif(target == "cg"):

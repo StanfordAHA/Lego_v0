@@ -359,12 +359,19 @@ def write_output(main_file, ap_split_factor, dest_id):
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
+def write_subtile_paths(main_file):
+    main_file.write("    std::string subtile_paths_path = \"lego_scratch/data_files/subtile_paths.toml\";\n")
+    main_file.write("    std::ofstream subtile_paths_file;\n")
+    main_file.write("    subtile_paths_file.open(subtile_paths_path, std::ios::app);\n")
+    main_file.write("    subtile_paths_printer(subtile_paths, subtile_paths_file);\n")
+    main_file.write("    subtile_paths_file.close();\n")
+
 if __name__ == "__main__":
 
-    tensor_path_input = "input/tensor.txt"
+    tensor_path_input = "input/tensor_gcn_aggregate_feature.txt"
     tensor_path_dict, tensor_type_dict, tensor_transpose_dict = tensor_path_type_dict(tensor_path_input)
 
-    program_spec_input = "input/program.txt"
+    program_spec_input = "input/program_gcn_aggregate_feature.txt"
 
     level = "ap"
     dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(program_spec_input, level)
@@ -469,6 +476,10 @@ if __name__ == "__main__":
         tensor_dim = str(len(cp_source_id[op]))
         stmt = stmt + ", " + "tile" + tensor_dim + " tile_" + op
     stmt += ", std::string curr_tile"
+    
+    if mode == 'rtl':
+        stmt += ", std::vector<std::string> &subtile_paths"
+
     stmt = stmt + ")"
 
     main_file.write("double* tile_operate" + stmt + " {\n")
@@ -499,6 +510,13 @@ if __name__ == "__main__":
     # AP driver code
     main_file.write("int main() {\n")
     ap_tensor_decleration(main_file, ap_source_id)
+
+    # vector for storing the list of all the subtile path 
+    # this is for comal
+    if mode == "rtl":
+        main_file.write("\n")
+        main_file.write("    std::vector<std::string> subtile_paths;\n")
+
     main_file.write("\n")
     main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id))
     main_file.write("\n")
@@ -510,7 +528,15 @@ if __name__ == "__main__":
     for line in stmt:
         main_file.write(line)
     main_file.write("\n")
+    
+    # generate code that write the output matrix to file
     write_output(main_file, ap_split_factor, ap_dest_id)
+    main_file.write("\n")
+
+    # genearte the toml path list file for comal
+    if mode == "rtl":
+        write_subtile_paths(main_file)
+
     main_file.write("\n")
     main_file.write("    return 0;\n")
     main_file.write("}\n")
