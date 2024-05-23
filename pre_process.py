@@ -124,7 +124,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, transpose):
+def process(tensor_type, input_path, output_dir_path, tile_size, tile_anchor, schedule_dict, transpose):
 
     tensor = None
     cwd = os.getcwd()
@@ -162,6 +162,9 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, 
         tensor = sparse.COO(trans_shifted)
     else: 
         tensor = sparse.COO(tensor)
+
+    print(schedule_dict)
+    breakpoint()
 
     process_coo(tensor, tile_size, output_dir_path, schedule_dict)
 

@@ -97,20 +97,27 @@ def data_parser(data):
 
     num_ids = len(schedule_1)
 
-    split_factor_rule = Word(alphas) + ':split:' + Word(alphanums) + ':' + Word(alphanums)
+    split_factor_rule = Word(alphas) + ':anchor:' + Word(alphanums) + ':split:' + Word(alphanums) + ':' + Word(alphanums)
 
     split_factor = {}
+    split_anchor = {}
 
-    for i in range(num_ids):
-        parsed_split = split_factor_rule.parseString(data[5 + i])
-        split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4])]
+    print(len(data))
+    for i in range(5, len(data)):
+        parsed_split = split_factor_rule.parseString(data[i])
+        if parsed_split[0] not in split_factor:
+            assert parsed_split[0] not in split_anchor
+            split_factor[parsed_split[0]] = []
+            split_anchor[parsed_split[0]] = []
+        split_factor[parsed_split[0]].append([int(parsed_split[4]), int(parsed_split[6])])
+        split_anchor[parsed_split[0]].append(int(parsed_split[2]))
     
-    return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor
+    return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, split_anchor
 
 def parse(input_file, level):
 
     data = file_parser(input_file)
-    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor = data_parser(data)
+    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, split_anchor = data_parser(data)
 
     if(level == "ap"): 
         schedule = schedule_1
@@ -152,7 +159,7 @@ def parse(input_file, level):
         expr = "(" + op_list[0][0] + " " + op_list[1][0] + " " + op_list[2][0] + ")"
         op_list = [op_list[0][0], op_list[2][0]]
 
-    return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule
+    return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, split_anchor, op_list, schedule
 
 def ap_tensor_decleration(main_file, ap_source_id):
 
@@ -346,13 +353,13 @@ if __name__ == "__main__":
     program_spec_input = "input/program.txt"
 
     level = "ap"
-    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, split_factor, op_list, ap_schedule = parse(program_spec_input, level)
+    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, split_factor, split_anchor, op_list, ap_schedule = parse(program_spec_input, level)
 
     level = "cp"
-    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, _, _, cp_schedule = parse(program_spec_input, level)
+    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, _, _, _, cp_schedule = parse(program_spec_input, level)
 
     level = "cg"
-    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, _, _, cg_schedule = parse(program_spec_input, level)
+    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, _, _, _, cg_schedule = parse(program_spec_input, level)
 
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -362,118 +369,124 @@ if __name__ == "__main__":
         tensor_schedule.append(cg_source_map[key])
 
         tensor_size = []
+        tensor_anchor = []
         id_list = op[key]
-
-        for i in range(0, 2):
+        for tile_i in range(0, len(split_factor[id_list[0]])):
             tensor_size.append([])
-        
-        for i in range(0, len(id_list)):
-            tensor_size[0].append(int(split_factor[id_list[i]][0]))
-            tensor_size[1].append(int(split_factor[id_list[i]][1]))
-
+            tensor_anchor.append([])
+            for i in range(0, 2):
+                tensor_size[tile_i].append([])
+            
+            for i in range(0, len(id_list)):
+                tensor_size[tile_i][0].append(int(split_factor[id_list[i]][tile_i][0]))
+                tensor_size[tile_i][1].append(int(split_factor[id_list[i]][tile_i][1]))
+                tensor_anchor[tile_i].append(int(split_anchor[id_list[i]][tile_i]))
+        print(tensor_size)
+        print(tensor_anchor)
+        breakpoint()
         input_dir_path = tensor_path_dict[key]
         tensor_type    = tensor_type_dict[key]
         transpose      = tensor_transpose_dict[key]    
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, transpose)    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_anchor, tensor_schedule, transpose)    
     
-    mode = sys.argv[1]
+    # mode = sys.argv[1]
 
-    main_file = open("main.cpp", "w+")
+    # main_file = open("main.cpp", "w+")
 
-    # Printing the header files
-    main_file.write("#include <stdlib.h>\n")   
-    main_file.write("#include <stdio.h>\n")
-    main_file.write("#include <cstring>\n")
-    main_file.write("#include <iostream>\n")
-    main_file.write("#include <fstream>\n")
-    main_file.write("#include <vector>\n")
-    main_file.write("#include <string>\n")
-    main_file.write("#include <boost/format.hpp>\n")
-    main_file.write("#include <sys/types.h>\n")
-    main_file.write("#include <sys/stat.h>\n")
-    main_file.write("using namespace std;\n")
-    main_file.write("\n")
-    main_file.write("#include \"src/data_parser.h\"")
-    main_file.write("\n")
-    main_file.write("#include \"src/mem_op.h\"")
-    main_file.write("\n")
-    main_file.write("\n")
+    # # Printing the header files
+    # main_file.write("#include <stdlib.h>\n")   
+    # main_file.write("#include <stdio.h>\n")
+    # main_file.write("#include <cstring>\n")
+    # main_file.write("#include <iostream>\n")
+    # main_file.write("#include <fstream>\n")
+    # main_file.write("#include <vector>\n")
+    # main_file.write("#include <string>\n")
+    # main_file.write("#include <boost/format.hpp>\n")
+    # main_file.write("#include <sys/types.h>\n")
+    # main_file.write("#include <sys/stat.h>\n")
+    # main_file.write("using namespace std;\n")
+    # main_file.write("\n")
+    # main_file.write("#include \"src/data_parser.h\"")
+    # main_file.write("\n")
+    # main_file.write("#include \"src/mem_op.h\"")
+    # main_file.write("\n")
+    # main_file.write("\n")
 
-    # CGRA gold code
-    tensor_dim = str(len(cg_source_id[op_list[0]]))
-    stmt = ""
-    stmt = stmt + "(" + "subtile" + tensor_dim + " subtile_" + op_list[0]  
+    # # CGRA gold code
+    # tensor_dim = str(len(cg_source_id[op_list[0]]))
+    # stmt = ""
+    # stmt = stmt + "(" + "subtile" + tensor_dim + " subtile_" + op_list[0]  
 
-    for op in op_list[1:]: 
-        tensor_dim = str(len(cg_source_id[op]))
-        stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
-    stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
+    # for op in op_list[1:]: 
+    #     tensor_dim = str(len(cg_source_id[op]))
+    #     stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
+    # stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
-    main_file.write("int subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id)
+    # main_file.write("int subtile_gold" + stmt + " {\n")
+    # cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id)
 
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
-        if element != [""]:
-            main_file.write(element[0])
-            main_file.write("\n")
+    # for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
+    #     if element != [""]:
+    #         main_file.write(element[0])
+    #         main_file.write("\n")
 
-    for key in dest.keys():
-        dest = key
+    # for key in dest.keys():
+    #     dest = key
 
-    main_file.write("\n")  
+    # main_file.write("\n")  
 
-    if(mode == "rtl"):
-        stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
-    else: 
-        stmt = "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
+    # if(mode == "rtl"):
+    #     stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
+    # else: 
+    #     stmt = "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
 
-    main_file.write(stmt)
-    main_file.write("\n")
-    main_file.write("\n")
-    main_file.write("    return 0;\n")
-    main_file.write("\n")
-    main_file.write("}\n")
-    main_file.write("\n")
+    # main_file.write(stmt)
+    # main_file.write("\n")
+    # main_file.write("\n")
+    # main_file.write("    return 0;\n")
+    # main_file.write("\n")
+    # main_file.write("}\n")
+    # main_file.write("\n")
 
-    # Sub-tile pairing code
-    tensor_dim = str(len(cp_source_id[op_list[0]]))
-    stmt = ""
-    stmt = stmt + "(" + "tile" + tensor_dim + " tile_" + op_list[0]  
+    # # Sub-tile pairing code
+    # tensor_dim = str(len(cp_source_id[op_list[0]]))
+    # stmt = ""
+    # stmt = stmt + "(" + "tile" + tensor_dim + " tile_" + op_list[0]  
     
-    for op in op_list[1:]: 
-        tensor_dim = str(len(cp_source_id[op]))
-        stmt = stmt + ", " + "tile" + tensor_dim + " tile_" + op
-    stmt += ", std::string curr_tile"
-    stmt = stmt + ")"
+    # for op in op_list[1:]: 
+    #     tensor_dim = str(len(cp_source_id[op]))
+    #     stmt = stmt + ", " + "tile" + tensor_dim + " tile_" + op
+    # stmt += ", std::string curr_tile"
+    # stmt = stmt + ")"
 
-    main_file.write("int tile_operate" + stmt + " {\n")
+    # main_file.write("int tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, split_factor, mode)
-    main_file.write("\n")
+    # cp_tensor_decleration(main_file, cp_source_id, split_factor, mode)
+    # main_file.write("\n")
     
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
-        if element != [""]:
-            main_file.write(element[0])
-            main_file.write("\n")
+    # for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
+    #     if element != [""]:
+    #         main_file.write(element[0])
+    #         main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
+    # cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
     
-    main_file.write("\n")
-    main_file.write("    return 0;\n")
-    main_file.write("}\n")
-    main_file.write("\n")
+    # main_file.write("\n")
+    # main_file.write("    return 0;\n")
+    # main_file.write("}\n")
+    # main_file.write("\n")
 
-    # AP driver code
-    main_file.write("int main() {\n")
-    ap_tensor_decleration(main_file, ap_source_id)
-    main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
-        if element != [""]:
-            main_file.write(element[0])
-            main_file.write("\n")
-    main_file.write("\n")
-    main_file.write("    return 0;\n")
-    main_file.write("}\n")
-    main_file.close()
+    # # AP driver code
+    # main_file.write("int main() {\n")
+    # ap_tensor_decleration(main_file, ap_source_id)
+    # main_file.write("\n")
+    # for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
+    #     if element != [""]:
+    #         main_file.write(element[0])
+    #         main_file.write("\n")
+    # main_file.write("\n")
+    # main_file.write("    return 0;\n")
+    # main_file.write("}\n")
+    # main_file.close()
