@@ -316,7 +316,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
 
         tensor_dim = len(value)
         main_file.write("\n")
-
+        
         for i in range(0, tensor_dim):
             main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
@@ -342,6 +342,52 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
 
         main_file.write("\n")
         main_file.write("    " + "int p" + key + ";\n")
+
+def subtile_output_decleration(main_file, dest_id, split_factor):
+    # dest_name = "Res"
+    for name, id in dest_id.items():
+        dest_name = name
+    # declare the vectors 
+    for idx, _ in enumerate(dest_id[dest_name]):
+        main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_pos_vec;\n")
+        main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_crd_vec;\n")
+    main_file.write("    std::vector<double> " + dest_name + "_vals_vec;\n")
+
+    main_file.write("\n")
+
+    # build the vectors to store the results from the output file of comal/rtl
+    for idx, _ in enumerate(dest_id[dest_name]):
+        main_file.write("    build_vec(" + dest_name + str(idx + 1) + "_pos_vec, subtile_path + \"/tensor_" + dest_name + "_mode_" + str(idx) + "_seg\");\n")
+        main_file.write("    build_vec(" + dest_name + str(idx + 1) + "_crd_vec, subtile_path + \"/tensor_" + dest_name + "_mode_" + str(idx) + "_crd\");\n") 
+    main_file.write("    build_vec_val(" + dest_name + "_vals_vec, subtile_path + \"/tensor_" + dest_name + "_mode_vals\");\n")
+
+    main_file.write("\n")
+
+    # get the pointer to the data
+    for idx, _ in enumerate(dest_id[dest_name]):
+        main_file.write("    int *" + dest_name + str(idx + 1) + "_pos = " + dest_name + str(idx + 1) + "_pos_vec.data();\n")
+        main_file.write("    int *" + dest_name + str(idx + 1) + "_crd = " + dest_name + str(idx + 1) + "_crd_vec.data();\n")
+    main_file.write("    double *" + dest_name + "_vals = " + dest_name + "_vals_vec.data();\n")
+
+    main_file.write("\n")
+
+    outsize = 1
+    for key, value in dest_id.items():
+        for id in value:
+            outsize *= int(split_factor[id][1])
+    
+        main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
+        main_file.write("\n")
+
+        main_file.write("    " + "double *" + key + "_output_vals = (double*)malloc(sizeof(double) * output_subtile_size);\n")
+        main_file.write("\n")
+
+        main_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_subtile_size; p" + key + "++) {\n")
+        main_file.write("        " + key + "_output_vals[p" + key + "] = 0;\n")
+        main_file.write("    }\n")
+
+        main_file.write("\n")
+        main_file.write("    " + "int p" + key + "_output;\n")
         
 def write_output(main_file, ap_split_factor, dest_id):
     output_tile_size = 0;
@@ -467,6 +513,26 @@ if __name__ == "__main__":
     main_file.write("}\n")
     main_file.write("\n")
 
+    main_file.write("double* read_subtile_output(std::string subtile_path) {\n")
+    subtile_output_decleration(main_file, cg_dest_id, cg_split_factor)
+    rtl_output_dest_id = {}
+    for key in cg_dest_id.keys():
+        dest_name = key
+        # have to do this conversion to prevent input vals array and the converted dense output array 
+        # having the same variable name due to the expression A = A
+        rtl_output_dest_id[key + "_output"] = cg_dest_id[key]
+
+    # Conversion from fibertree sparse rtl/comal output file to dense matrix representation for reduction
+    # This is accomplished by generating code using the A = A expression 
+    for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map):
+        if element != [""]:
+            main_file.write(element[0])
+            main_file.write("\n")
+    main_file.write("\n")
+    main_file.write("    return " + dest_name + "_output_vals;\n")
+    main_file.write("}\n")
+    main_file.write("\n")
+
     # Sub-tile pairing code
     tensor_dim = str(len(cp_source_id[op_list[0]]))
     stmt = ""
@@ -478,7 +544,7 @@ if __name__ == "__main__":
     stmt += ", std::string curr_tile"
     
     if mode == 'rtl':
-        stmt += ", std::vector<std::string> &subtile_paths"
+        stmt += ", std::vector<std::string> &subtile_paths, std::string mode"
 
     stmt = stmt + ")"
 
@@ -488,7 +554,7 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id))
     main_file.write("\n")
-    
+
     for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
         if element != [""]:
             main_file.write(element[0])
@@ -508,7 +574,15 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     # AP driver code
-    main_file.write("int main() {\n")
+    main_file.write("int main(int argc, char *argv[]) {\n")
+    main_file.write("\n")
+    if mode == "rtl":
+        # parsing command line argument that specify if we are in reduction mode or not
+        # reduction mode: iterate through all the subtile results computed by rtl/comal and perform reduction/combination
+        # tiling mode: iterate through all the subtiles and print them out for rtl/comal
+        main_file.write("    assert(argc == 2);\n")
+        main_file.write("    std::string mode = argv[1];\n")
+
     ap_tensor_decleration(main_file, ap_source_id)
 
     # vector for storing the list of all the subtile path 
