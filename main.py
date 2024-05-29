@@ -1,6 +1,7 @@
 import pre_process
 import codegen
 import sys
+import argparse
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -16,8 +17,7 @@ def tensor_path_type_dict(tensor_path_input):
     tensor_path_dict_keys = [] 
 
     with open(tensor_path_input, 'r') as f:
-        data = f.read().splitlines()
-    
+        data = f.read().splitlines()    
     
     data = [i for i in data]
     data = [i.replace(" ", "") for i in data]
@@ -406,7 +406,7 @@ def write_output(main_file, ap_split_factor, dest_id):
     main_file.write("    output_file.close();\n")
 
 def write_subtile_paths(main_file):
-    main_file.write("    std::string subtile_paths_path = \"lego_scratch/data_files/subtile_paths.toml\";\n")
+    main_file.write("    std::string subtile_paths_path = \"./subtile_paths.toml\";\n")
     main_file.write("    std::ofstream subtile_paths_file;\n")
     main_file.write("    subtile_paths_file.open(subtile_paths_path, std::ios::app);\n")
     main_file.write("    subtile_paths_printer(subtile_paths, subtile_paths_file);\n")
@@ -414,19 +414,25 @@ def write_subtile_paths(main_file):
 
 if __name__ == "__main__":
 
-    tensor_path_input = "input/tensor_gcn_aggregate_feature.txt"
-    tensor_path_dict, tensor_type_dict, tensor_transpose_dict = tensor_path_type_dict(tensor_path_input)
+    parser = argparse.ArgumentParser(
+                    prog="Lego_v0",
+                    description="Generate Cpp code for tiling and reduction given the input program and tensors")
+    parser.add_argument("-t", "--tensor", type=str, default="./input/tensor.txt")
+    parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
+    parser.add_argument("-m", "--mode", type=str, default="rtl")
 
-    program_spec_input = "input/program_gcn_aggregate_feature.txt"
+    args = parser.parse_args()
+
+    tensor_path_dict, tensor_type_dict, tensor_transpose_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(program_spec_input, level)
+    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(args.program, level)
 
     level = "cp"
-    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule = parse(program_spec_input, level)
+    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule = parse(args.program, level)
 
     level = "cg"
-    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule = parse(program_spec_input, level)
+    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule = parse(args.program, level)
 
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -451,7 +457,7 @@ if __name__ == "__main__":
 
         pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, transpose)    
     
-    mode = sys.argv[1]
+    mode = args.mode
 
     main_file = open("main.cpp", "w+")
 
