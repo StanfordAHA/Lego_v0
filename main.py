@@ -405,12 +405,10 @@ def write_output(main_file, ap_split_factor, dest_id):
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
-def write_subtile_paths(main_file):
-    main_file.write("    std::string subtile_paths_path = \"./subtile_paths.toml\";\n")
-    main_file.write("    std::ofstream subtile_paths_file;\n")
-    main_file.write("    subtile_paths_file.open(subtile_paths_path, std::ios::app);\n")
-    main_file.write("    subtile_paths_printer(subtile_paths, subtile_paths_file);\n")
-    main_file.write("    subtile_paths_file.close();\n")
+def write_subtile_paths(main_file, batch_size):
+    main_file.write("    if (mode == \"tiling\") {\n")
+    main_file.write("        subtile_paths_printer(subtile_paths, " + str(args.comal_batch_size) + ");\n")
+    main_file.write("    }\n")
 
 if __name__ == "__main__":
 
@@ -420,6 +418,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--tensor", type=str, default="./input/tensor.txt")
     parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
+    parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
 
     args = parser.parse_args()
 
@@ -615,7 +614,7 @@ if __name__ == "__main__":
 
     # genearte the toml path list file for comal
     if mode == "rtl":
-        write_subtile_paths(main_file)
+        write_subtile_paths(main_file, args.comal_batch_size)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")

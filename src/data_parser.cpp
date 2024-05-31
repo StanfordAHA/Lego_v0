@@ -137,16 +137,26 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     return 0;
 }
 
-int subtile_paths_printer (const std::vector<std::string> &subtile_paths, ofstream &subtile_paths_file) { 
+int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const int &batch_size) {
 	
-	subtile_paths_file << "[sam_config]" << "\n";
-	subtile_paths_file << "sam_path = [ \n";
+	int batch_idx = 0;
+	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
+		std::string subtile_paths_file_path = "./subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::ofstream subtile_paths_file;
+		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
+		
+		// prefix fields required by comal
+		subtile_paths_file << "[sam_config]" << "\n";
+		subtile_paths_file << "sam_path = [ \n";
 
-	for (std::vector<std::string>::const_iterator it = subtile_paths.begin(); it != subtile_paths.end(); it ++) {
-		subtile_paths_file << "    \"" <<(*it) << "\",\n";
+		for (int j = 0; j < batch_size && i+j < subtile_paths.size(); j++) {
+			subtile_paths_file << "    \"" << subtile_paths[i+j] << "\",\n";
+		}
+
+		subtile_paths_file << "    ]";
+		subtile_paths_file.close();
+		batch_idx++;
 	}
-	
-	subtile_paths_file << "    ]";
 
 	return 0;
 }
