@@ -6,20 +6,29 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
 
     ifstream input_file(file_path);   
-    while(input_file >> val){
-        vec.push_back(val);
-    }
+	if (input_file.good()) {
+		while(input_file >> val){
+			vec.push_back(val);
+		}	
+	} else {
+		throw std::runtime_error("Error: File not found: " + file_path);
+	}
+
     return 0;
 }
 
 int build_vec_val(std::vector<double> &vec, std::string file_path) {
     double val;
     ifstream input_file(file_path);   
-    while(input_file >> setprecision(30) >> val){
-		// FIXME: Temporary fix to avoid precision loss
-		// TODO: Find a better way to set the digit precision
-        vec.push_back(val);
-    }
+	if (input_file.good()) {
+    	while(input_file >> setprecision(30) >> val){
+			// FIXME: Temporary fix to avoid precision loss
+			// TODO: Find a better way to set the digit precision
+        	vec.push_back(val);
+    	}
+	} else {
+		throw std::runtime_error("Error: File not found: " + file_path);
+	}
     return 0;
 }
 
