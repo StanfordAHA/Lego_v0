@@ -1,2 +1,2 @@
-B:sparse_ml:gcn/citeseer/layer1/layer_output/B:0
-C:sparse_ml:gcn/citeseer/layer1/layer_output/C:0
+B:sparse_ml:gcn/citeseer/layer1/layer_output/B:s:0
+C:sparse_ml:gcn/citeseer/layer1/layer_output/C:d:0

@@ -13,6 +13,7 @@ def tensor_path_type_dict(tensor_path_input):
     tensor_path_dict = {}
     tensor_type_dict = {}
     tensor_transpose_dict = {}
+    tensor_format_dict = {}
 
     tensor_path_dict_keys = [] 
 
@@ -30,9 +31,10 @@ def tensor_path_type_dict(tensor_path_input):
         parsed_data = data[i].split(":")
         tensor_type_dict[parsed_data[0]] = parsed_data[1]
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
-        tensor_transpose_dict[parsed_data[0]] = parsed_data[3]
+        tensor_format_dict[parsed_data[0]] = parsed_data[3]
+        tensor_transpose_dict[parsed_data[0]] = parsed_data[4]
 
-    return tensor_path_dict, tensor_type_dict, tensor_transpose_dict
+    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict
 
 def data_parser(data):
 
@@ -422,7 +424,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    tensor_path_dict, tensor_type_dict, tensor_transpose_dict = tensor_path_type_dict(args.tensor)
+    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
     dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(args.program, level)
@@ -452,9 +454,10 @@ if __name__ == "__main__":
 
         input_dir_path = tensor_path_dict[key]
         tensor_type    = tensor_type_dict[key]
-        transpose      = tensor_transpose_dict[key]    
+        transpose      = tensor_transpose_dict[key]  
+        format         = tensor_format_dict[key]  
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, transpose)    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose)    
     
     mode = args.mode
 

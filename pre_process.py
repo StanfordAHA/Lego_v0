@@ -19,7 +19,7 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
     InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 
-def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -30,9 +30,30 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
     '''
     
     # The input tensor is a COO tensor
-    coords = tensor.coords
-    data = tensor.data
 
+    coords = []
+    data = []
+
+    if format == "s": 
+        coords = tensor.coords
+        data = tensor.data
+    # if the input format is dense, we need to fill in all the zero entries
+    elif format == "d":
+        n_dim = len(tensor.coords)
+        for i in range(n_dim):
+            coords.append([])
+        for idx, val in np.ndenumerate(tensor.todense()):
+            if val == 0:
+                print(val)
+                breakpoint()
+            for i in range(n_dim):
+                coords[i].append(idx[i])
+            data.append(val)
+    else:
+        raise ValueError("Format must be either \"s\" or \"d\"")
+
+    print(np.where(data == 0))
+    breakpoint()
     # The number of values in the tensor
     num_values = len(data)
     n_dim = len(coords)
@@ -125,7 +146,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, transpose):
+def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, format, transpose):
 
     tensor = None
     cwd = os.getcwd()
@@ -167,5 +188,5 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, 
     else: 
         tensor = sparse.COO(tensor)
 
-    process_coo(tensor, tile_size, output_dir_path, schedule_dict)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict)
 
