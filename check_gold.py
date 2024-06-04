@@ -1,11 +1,23 @@
 import numpy as np
-output_mat = np.zeros((3327, 3327), dtype=np.float32)
+import argparse
+
+parser = argparse.ArgumentParser(
+                prog='check_gold',
+                description='Check the Lego output against the gold input matrix',)
+
+parser.add_argument('--gold', type=str, help='The path to the gold matrix',)
+
+args = parser.parse_args()
+
+gold_mat = np.load(args.gold)
+
+output_mat = np.zeros(gold_mat.shape, dtype=np.float32)
 with open("./lego_scratch/data_files/output.txt", "r") as f:
-    for i in range(3327):
-        for j in range(3327):
+    for i in range(gold_mat.shape[0]):
+        for j in range(gold_mat.shape[1]):
             output_mat[i][j] = float(f.readline().strip())
 
-gold_mat = np.load("/nobackup/bwcheng/sparse-datasets/sparse-ml/gcn/citeseer/layer1/adj_source_scaling/X.npy")
-print(np.allclose(output_mat, gold_mat))
-print(output_mat.shape)
-print(gold_mat.shape)
+if np.allclose(output_mat, gold_mat, rtol=0.001):
+    print("\033[32m=========== OUTPUT MATCHES GOLD ===========\033[0m")
+else:  
+    print("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")
