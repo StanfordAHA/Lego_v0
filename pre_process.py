@@ -43,17 +43,12 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
         for i in range(n_dim):
             coords.append([])
         for idx, val in np.ndenumerate(tensor.todense()):
-            if val == 0:
-                print(val)
-                breakpoint()
             for i in range(n_dim):
                 coords[i].append(idx[i])
             data.append(val)
     else:
         raise ValueError("Format must be either \"s\" or \"d\"")
 
-    print(np.where(data == 0))
-    breakpoint()
     # The number of values in the tensor
     num_values = len(data)
     n_dim = len(coords)
