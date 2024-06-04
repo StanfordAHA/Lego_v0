@@ -15,10 +15,11 @@ import sys
 from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
-    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
+    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
+    InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 
-def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -29,8 +30,24 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
     '''
     
     # The input tensor is a COO tensor
-    coords = tensor.coords
-    data = tensor.data
+
+    coords = []
+    data = []
+
+    if format == "s": 
+        coords = tensor.coords
+        data = tensor.data
+    # if the input format is dense, we need to fill in all the zero entries
+    elif format == "d":
+        n_dim = len(tensor.coords)
+        for i in range(n_dim):
+            coords.append([])
+        for idx, val in np.ndenumerate(tensor.todense()):
+            for i in range(n_dim):
+                coords[i].append(idx[i])
+            data.append(val)
+    else:
+        raise ValueError("Format must be either \"s\" or \"d\"")
 
     # The number of values in the tensor
     num_values = len(data)
@@ -44,7 +61,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 
     # Create n_levels * n_dim lists to store the coordinates and data
     n_lists = np.zeros(((n_levels + 1) * n_dim, num_values), dtype=int)
-    d_list = np.zeros((num_values), dtype=float)
+    d_list = np.zeros((num_values), dtype=np.float32)
 
     # Creating the COO representation for the tiled tensor at each level
     for i in range(num_values):
@@ -124,7 +141,7 @@ def process_coo(tensor, tile_dims, output_dir_path, schedule_dict):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, transpose):
+def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, format, transpose):
 
     tensor = None
     cwd = os.getcwd()
@@ -148,10 +165,13 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, 
         tensor_path = os.path.join(FROSTT_PATH, input_path + ".tns")
         frostt_tensor = FrosttTensor(tensor_path)
         tensor = inputCache.load(frostt_tensor, False)
+    elif tensor_type == "sparse_ml":
+        inputCache = InputCacheSparseML()
+        tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
+        sparse_ml_tensor = SparseMLTensor(tensor_path)
+        tensor = inputCache.load(sparse_ml_tensor, False)
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
-
-    # Add a numpy statement 
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
@@ -163,5 +183,5 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, 
     else: 
         tensor = sparse.COO(tensor)
 
-    process_coo(tensor, tile_size, output_dir_path, schedule_dict)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict)
 

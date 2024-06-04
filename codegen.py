@@ -1,3 +1,5 @@
+import math
+
 class Operation(object):
     def __init__(self, op, left, right):
         self.op = op
@@ -52,10 +54,12 @@ def sort_lattice(lattice):
     return sorted(lattice, key=lambda i: len(i), reverse=True)
 
 def get_lattice(stmt, id_dict, id):
-
+    # When the input stmt is a identity expression
+    # stmt.right stores the variable
+    # stmt.left and stmt.op are both None
     lattice = []
 
-    if not isinstance(stmt.left, str) and not isinstance(stmt.right, str):
+    if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         left = get_lattice(stmt.left, id_dict, id)
         right = get_lattice(stmt.right, id_dict, id)
         if(stmt.op == '+'):
@@ -65,7 +69,7 @@ def get_lattice(stmt, id_dict, id):
             lattice = merge_intersect(left, right)
             return sort_lattice(lattice)
 
-    elif not isinstance(stmt.left, str):
+    elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
         left = get_lattice(stmt.left, id_dict, id)
         if(ispresent(stmt.right, id_dict, id)):
             right = [[id + stmt.right]]
@@ -78,7 +82,7 @@ def get_lattice(stmt, id_dict, id):
             lattice = merge_intersect(left, right)
             return sort_lattice(lattice)
 
-    elif not isinstance(stmt.right, str):
+    elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         right = get_lattice(stmt.right, id_dict, id)
         if(ispresent(stmt.left, id_dict, id)):
             left = [[id + stmt.left]]
@@ -92,11 +96,11 @@ def get_lattice(stmt, id_dict, id):
             return sort_lattice(lattice)
 
     else:
-        if(ispresent(stmt.left, id_dict, id)):
+        if stmt.left is not None and (ispresent(stmt.left, id_dict, id)):
             left = [[id + stmt.left]]
         else:
             left = []
-        if(ispresent(stmt.right, id_dict, id)):
+        if stmt.right is not None and (ispresent(stmt.right, id_dict, id)):
             right = [[id + stmt.right]]
         else:
             right = []
@@ -106,17 +110,27 @@ def get_lattice(stmt, id_dict, id):
         if(stmt.op == '*'):
             lattice = merge_intersect(left, right)
             return sort_lattice(lattice)
-   
-def expr_to_stmt(expr):
+        if stmt.op is None:
+            assert stmt.left is None
+            assert stmt.right is not None
+            return sort_lattice(right)
 
+def expr_to_stmt(expr):
+    
     stack = []
     for c in expr:
         if c == ' ':
             continue
         if c == ')':
             right = stack.pop()
-            op = stack.pop()
-            left = stack.pop()
+            # in a case where the expression is identity, after the first pop
+            # the only element left in the stack is a '('
+            op = None
+            left = None
+            if len(stack) > 2:
+                op = stack.pop()
+                left = stack.pop()
+            # popping the '('
             stack.pop()
             stack.append(Operation(op, left, right))
         else:
@@ -133,8 +147,14 @@ def expr_to_lattice(expr, id_dict, id):
             continue
         if c == ')':
             right = stack.pop()
-            op = stack.pop()
-            left = stack.pop()
+            # in a case where the expression is identity, after the first pop
+            # the only element left in the stack is a '('
+            op = None
+            left = None
+            if len(stack) > 2:
+                op = stack.pop()
+                left = stack.pop()
+            # popping the '('
             stack.pop()
             stack.append(Operation(op, left, right))
         else:
@@ -146,10 +166,12 @@ def expr_to_lattice(expr, id_dict, id):
     return lattice
 
 def get_stmt(stmt, id_dict):
-
+    # When the input stmt is a identity expression
+    # stmt.right stores the variable
+    # stmt.left and stmt.op are both None
     lower_stmts = []
 
-    if not isinstance(stmt.left, str) and not isinstance(stmt.right, str):
+    if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         left = get_stmt(stmt.left, id_dict)
         right = get_stmt(stmt.right, id_dict)
         if(stmt.op == '+'):
@@ -159,7 +181,7 @@ def get_stmt(stmt, id_dict):
             lower_stmts = "(" + left + "*" + right + ")"
             return lower_stmts
 
-    elif not isinstance(stmt.left, str):
+    elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
 
         left = get_stmt(stmt.left, id_dict)
         if(id_dict[stmt.right] == ['-']):
@@ -173,7 +195,7 @@ def get_stmt(stmt, id_dict):
             lower_stmts = "(" + left + " * " + right + ")"
             return lower_stmts
 
-    elif not isinstance(stmt.right, str):
+    elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         right = get_stmt(stmt.right, id_dict)
         if(id_dict[stmt.left] == ['-']):
             left = "0"
@@ -187,9 +209,9 @@ def get_stmt(stmt, id_dict):
             return lower_stmts
 
     else:
-        if(id_dict[stmt.left] == ['-']):
+        if stmt.left is not None and (id_dict[stmt.left] == ['-']):
             left = "0"
-        else:
+        elif stmt.left is not None:
             left = stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
 
         if(id_dict[stmt.right] == ['-']):
@@ -204,6 +226,11 @@ def get_stmt(stmt, id_dict):
         if(stmt.op == '*'):
             lower_stmts = "(" + left + " * " + right + ")"
             return lower_stmts
+
+        if stmt.op is None:
+            assert stmt.right is not None
+            assert stmt.left is None
+            return "(" + right + ")"
 
 def pos_read(curr_id, op_list, id_dict, level):
     
@@ -469,7 +496,7 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
     
         return [stmt]
 
-def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
+def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode):
 
     stmt = ""
 
@@ -512,15 +539,27 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id):
     if(valid_op_list != []):
         if(len(valid_op_list) != 1):
             stmt += "    " * (level + 2)
-            stmt += "tile_operate" + "(" + "tile_" + op_list[0]
+            stmt += "double* partial = tile_operate" + "(" + "tile_" + op_list[0]
             op_list = op_list[1:]
 
             for op in op_list:
                 stmt += ", " + "tile_" + op 
 
-            stmt += ", tile_name);"
-    
+            stmt += ", tile_name"
+            
+            if mode == "rtl":
+                stmt += ", subtile_paths, mode"
 
+            stmt += ");\n"
+        for name in dest: 
+            dest_name = name
+        stmt += "    " * (level + 2)
+        stmt += "subtile_workspace[" + dest[dest_name][0]
+        for dim_count, id in enumerate(dest[dest_name][1:]):
+            for i in range(dim_count + 1, len(dest[dest_name])):
+                stmt += " * " + str(int(math.ceil(split_dict[dest[dest_name][i]][0] / split_dict[dest[dest_name][i]][1])))
+            stmt += " + " + id
+        stmt += "].push_back(partial);"       
     return [stmt]
 
 def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map):
@@ -611,41 +650,69 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
                 stmt += "\n"
                 stmt += "    " * (level + 2)
-                stmt += "subtile_gold" + "(" + "subtile_" + op_list[0]
+                stmt += "double *partial = nullptr;\n"
+                stmt += "    " * (level + 2)
+                stmt += "if (mode == \"tiling\")\n"
+                stmt += "    " * (level + 3)
+                stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
 
                 for op in op_list[1:]:
                     stmt += ", " + "subtile_" + op 
                     
                 stmt += ", curr_subtile_num, output_gold_file);"    
                 stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "else if (mode == \"reduce\")\n"
+                stmt += "    " * (level + 3)
+                stmt += "partial = read_subtile_output(subtile_path);\n"
+                stmt += "    " * (level + 2)
+                stmt += "else\n"
+                stmt += "    " * (level + 3)
+                stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
+                stmt += "    " * (level + 2)
+                stmt += "subtile_workspace[" + dest[dest_read][0]
+                for dim_count, id in enumerate(dest[dest_read][1:]):
+                    for i in range(dim_count + 1, len(dest[dest_read])):
+                        stmt += " * " + str(int(math.ceil(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1])))
+                    stmt += " + " + id
+                stmt += "].push_back(partial);"       
+                stmt += "\n"
                 stmt += "\n"
 
                 if(mode == "rtl"):
+                    stmt += "    " * (level + 2)
+                    stmt += "if (mode == \"tiling\") {\n"
                     for op in op_list:
                         
                         tensor_dim = len(id_dict_true[op])
 
                         for i in range(tensor_dim):
-                            stmt += "    " * (level + 2)
+                            stmt += "    " * (level + 3)
                             stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
                             stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
                             stmt += "\n"    
-                            stmt += "    " * (level + 2)
+                            stmt += "    " * (level + 3)
                             stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
                             stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
                             stmt += "\n"
                         
-                        stmt += "    " * (level + 2)
+                        stmt += "    " * (level + 3)
                         stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
                         stmt += "\n"
                         
-                        stmt += "    " * (level + 2)
+                        stmt += "    " * (level + 3)
                         stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
                         for id in cg_source_id[op]:
                             stmt += ", " + str(split_dict[id][1]) 
                         stmt += ");"
                         stmt += "\n"
                         stmt += "\n"
+
+                    stmt += "    " * (level + 2) + "}\n"
+
+                    stmt += "    " * (level + 2)
+                    stmt += "subtile_paths.push_back(subtile_path);\n"
+                    stmt += "\n"
 
                 stmt += "    " * (level + 2)
                 stmt += "curr_subtile_num++;\n"
@@ -696,12 +763,8 @@ def cg_op_stmt(op_list, sub_point, id_dict, level, curr_id, expr, dest, split_di
         stmt += ";"
         stmt += "\n"
 
-        if(len(valid_op_list) == 1):
-            stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + valid_op_list[0] + "_vals[" + id_dict[valid_op_list[0]][-1] +  "];"
-            stmt += "\n"
-        elif(len(valid_op_list) > 1):
-            stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
-            stmt += "\n"
+        stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
+        stmt += "\n"
   
         return [stmt]
 
@@ -744,7 +807,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 
             if(len(schedule) == 1):
                 if(target == "ap"):
-                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id))
+                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode))
                 elif(target == "cp"):
                     stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map))
                 elif(target == "cg"):
@@ -760,6 +823,107 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
         stmt_list.append(while_stmt_close(point, id_dict, level))   
 
     return stmt_list
+
+def workspace_declaration(split_factor, dest_id):
+    # calcualate the number of subtiles that constitute the next level tile
+    # this determines the number of slots in the workspace
+    n_subtiles = 0;
+    for name, id in dest_id.items():
+        for i in id:
+            if n_subtiles == 0:
+                n_subtiles = math.ceil(split_factor[i][0] / split_factor[i][1])
+            else: 
+                n_subtiles *= math.ceil(split_factor[i][0] / split_factor[i][1])
+    return "    std::vector<std::vector<double *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<double *>());\n"
+
+def workspace_reduction(split_factor, target, dest_id):
+    # allcoate the array that is going to store the recombined tile
+    # determine the size of the tile first
+    stmt = []
+    output_tile_size = 0;
+    dest_name = None
+    for name, id in dest_id.items():
+        dest_name = name
+        for i in id:
+            if output_tile_size == 0:
+                output_tile_size = split_factor[i][0]
+            else:
+                output_tile_size *= split_factor[i][0]
+    stmt.append("    double* " + dest_name + "_vals = (double*)malloc(sizeof(double) * " + str(output_tile_size) + ");\n")
+    stmt.append("\n")
+    # initialize the recombined tile to zero 
+    stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(output_tile_size) + "; " + "p" + dest_name + " ++) {\n")
+    stmt.append("        " + dest_name + "_vals[p" + dest_name + "] = 0;\n")
+    stmt.append("    }\n")
+    stmt.append("\n")
+    
+    level = 1
+    dim_n_subtile = {}
+    subtile_size = {}
+    tile_size = {}
+    for id in dest_id[dest_name]:
+        dim_n_subtile[id] = int(math.ceil(split_factor[id][0] / split_factor[id][1]))
+        loop_index = "subtile_" + id
+        stmt.append(("    " * level) + "for (int " + loop_index + "= 0; " + loop_index + " < " + str(dim_n_subtile[id]) + "; " + loop_index + " ++) {\n")
+        level = level + 1
+    for id in dest_id[dest_name]:
+        subtile_size[id] = split_factor[id][1]
+        tile_size[id] = split_factor[id][0]
+        stmt.append(("    " * level) + "int base_" + id + " = " + "subtile_" + id + " * " + str(subtile_size[id]) + ";\n")
+    workspace_index_str = ""
+    workspace_index_str += "subtile_" + dest_id[dest_name][0]
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            workspace_index_str += " * " + str(dim_n_subtile[offset_id])
+        workspace_index_str += " +  subtile_" + id
+    stmt.append(("    " * level) + "for (std::vector<double*>::iterator it = subtile_workspace[" + workspace_index_str + "].begin(); it != subtile_workspace[" + workspace_index_str + "].end(); it++) {\n")
+    level = level + 1
+    for id in dest_id[dest_name]:
+        stmt.append(("    " * level) + "for (int " + id + " = 0; "  + id + " < " + str(subtile_size[id]) + "; " + id + " ++) {\n")
+        level = level + 1
+    
+    # generate the index that store the reduced value in to A_Vals
+    output_index_str = ""
+    output_index_str += "(base_" + dest_id[dest_name][0] + " + " +  dest_id[dest_name][0] + ")"
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            output_index_str += " * " + str(tile_size[offset_id])
+        output_index_str += " + (base_" + id + " + " + id + ")"
+
+    # generate the index that is used to access the partial product in the workspace
+    partial_index_str = ""
+    partial_index_str += dest_id[dest_name][0]
+    for dim_count, id in enumerate(dest_id[dest_name][1:]):
+        for i in range(dim_count + 1, len(dest_id[dest_name])):
+            offset_id = dest_id[dest_name][i]
+            partial_index_str += " * " + str(subtile_size[offset_id])
+        partial_index_str += " + " + id
+    # For ap, the tile size may not perfectly align with the actual output tensor size
+    # Need to put guard here so padded values in the tiles are not written to the output matrix
+    if target == "ap":
+        stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
+        level = level + 1
+    stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")
+    if target == "ap":
+        level = level - 1
+    # close the subtile partial product loop
+    for id in dest_id[dest_name]:
+        level = level - 1
+        stmt.append(("    " * level + "}\n"))
+    stmt.append(("    " * level) + "free(*it);\n")
+    # close the iterator loop
+    level = level - 1
+    stmt.append(("    " * level + "}\n"))
+
+    # close the workspace loop
+    for id in dest_id[dest_name]:
+        level = level - 1
+        stmt.append(("    " * level + "}\n"))
+
+    return stmt
+
 
     """
     if __name__ == '__main__':
