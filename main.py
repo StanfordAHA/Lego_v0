@@ -390,6 +390,22 @@ def subtile_output_decleration(main_file, dest_id, split_factor):
 
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
+
+def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
+    if activation_function == "none":
+        return
+    output_tile_size = 0;
+    dest_name = None
+    for name, id in dest_id.items():
+        dest_name = name
+        for i in id:
+            if output_tile_size == 0:
+                output_tile_size = ap_split_factor[i][0]
+            else:
+                output_tile_size *= ap_split_factor[i][0]
+    
+    main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
+    main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id):
     output_tile_size = 0;
@@ -421,6 +437,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
+    parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
 
     args = parser.parse_args()
 
@@ -479,6 +496,8 @@ if __name__ == "__main__":
     main_file.write("#include \"src/data_parser.h\"")
     main_file.write("\n")
     main_file.write("#include \"src/mem_op.h\"")
+    main_file.write("\n")
+    main_file.write("#include \"src/activation.h\"")
     main_file.write("\n")
     main_file.write("\n")
 
@@ -611,6 +630,9 @@ if __name__ == "__main__":
         main_file.write(line)
     main_file.write("\n")
     
+    # generate code that applies the activation function specified in the argument
+    apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
+
     # generate code that write the output matrix to file
     write_output(main_file, ap_split_factor, ap_dest_id)
     main_file.write("\n")

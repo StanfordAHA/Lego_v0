@@ -1,0 +1,8 @@
+numops: 2
+stmt: X(ij) = B(ik) * C(kj) 
+schedule_ap:   [ijk]
+schedule_cp:   [ijk]
+schedule_cgra: [ijk]
+i:split:3327:240:30
+j:split:3327:240:30
+k:split:3327:240:30
