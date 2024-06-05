@@ -1,2 +1,2 @@
-B:ss:football:0
-C:ss:football:1
+B:ss:football:s:0
+C:ss:football:s:1

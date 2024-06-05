@@ -2,6 +2,7 @@ import pre_process
 import codegen
 import sys
 import argparse
+import einsum
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -42,58 +43,20 @@ def data_parser(data):
 
     arith_op = one_of("+ - * /")
 
-    num_op_rule = Word(alphas) + ":" + Word(alphanums)
-    num_op = num_op_rule.parseString(data[0])[2]
-    # TODO this seems to only support 2 or 3 operands
-    # need to generalize this
-    if(num_op == '2'):
-        expr_rule = Word(alphas) + ":" + Word(alphas) + '(' + Word(alphas) + ')' +  '=' + \
-            Word(alphas) + '(' + Word(alphas) + ')' + \
-            arith_op + \
-            Word(alphas) + '(' + Word(alphas) + ')' 
+    stmt = data[0].split(":")
+    stmt = stmt[1]
 
-        expr = expr_rule.parseString(data[1])
-        dest = {}
-        dest[expr[2]] = list(expr[4])
-
-        op_list =  []
-        op_list.append(list(expr[7]))
-        op_list.append(list(expr[11]))
-        op_list.append(list(expr[12]))
-
-        op = {}
-        op[expr[7]] = list(expr[9])
-        op[expr[12]] = list(expr[14])
-    else:
-        expr_rule = Word(alphas) + ":" + Word(alphas) + '(' + Word(alphas) + ')' +  '=' + \
-            Word(alphas) + '(' + Word(alphas) + ')' + \
-            arith_op + \
-            Word(alphas) + '(' + Word(alphas) + ')' + \
-            arith_op + \
-            Word(alphas) + '(' + Word(alphas) + ')'
-
-        expr = expr_rule.parseString(data[1])
-        dest = {}
-        dest[expr[2]] = list(expr[4])
-
-        op_list = []
-        op_list.append(list(expr[7]))
-        op_list.append(list(expr[11]))
-        op_list.append(list(expr[12]))
-        op_list.append(list(expr[16]))
-        op_list.append(list(expr[17]))
-
-        op = {}
-        op[expr[7]] = list(expr[9])
-        op[expr[12]] = list(expr[14])
-        op[expr[17]] = list(expr[19])
-        
+    parsed_stmt = einsum.parser.parse(stmt)
+    expr = einsum.build_expr(parsed_stmt)
+    dest, op = einsum.build_dict(parsed_stmt, 1, {}, {})
+    op_list = list(op.keys()) 
+    num_op = len(op_list)  
 
     schedule_rule = Word(alphanums) + "_" + Word(alphanums) + ':' + '[' + Word(alphas) + ']'
 
-    schedule_1 = list((schedule_rule.parseString(data[2]))[5])
-    schedule_2 = list((schedule_rule.parseString(data[3]))[5])
-    schedule_3 = list((schedule_rule.parseString(data[4]))[5])
+    schedule_1 = list((schedule_rule.parseString(data[1]))[5])
+    schedule_2 = list((schedule_rule.parseString(data[2]))[5])
+    schedule_3 = list((schedule_rule.parseString(data[3]))[5])
 
     num_ids = len(schedule_1)
 
@@ -102,16 +65,19 @@ def data_parser(data):
     split_factor = {}
 
     for i in range(num_ids):
-        parsed_split = split_factor_rule.parseString(data[5 + i])
+        parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor
+    return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor= data_parser(data)
+    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr = data_parser(data)
+
+    expr = expr.split("=")
+    expr = expr[1]
 
     if(level == "ap"): 
         schedule = schedule_1
@@ -146,20 +112,23 @@ def parse(input_file, level):
                 source_map[tensor].append(op[tensor].index(id)) 
 
     for tensor in dest:
-        for id in schedule:
-            if id in dest[tensor]:
-                dest_id[tensor].append(id)
-                dest_map[tensor].append(dest[tensor].index(id))
-    # TODO: this only handles 2 or 3 operands
-    # need to generalize this
-    if(num_op == "3"):
-        expr = "((" + op_list[0][0] + " " + op_list[1][0] + " " + op_list[2][0] + ") " + op_list[3][0] + " " + op_list[4][0] + ")"
-        op_list = [op_list[0][0], op_list[2][0], op_list[4][0]]
-    elif(num_op == "2"): 
-        expr = "(" + op_list[0][0] + " " + op_list[1][0] + " " + op_list[2][0] + ")"
-        op_list = [op_list[0][0], op_list[2][0]]
+        for id in dest[tensor]: 
+            if(id == '0'): 
+                scalar = 1
+            else: 
+                scalar = 0
 
-    return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule
+    if(scalar != 1):
+        for tensor in dest:
+            for id in schedule:
+                if id in dest[tensor]:
+                    dest_id[tensor].append(id)
+                    dest_map[tensor].append(dest[tensor].index(id))
+    else: 
+        dest_id = dest
+    
+    return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar
+
 
 def ap_tensor_decleration(main_file, ap_source_id):
 
@@ -408,7 +377,7 @@ def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id):
-    output_tile_size = 0;
+    output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
         dest_name = name
@@ -444,13 +413,13 @@ if __name__ == "__main__":
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule = parse(args.program, level)
+    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
 
     level = "cp"
-    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule = parse(args.program, level)
+    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar = parse(args.program, level)
 
     level = "cg"
-    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule = parse(args.program, level)
+    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
 
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
