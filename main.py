@@ -284,7 +284,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         
         main_file.write("    " + "}\n")
 
-def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id): 
+def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, scalar): 
 
     for key, value in cg_source_id.items():
 
@@ -301,8 +301,11 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
     outsize = 1
 
     for key, value in cg_dest_id.items():
-        for id in value:
-            outsize *= int(split_factor[id][1])
+        if(scalar != 1):
+            for id in value:
+                outsize *= int(split_factor[id][1])
+        else: 
+            outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
@@ -317,7 +320,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + ";\n")
 
-def subtile_output_decleration(main_file, dest_id, split_factor):
+def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     # dest_name = "Res"
     for name, id in dest_id.items():
         dest_name = name
@@ -347,8 +350,12 @@ def subtile_output_decleration(main_file, dest_id, split_factor):
 
     outsize = 1
     for key, value in dest_id.items():
-        for id in value:
-            outsize *= int(split_factor[id][1])
+
+        if(scalar != 1):
+            for id in value:
+                outsize *= int(split_factor[id][1])
+        else:
+            outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
@@ -366,7 +373,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor):
 def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     if activation_function == "none":
         return
-    output_tile_size = 0;
+    output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
         dest_name = name
@@ -379,16 +386,20 @@ def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
-def write_output(main_file, ap_split_factor, dest_id):
+def write_output(main_file, ap_split_factor, dest_id, scalar):
     output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
         dest_name = name
-        for i in id:
-            if output_tile_size == 0:
-                output_tile_size = ap_split_factor[i][0]
-            else:
-                output_tile_size *= ap_split_factor[i][0]
+        if(scalar != 1): 
+            for i in id:
+                if output_tile_size == 0:
+                    output_tile_size = ap_split_factor[i][0]
+                else:
+                    output_tile_size *= ap_split_factor[i][0]
+        else:
+            output_tile_size = 1
+
     main_file.write("    std::string output_path = \"lego_scratch/data_files/output.txt\";\n")
     main_file.write("    std::ofstream output_file;\n")
     main_file.write("    output_file.open(output_path, std::ios::app);\n")
@@ -495,10 +506,9 @@ if __name__ == "__main__":
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
     main_file.write("double* subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id)
+    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -524,7 +534,7 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     main_file.write("double* read_subtile_output(std::string subtile_path) {\n")
-    subtile_output_decleration(main_file, cg_dest_id, cg_split_factor)
+    subtile_output_decleration(main_file, cg_dest_id, cg_split_factor, scalar)
     rtl_output_dest_id = {}
     for key in cg_dest_id.keys():
         dest_name = key
@@ -534,10 +544,15 @@ if __name__ == "__main__":
 
     # Conversion from fibertree sparse rtl/comal output file to dense matrix representation for reduction
     # This is accomplished by generating code using the A = A expression 
-    for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map):
-        if element != [""]:
-            main_file.write(element[0])
-            main_file.write("\n")
+
+    if(scalar != 1):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar):
+            if element != [""]:
+                main_file.write(element[0])
+                main_file.write("\n")
+    else:
+        main_file.write("    " + dest_name + "_output_vals[0] = " + dest_name + "_vals_vec[0];\n")
+
     main_file.write("\n")
     main_file.write("    return " + dest_name + "_output_vals;\n")
     main_file.write("}\n")
@@ -562,17 +577,17 @@ if __name__ == "__main__":
 
     cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode)
     main_file.write("\n")
-    main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id))
+    main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
     main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
     cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
     main_file.write("\n")
-    stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id)
+    stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
     for line in stmt:
         main_file.write(line)
     
@@ -602,13 +617,13 @@ if __name__ == "__main__":
         main_file.write("    std::vector<std::string> subtile_paths;\n")
 
     main_file.write("\n")
-    main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id))
+    main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
     main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
-    stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id)
+    stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar)
     for line in stmt:
         main_file.write(line)
     main_file.write("\n")
@@ -617,7 +632,7 @@ if __name__ == "__main__":
     apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
 
     # generate code that write the output matrix to file
-    write_output(main_file, ap_split_factor, ap_dest_id)
+    write_output(main_file, ap_split_factor, ap_dest_id, scalar)
     main_file.write("\n")
 
     # genearte the toml path list file for comal

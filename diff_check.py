@@ -6,7 +6,7 @@ file2 = "lego_scratch/data_files/output.txt"
 
 gold_mat = np.load(file1)['array1']
 output_mat = np.zeros(gold_mat.shape, dtype=np.float32)
-with open("./lego_scratch/data_files/output.txt", "r") as f:
+with open(file2, "r") as f:
     for i in range(gold_mat.shape[0]):
             output_mat[i] = float(f.readline().strip())
 

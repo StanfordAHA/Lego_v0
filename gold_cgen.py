@@ -19,7 +19,7 @@ def einsum_expr(sub_stmt, op_list, op_dict, dest_dict):
         dest_keys = list(dest_dict.keys())
         dest_list = dest_dict[dest_keys[0]]
 
-        if(dest_list != [0]):
+        if(dest_list != ['0']):
             stmt.extend("->")
             stmt.extend("".join(dest_list))
 
