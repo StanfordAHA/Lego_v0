@@ -556,3 +556,92 @@ int rtl_output_subtile_printer(double *A_vals, int output_subtile_size, int curr
     return 0;
 }
 
+subtile1 tile_zero_op_1(subtile1 subtile_op1){
+    subtile1 subtile_op;
+    subtile_op.pos1.push_back(0);
+    subtile_op.pos1.push_back(1);
+    subtile_op.crd1.push_back(0);
+    subtile_op.vals.push_back(0);
+    return subtile_op;
+}
+
+subtile2 tile_zero_op_2(subtile2 subtile_op1){
+    subtile2 subtile_op;
+    subtile_op.pos1.push_back(0);
+    subtile_op.pos1.push_back(1);
+    subtile_op.pos2.push_back(0);
+    subtile_op.pos2.push_back(1);
+    subtile_op.crd1.push_back(0);
+    subtile_op.crd2.push_back(0);
+    subtile_op.vals.push_back(0);
+    return subtile_op;
+}
+
+subtile3 tile_zero_op_3(subtile3 subtile_op1){
+    subtile3 subtile_op;
+    subtile_op.pos1.push_back(0);
+    subtile_op.pos1.push_back(1);
+    subtile_op.pos2.push_back(0);
+    subtile_op.pos2.push_back(1);
+    subtile_op.pos3.push_back(0);
+    subtile_op.pos3.push_back(1);
+    subtile_op.crd1.push_back(0);
+    subtile_op.crd2.push_back(0);
+    subtile_op.crd3.push_back(0);
+    subtile_op.vals.push_back(0);
+    return subtile_op;
+}
+
+tile1 tensor_zero_op_1(tile1 tile_op1){
+    tile1 tile_op;
+    tile_op.pos1.push_back(0);
+    tile_op.pos1.push_back(1);
+    tile_op.pos2.push_back(0);
+    tile_op.pos2.push_back(1);
+    tile_op.crd1.push_back(0);
+    tile_op.crd2.push_back(0);
+    tile_op.vals.push_back(0);
+    return tile_op;
+}
+
+tile2 tensor_zero_op_2(tile2 tile_op1){
+    tile2 tile_op;
+    tile_op.pos1.push_back(0);
+    tile_op.pos1.push_back(1);
+    tile_op.pos2.push_back(0);
+    tile_op.pos2.push_back(1);
+    tile_op.pos3.push_back(0);
+    tile_op.pos3.push_back(1);
+    tile_op.pos4.push_back(0);
+    tile_op.pos4.push_back(1);
+    tile_op.crd1.push_back(0);
+    tile_op.crd2.push_back(0);
+    tile_op.crd3.push_back(0);
+    tile_op.crd4.push_back(0);
+    tile_op.vals.push_back(0);
+    return tile_op;
+}
+
+tile3 tensor_zero_op_3(tile3 tile_op1){
+    tile3 tile_op;
+    tile_op.pos1.push_back(0);
+    tile_op.pos1.push_back(1);
+    tile_op.pos2.push_back(0);
+    tile_op.pos2.push_back(1);
+    tile_op.pos3.push_back(0);
+    tile_op.pos3.push_back(1);
+    tile_op.pos4.push_back(0);
+    tile_op.pos4.push_back(1);
+    tile_op.pos5.push_back(0);
+    tile_op.pos5.push_back(1);
+    tile_op.pos6.push_back(0);
+    tile_op.pos6.push_back(1);
+    tile_op.crd1.push_back(0);
+    tile_op.crd2.push_back(0);
+    tile_op.crd3.push_back(0);
+    tile_op.crd4.push_back(0);
+    tile_op.crd5.push_back(0);
+    tile_op.crd6.push_back(0);
+    tile_op.vals.push_back(0);
+    return tile_op;
+}

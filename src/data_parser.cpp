@@ -119,6 +119,16 @@ int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, s
 	return 0;
 }
 
+int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, int dim1) {
+
+	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_shape";
+	ofstream output_file(output_file_name.c_str());
+
+	output_file << dim1 << "\n";
+
+	return 0;
+}
+
 int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, int dim1, int dim2) {
 
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_shape";
@@ -126,6 +136,18 @@ int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, in
 
 	output_file << dim1 << "\n";
 	output_file << dim2 << "\n";
+
+	return 0;
+}
+
+int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, int dim1, int dim2, int dim3) {
+	
+	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_shape";
+	ofstream output_file(output_file_name.c_str());
+
+	output_file << dim1 << "\n";
+	output_file << dim2 << "\n";
+	output_file << dim3 << "\n";
 
 	return 0;
 }
