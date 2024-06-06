@@ -71,6 +71,13 @@ def build_dict(parsed_code, is_dest, dest_dict, op_dict):
         else:
             op_dict[key[0]] = id_list 
         return dest_dict, op_dict
+    elif (parsed_code.data == "access_variable"):
+        key = parsed_code.children[0]
+        if(is_dest):
+            dest_dict[key[0]] = [0]
+        else:
+            op_dict[key[0]] = [0]
+        return dest_dict, op_dict
     elif(parsed_code.data == "expr_access"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
     elif(parsed_code.data == "multiply"):
@@ -91,6 +98,8 @@ def build_expr(parsed_code):
         return stmt_left + "=" + stmt_right
     elif(parsed_code.data == "access_tensor"):
         return parsed_code.children[0][0] 
+    elif (parsed_code.data == "access_variable"):
+        return parsed_code.children[0][0]
     elif(parsed_code.data == "expr_access"):
         return  build_expr(parsed_code.children[0])
     elif(parsed_code.data == "multiply"):

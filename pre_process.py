@@ -141,7 +141,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, format, transpose):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, nnz, gold_check):
 
     tensor = None
     cwd = os.getcwd()
@@ -149,39 +149,47 @@ def process(tensor_type, input_path, output_dir_path, tile_size, schedule_dict, 
 
     if tensor_type == "gen":
         # Generating a random tensor for testing purposes of pre-processing kernel 
-        tensor = sparse.COO(sparse.random((16, 16, 16)))
+        size = tuple(tensor_size[0])
+        nnz = int(np.prod(size) * nnz / 100)
+        tensor = sparse.COO(sparse.random(size, nnz=nnz))
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
+        tensor = sparse.COO(tensor)
     elif tensor_type == "ss":
         # Reading a SuiteSparse tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheSuiteSparse
         tensor_path = os.path.join(SUITESPARSE_PATH, input_path + ".mtx")
         ss_tensor = SuiteSparseTensor(tensor_path)
         tensor = inputCache.load(ss_tensor, False)
+        tensor = sparse.COO(tensor)
     elif tensor_type == "frostt":
         # Reading a FROSTT tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheTensor
         tensor_path = os.path.join(FROSTT_PATH, input_path + ".tns")
         frostt_tensor = FrosttTensor(tensor_path)
         tensor = inputCache.load(frostt_tensor, False)
+        tensor = sparse.COO(tensor)
     elif tensor_type == "sparse_ml":
         inputCache = InputCacheSparseML()
         tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
+        tensor = sparse.COO(tensor)
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
 
-    if(transpose == "1"):
-        shifted = ScipyTensorShifter().shiftLastMode(tensor)
-        trans_shifted = shifted.transpose()
-        tensor = sparse.COO(trans_shifted)
-    else: 
-        tensor = sparse.COO(tensor)
+    if(gold_check == "d"):
+        dense_tensor = tensor.todense()
+        numpy_array = np.array(dense_tensor)
+        out_path = output_dir_path + "/numpy_array" + ".npz"
+        np.savez(out_path, array1 = numpy_array)
+    elif(gold_check == "s"):
+        pass  
 
+    tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict)
 

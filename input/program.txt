@@ -3,5 +3,5 @@ schedule_ap:   [ikj]
 schedule_cp:   [ikj]
 schedule_cgra: [ikj]
 i:split:100:50:25
-j:split:100:50:25
-k:split:100:50:25
+j:split:150:50:25
+k:split:200:50:25

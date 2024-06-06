@@ -3,6 +3,7 @@ import codegen
 import sys
 import argparse
 import einsum
+import gold_cgen
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -15,6 +16,7 @@ def tensor_path_type_dict(tensor_path_input):
     tensor_type_dict = {}
     tensor_transpose_dict = {}
     tensor_format_dict = {}
+    tensor_nnz_dict = {} 
 
     tensor_path_dict_keys = [] 
 
@@ -34,8 +36,9 @@ def tensor_path_type_dict(tensor_path_input):
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
         tensor_format_dict[parsed_data[0]] = parsed_data[3]
         tensor_transpose_dict[parsed_data[0]] = parsed_data[4]
+        tensor_nnz_dict[parsed_data[0]] = int(parsed_data[5])
 
-    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict
+    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict
 
 def data_parser(data):
 
@@ -407,10 +410,11 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
+    parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
 
     args = parser.parse_args()
 
-    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict = tensor_path_type_dict(args.tensor)
+    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
     dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
@@ -431,22 +435,32 @@ if __name__ == "__main__":
         tensor_size = []
         id_list = op[key]
 
-        for i in range(0, 2):
+        for i in range(0, 3):
             tensor_size.append([])
+
+        for i in range(0, len(id_list)):
+            tensor_size[0].append(int(ap_split_factor[id_list[i]][0]))
         
         for i in range(0, len(id_list)):
-            tensor_size[0].append(int(cp_split_factor[id_list[i]][0]))
-            tensor_size[1].append(int(cp_split_factor[id_list[i]][1]))
+            tensor_size[1].append(int(cp_split_factor[id_list[i]][0]))
+            tensor_size[2].append(int(cp_split_factor[id_list[i]][1]))
 
         input_dir_path = tensor_path_dict[key]
         tensor_type    = tensor_type_dict[key]
         transpose      = tensor_transpose_dict[key]  
         format         = tensor_format_dict[key]  
+        nnz            = tensor_nnz_dict[key]
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose)    
-    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check)    
+
+    if(args.gold_check == "s"):
+        pass
+    elif(args.gold_check == "d"):
+        gold_file = open("gold_check.py", "w+") 
+        stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")
+        gold_file.write("".join(stmt))
+
     mode = args.mode
-
     main_file = open("main.cpp", "w+")
 
     # Printing the header files
