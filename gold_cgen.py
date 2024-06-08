@@ -1,3 +1,5 @@
+import codegen
+
 def einsum_expr(sub_stmt, op_list, op_dict, dest_dict):
 
     sub_op_list = []
@@ -81,12 +83,150 @@ def dense(expr, op_list, op_dict, dest_dict, output_dir_path):
     return stmt
 
 
+def gold_tensor_declerations(op_list, output_dir_path):
+    stmt = []
+    stmt.append("import numpy as np")
+    stmt.append("\n")
+
+    for op in op_list:
+        stmt.append("\n")
+        stmt.append(op + " = np.load(\"" + output_dir_path + "tensor_" + op + "/numpy_array.npz\")['array1']")
+
+    return stmt
+
+def gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar):
+
+    for key, value in op_dict.items(): 
+        tensor_dim = len(value)
+        gold_file.write("\n")
+
+        for i in range(0, tensor_dim): 
+            gold_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
+            gold_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
+        
+        gold_file.write("    " + "std::vector<double> " + key + "_vals;\n")
+        gold_file.write("\n")
+
+        for i in range(0, tensor_dim): 
+            gold_file.write("    " + "build_vec(" + key + str(i + 1) +  "_pos, " + "\"lego_scratch/tensor_" + key + "/csf_pos" + str(i + 1) + ".txt\");\n")
+            gold_file.write("    " + "build_vec(" + key + str(i + 1) +  "_crd, " + "\"lego_scratch/tensor_" + key + "/csf_crd" + str(i + 1) + ".txt\");\n")
+
+        gold_file.write("    " + "build_vec_val(" + key + "_vals, " + "\"lego_scratch/tensor_" + key + "/csf_vals.txt\");\n")
+        gold_file.write("\n")
+
+    outsize = 1
+    for key, value in dest_dict.items():
+        if(scalar != 1):
+            for id in value: 
+                outsize *= int(split_factor[id][1])
+        else:
+            outsize = 1
+        
+        gold_file.write("    " + "int output_size = " + str(outsize) + ";\n")
+        gold_file.write("\n")
+
+        gold_file.write("    " + "double *" + key + "_vals = (double*)malloc(sizeof(double) * output_size);\n")
+        gold_file.write("\n")
+
+        gold_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_size; p" + key + "++) {\n")
+        gold_file.write("        " + key + "_vals[p" + key + "] = 0;\n")
+        gold_file.write("    }\n")
+
+        gold_file.write("\n")
+        gold_file.write("    " + "int p" + key + ";\n")
+    
+    return outsize
+
+def get_schedule(op_dict):
+    schedule = []
+    for key, value in op_dict.items():
+        for element in value: 
+            if element not in schedule:
+                schedule.append(element)
+
+    return schedule
+
+def get_op_map(op_dict):
+    op_map = {}
+    for key, value in op_dict.items():
+        op_map[key] = []
+        for element in value:
+            op_map[key].append(value.index(element))
+
+    return op_map
+
+def get_split_factor(split_dict):
+    split_factor = {}
+    for key, value in split_dict.items():
+        split_factor[key] = [0, split_dict[key][0]]
+    
+    return split_factor
+
+
+def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scalar):
+
+    schedule = get_schedule(op_dict)
+    op_map = get_op_map(op_dict)
+    split_factor = get_split_factor(split_dict)
+    gold_file = open("gold.cpp", "w+")
+
+    gold_file.write("#include <stdlib.h>\n")   
+    gold_file.write("#include <stdio.h>\n")
+    gold_file.write("#include <cstring>\n")
+    gold_file.write("#include <iostream>\n")
+    gold_file.write("#include <fstream>\n")
+    gold_file.write("#include <vector>\n")
+    gold_file.write("#include <string>\n")
+    gold_file.write("#include <boost/format.hpp>\n")
+    gold_file.write("#include <sys/types.h>\n")
+    gold_file.write("#include <sys/stat.h>\n")
+    gold_file.write("using namespace std;\n")
+    gold_file.write("\n")
+    gold_file.write("#include \"src/data_parser.h\"")
+    gold_file.write("\n")
+    gold_file.write("#include \"src/mem_op.h\"")
+    gold_file.write("\n")
+    gold_file.write("\n")
+
+    gold_file.write("int main() {\n")
+    gold_file.write("\n")
+    outsize = gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
+    gold_file.write("\n")
+    
+    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar):
+        if element != [""]:
+            gold_file.write(element[0])
+            gold_file.write("\n")
+
+    for key in dest_dict.keys():
+        dest = key
+
+    gold_file.write("\n")  
+    gold_file.write("    std::string output_path = \"lego_scratch/gold_output.txt\";")
+    gold_file.write("\n")
+    gold_file.write("    std::ofstream output_file;")
+    gold_file.write("\n")
+    gold_file.write("    output_file.open(output_path, std::ios::app);")
+    gold_file.write("\n")
+    gold_file.write("    rtl_output_subtile_printer(" + dest + "_vals, " + str(outsize) + ", 0, output_file);")
+    gold_file.write("\n")
+    gold_file.write("    output_file.close();")
+    gold_file.write("\n")
+    gold_file.write("\n")
+    gold_file.write("    return 0;")
+    gold_file.write("\n")
+    gold_file.write("}\n")
+    gold_file.close()
+
+
+
 if __name__ == "__main__":
-    expr = "B * C * D"
-    op_list = ["B", "C", "D"]
-    op_dict = {"B": ['i', 'k'], "C": ['k', 'j'], "D": ['i', 'j']}
+    expr = "(B * C)"
+    op_list = ["B", "C"]
+    op_dict = {"B": ['i', 'k'], "C": ['k', 'j']}
     dest_dict = {"A": ['i', 'j']}
 
-    stmt = dense(expr, op_list, op_dict, dest_dict, "lego_scratch/")
+    split_dict = {"i": [20, 10, 5], "k": [12, 6, 3], "j": [30, 15, 5]}
+    output_dir_path = "lego_scratch/"
 
-    print("".join(stmt))
+    sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, 0)

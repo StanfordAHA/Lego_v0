@@ -1,10 +1,23 @@
 import numpy as np
 import argparse
 
-file1 = "lego_scratch/gold_output.npz"
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--type", type=str, default="d")
+
+args = parser.parse_args()
+
+if(args.type == "d"):
+    file1 = "lego_scratch/gold_output.npz"
+    gold_mat = np.load(file1)['array1']
+else: 
+    file1 = "lego_scratch/gold_output.txt"
+    gold_mat = np.loadtxt(file1)
+
+if len(gold_mat.shape) == 0:
+    gold_mat = np.array([gold_mat])
+
 file2 = "lego_scratch/data_files/output.txt"
 
-gold_mat = np.load(file1)['array1']
 output_mat = np.zeros(gold_mat.shape, dtype=np.float32)
 with open(file2, "r") as f:
     for i in range(gold_mat.shape[0]):

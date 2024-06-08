@@ -464,8 +464,10 @@ if __name__ == "__main__":
 
         pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check)    
 
+
+    
     if(args.gold_check == "s"):
-        pass
+        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, "./lego_scratch/", scalar)
     elif(args.gold_check == "d"):
         gold_file = open("gold_check.py", "w+") 
         stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")
@@ -643,3 +645,4 @@ if __name__ == "__main__":
     main_file.write("    return 0;\n")
     main_file.write("}\n")
     main_file.close()
+    

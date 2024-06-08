@@ -138,6 +138,58 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
                 
     return n_lists, d_list, crd_dict, pos_dict
 
+def write_csf(COO, output_dir_path): 
+
+    # The number of values in the tensor
+    num_values = len(COO.data)
+    n_dim = len(COO.coords)
+
+    # Create the CSF representation for the tensor at each level
+    crd_dict = {} 
+    pos_dict = {}
+
+    pos_ctr = np.ones(n_dim, dtype=int)
+ 
+    for i in range(num_values):   
+        propogate = 0; 
+        for dim in range(n_dim):
+            idx = dim
+            if(i == 0): 
+                crd_dict[idx] = [COO.coords[idx][i]]
+                pos_dict[idx] = [0] 
+            else:
+                if(crd_dict[idx][-1] != COO.coords[idx][i]):
+                    propogate = 1
+
+                if(propogate == 1):
+                    pos_ctr[idx] += 1
+                    crd_dict[idx].append(COO.coords[idx][i])
+                    if(idx != n_dim - 1):
+                        pos_dict[idx + 1].append(pos_ctr[idx + 1])
+                     
+    for dim in range(n_dim):
+        idx = dim
+        if(idx == 0):
+            pos_dict[idx].append(pos_ctr[idx])
+        if(idx != n_dim - 1):
+            pos_dict[idx + 1].append(pos_ctr[idx + 1])
+
+    for dim in range(n_dim):
+        crd_dict_path = output_dir_path + "/csf_crd" + str(dim + 1) + ".txt"
+        with open(crd_dict_path, 'w+') as f:
+            for item in crd_dict[dim]:
+                f.write("%s\n" % item)
+        pos_dict_path = output_dir_path + "/csf_pos" + str(dim + 1) + ".txt"
+        with open(pos_dict_path, 'w+') as f:
+            for item in pos_dict[dim]:
+                f.write("%s\n" % item)
+    
+    d_list_path = output_dir_path + "/csf_vals" + ".txt"
+    with open(d_list_path, 'w+') as f:
+        for val in range(num_values):
+            f.write("%s\n" % (COO.data[val]))
+                
+
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
@@ -188,7 +240,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         out_path = output_dir_path + "/numpy_array" + ".npz"
         np.savez(out_path, array1 = numpy_array)
     elif(gold_check == "s"):
-        pass  
+        size = tensor_size[0]
+        write_csf(tensor, output_dir_path)
 
     tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict)
