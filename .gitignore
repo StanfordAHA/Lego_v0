@@ -3,5 +3,7 @@ lego_scratch/*
 main
 main.cpp
 gold_check.py
+gold
+gold.cpp
 *.toml
 sam/*
