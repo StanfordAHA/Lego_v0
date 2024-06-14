@@ -1,2 +1,2 @@
-B:sparse_ml:gcn/citeseer/layer1/aggregate_feature/B:s:0
-C:sparse_ml:gcn/citeseer/layer1/aggregate_feature/C:s:0
+B:sparse_ml:gcn/bf16/citeseer/layer1/aggregate_feature/B:s:0:0
+C:sparse_ml:gcn/bf16/citeseer/layer1/aggregate_feature/C:s:0:0

@@ -1,5 +1,4 @@
-numops: 2
-stmt: X(ij) = B(ik) * C(kj) 
+stmt: X(i, j) = B(i, k) * C(k, j) 
 schedule_ap:   [ijk]
 schedule_cp:   [ijk]
 schedule_cgra: [ijk]
