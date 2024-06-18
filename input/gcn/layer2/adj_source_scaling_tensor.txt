@@ -1,2 +1,2 @@
-B:sparse_ml:gcn/citeseer/layer2/adj_source_scaling/B:s:0
-C:sparse_ml:gcn/citeseer/layer2/adj_source_scaling/C:s:0
+B:sparse_ml:gcn/bf16/citeseer/layer2/adj_source_scaling/B:s:0
+C:sparse_ml:gcn/bf16/citeseer/layer2/adj_source_scaling/C:s:0
