@@ -172,7 +172,7 @@ int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const 
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = "./lego_scratch/data_files/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
@@ -180,8 +180,16 @@ int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const 
 		subtile_paths_file << "[sam_config]" << "\n";
 		subtile_paths_file << "sam_path = [ \n";
 
+		std::string path_prefix = "lego_scratch/data_files/";
+
 		for (int j = 0; j < batch_size && i+j < subtile_paths.size(); j++) {
-			subtile_paths_file << "    \"" << subtile_paths[i+j] << "\",\n";
+			std::string subtile_path = subtile_paths[i+j];
+			std::string::size_type i = subtile_path.find(path_prefix);
+			if (i != std::string::npos) {
+				subtile_path.erase(i, path_prefix.length());
+			}
+
+			subtile_paths_file << "    \"" << subtile_path << "\",\n";
 		}
 
 		subtile_paths_file << "    ]";
