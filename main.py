@@ -4,6 +4,8 @@ import sys
 import argparse
 import einsum
 import gold_cgen
+import shutil
+import os
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -176,7 +178,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_path):
 
     for key, value in cp_source_id.items():
 
@@ -232,7 +234,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
     main_file.write("\n")
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
-    main_file.write("    " + "std::string out_dir = \"lego_scratch/data_files/\" + curr_tile;\n")
+    main_file.write("    " + "std::string out_dir = \"" + output_path + "/\" + curr_tile;\n")
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
@@ -386,7 +388,7 @@ def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
-def write_output(main_file, ap_split_factor, dest_id, scalar):
+def write_output(main_file, ap_split_factor, dest_id, scalar, output_path):
     output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
@@ -400,7 +402,7 @@ def write_output(main_file, ap_split_factor, dest_id, scalar):
         else:
             output_tile_size = 1
 
-    main_file.write("    std::string output_path = \"lego_scratch/data_files/output.txt\";\n")
+    main_file.write("    std::string output_path = \"" + output_path + "/output.txt\";\n")
     main_file.write("    std::ofstream output_file;\n")
     main_file.write("    output_file.open(output_path, std::ios::app);\n")
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
@@ -422,8 +424,19 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
+    parser.add_argument("-o", "--output_path", type=str, default="output/tiles")
 
     args = parser.parse_args()
+
+    # create the required directories
+    if os.path.exists("./lego_scratch"):
+        shutil.rmtree("./lego_scratch")
+    os.mkdir("./lego_scratch")
+    
+    if os.path.exists(args.output_path):
+        shutil.rmtree(args.output_path)
+    os.mkdir(args.output_path)
+
 
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict = tensor_path_type_dict(args.tensor)
 
@@ -577,7 +590,7 @@ if __name__ == "__main__":
 
     main_file.write("double* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_path)
     main_file.write("\n")
     main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
     main_file.write("\n")
@@ -634,7 +647,7 @@ if __name__ == "__main__":
     apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
 
     # generate code that write the output matrix to file
-    write_output(main_file, ap_split_factor, ap_dest_id, scalar)
+    write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.output_path)
     main_file.write("\n")
 
     # genearte the toml path list file for comal
