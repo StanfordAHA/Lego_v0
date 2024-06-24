@@ -168,19 +168,20 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     return 0;
 }
 
-int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const int &batch_size) {
+int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_name, const int &batch_size) {
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./lego_scratch/data_files/subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = "./output/" + output_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
 		// prefix fields required by comal
 		subtile_paths_file << "[sam_config]" << "\n";
+		subtile_paths_file << "name = \"" << output_name << "\"\n";
 		subtile_paths_file << "sam_path = [ \n";
 
-		std::string path_prefix = "lego_scratch/data_files/";
+		std::string path_prefix = "output/" + output_name + "/";
 
 		for (int j = 0; j < batch_size && i+j < subtile_paths.size(); j++) {
 			std::string subtile_path = subtile_paths[i+j];

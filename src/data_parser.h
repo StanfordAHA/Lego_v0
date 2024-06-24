@@ -19,6 +19,6 @@ int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, in
 int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, int dim1, int dim2);
 int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, int dim1, int dim2, int dim3);
 int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file);
-int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const int &batch_size);
+int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_name, const int &batch_size);
 
 #endif

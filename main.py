@@ -408,9 +408,9 @@ def write_output(main_file, ap_split_factor, dest_id, scalar, output_name):
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
-def write_subtile_paths(main_file, batch_size):
+def write_subtile_paths(main_file, output_name, batch_size):
     main_file.write("    if (mode == \"tiling\") {\n")
-    main_file.write("        subtile_paths_printer(subtile_paths, " + str(args.comal_batch_size) + ");\n")
+    main_file.write("        subtile_paths_printer(subtile_paths, std::string(\"" + output_name + "\"), " + str(batch_size) + ");\n")
     main_file.write("    }\n")
 
 if __name__ == "__main__":
@@ -654,7 +654,7 @@ if __name__ == "__main__":
 
     # genearte the toml path list file for comal
     if mode == "rtl":
-        write_subtile_paths(main_file, args.comal_batch_size)
+        write_subtile_paths(main_file, args.output_name, args.comal_batch_size)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")
