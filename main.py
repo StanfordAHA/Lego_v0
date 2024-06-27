@@ -178,7 +178,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_name):
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, kernel_name):
 
     for key, value in cp_source_id.items():
 
@@ -234,7 +234,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_name
     main_file.write("\n")
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
-    main_file.write("    " + "std::string out_dir = \"output/" + output_name + "/\" + curr_tile;\n")
+    main_file.write("    " + "std::string out_dir = \"output/" + kernel_name + "/\" + curr_tile;\n")
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
@@ -388,7 +388,7 @@ def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
-def write_output(main_file, ap_split_factor, dest_id, scalar, output_name):
+def write_output(main_file, ap_split_factor, dest_id, scalar, kernel_name):
     output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
@@ -402,15 +402,15 @@ def write_output(main_file, ap_split_factor, dest_id, scalar, output_name):
         else:
             output_tile_size = 1
 
-    main_file.write("    std::string output_path = \"output/" + output_name + "/output.txt\";\n")
+    main_file.write("    std::string output_path = \"output/" + kernel_name + "/output.txt\";\n")
     main_file.write("    std::ofstream output_file;\n")
     main_file.write("    output_file.open(output_path, std::ios::app);\n")
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
-def write_subtile_paths(main_file, output_name, batch_size):
+def write_subtile_paths(main_file, kernel_name, batch_size):
     main_file.write("    if (mode == \"tiling\") {\n")
-    main_file.write("        subtile_paths_printer(subtile_paths, std::string(\"" + output_name + "\"), " + str(batch_size) + ");\n")
+    main_file.write("        subtile_paths_printer(subtile_paths, std::string(\"" + kernel_name + "\"), " + str(batch_size) + ");\n")
     main_file.write("    }\n")
 
 if __name__ == "__main__":
@@ -424,7 +424,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
-    parser.add_argument("-n", "--output_name", type=str, default="test", help="Name given to the tile pairs generated")
+    parser.add_argument("-n", "--kernel_name", type=str, default="test", help="Name given to the tile pairs generated")
 
     args = parser.parse_args()
 
@@ -433,9 +433,9 @@ if __name__ == "__main__":
         shutil.rmtree("./lego_scratch")
     os.mkdir("./lego_scratch")
     
-    if os.path.exists(os.path.join("output", args.output_name)):
-        shutil.rmtree(os.path.join("output", args.output_name))
-    os.mkdir(os.path.join("output", args.output_name))
+    if os.path.exists(os.path.join("output", args.kernel_name)):
+        shutil.rmtree(os.path.join("output", args.kernel_name))
+    os.mkdir(os.path.join("output", args.kernel_name))
 
 
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict = tensor_path_type_dict(args.tensor)
@@ -592,7 +592,7 @@ if __name__ == "__main__":
 
     main_file.write("double* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_name)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.kernel_name)
     main_file.write("\n")
     main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
     main_file.write("\n")
@@ -649,12 +649,12 @@ if __name__ == "__main__":
     apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
 
     # generate code that write the output matrix to file
-    write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.output_name)
+    write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.kernel_name)
     main_file.write("\n")
 
     # genearte the toml path list file for comal
     if mode == "rtl":
-        write_subtile_paths(main_file, args.output_name, args.comal_batch_size)
+        write_subtile_paths(main_file, args.kernel_name, args.comal_batch_size)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")

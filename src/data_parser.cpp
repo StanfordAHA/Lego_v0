@@ -113,7 +113,7 @@ int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, s
 	for (int pA = 0; pA < mode_0.size(); pA++) {
 		// FIXME: Temporary fix to avoid precision loss
 		// TODO: Find a better way to set the digit precision
-		output_file << setprecision(30) << mode_0[pA];
+		output_file << std::fixed << setprecision(30) << mode_0[pA];
 		output_file << "\n";
 	}
 	return 0;
@@ -168,20 +168,20 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     return 0;
 }
 
-int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_name, const int &batch_size) {
+int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &kernel_name, const int &batch_size) {
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./output/" + output_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = "./output/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
 		// prefix fields required by comal
 		subtile_paths_file << "[sam_config]" << "\n";
-		subtile_paths_file << "name = \"" << output_name << "\"\n";
+		subtile_paths_file << "name = \"" << kernel_name << "\"\n";
 		subtile_paths_file << "sam_path = [ \n";
 
-		std::string path_prefix = "output/" + output_name + "/";
+		std::string path_prefix = "output/" + kernel_name + "/";
 
 		for (int j = 0; j < batch_size && i+j < subtile_paths.size(); j++) {
 			std::string subtile_path = subtile_paths[i+j];
