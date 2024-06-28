@@ -4,6 +4,7 @@ import sys
 import argparse
 import einsum
 import gold_cgen
+import meta
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -17,6 +18,7 @@ def tensor_path_type_dict(tensor_path_input):
     tensor_transpose_dict = {}
     tensor_format_dict = {}
     tensor_nnz_dict = {} 
+    tensor_dtype_dict = {}
 
     tensor_path_dict_keys = [] 
 
@@ -37,8 +39,9 @@ def tensor_path_type_dict(tensor_path_input):
         tensor_format_dict[parsed_data[0]] = parsed_data[3]
         tensor_transpose_dict[parsed_data[0]] = parsed_data[4]
         tensor_nnz_dict[parsed_data[0]] = int(parsed_data[5])
+        tensor_dtype_dict[parsed_data[0]] = parsed_data[6]
 
-    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict
+    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict
 
 def data_parser(data):
 
@@ -132,7 +135,6 @@ def parse(input_file, level):
     
     return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar
 
-
 def ap_tensor_decleration(main_file, ap_source_id):
 
     for key, value in ap_source_id.items():
@@ -194,7 +196,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
 
         main_file.write("\n")
 
-        if(mode != 'rtl'):
+        if(mode == 'onyx'):
 
             total_size = 1
             for id in cp_source_id[key]:
@@ -236,7 +238,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
-    if(mode != 'rtl'):
+    if(mode == 'onyx'):
         main_file.write("    " + "std::string input_data_path = out_dir + \"/input_data.h\";\n")
         main_file.write("    " + "std::ofstream input_data_file;\n")
         main_file.write("\n")
@@ -252,9 +254,14 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, mapping_dict=None):
 
-    if(mode != 'rtl'):
+    for key, value in dest_id.items(): 
+        dest_read = key   
+
+    out_tensor_dim = len(dest_id[dest_read])
+
+    if(mode == 'onyx'):
         main_file.write("\n")
         stmt = "    "
         stmt += "if(curr_subtile_num > 0) {" 
@@ -263,6 +270,10 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
         main_file.write("        " + "input_data_file.open(input_data_path);\n")
         main_file.write("        " + "input_meta_data_file.open(input_meta_data_path);\n")
+        main_file.write("\n")
+
+        main_file.write("\n")
+        main_file.write("        " + "header_meta_data(input_meta_data_file, curr_subtile_num);\n")
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
@@ -274,10 +285,20 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + ".extents_mode_" + str(i) + ");\n")
                 main_file.write("\n")
 
-            main_file.write("        " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + ".mode_vals);\n")
+            main_file.write("        " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + ".mode_vals, \"" + dtype + "\");\n")
             main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + ".extents_mode_vals);\n")
-
             main_file.write("\n")
+
+        main_file.write("\n")
+        main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
+        main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
+
+        for i in range(0, out_tensor_dim + 1):
+            curr_mapping = mapping_dict[dest_read][i] 
+            main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\");\n")
+
+        main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
+        main_file.write("        " + "output_gold_file.close();\n")
 
         main_file.write("        " + "input_data_file.close();\n")
         main_file.write("        " + "input_meta_data_file.close();\n")
@@ -406,10 +427,11 @@ def write_output(main_file, ap_split_factor, dest_id, scalar):
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
-def write_subtile_paths(main_file, batch_size):
-    main_file.write("    if (mode == \"tiling\") {\n")
-    main_file.write("        subtile_paths_printer(subtile_paths, " + str(args.comal_batch_size) + ");\n")
-    main_file.write("    }\n")
+def write_subtile_paths(main_file, batch_size, mode):
+    if(mode == 'rtl'):
+        main_file.write("    if (mode == \"tiling\") {\n")
+        main_file.write("        subtile_paths_printer(subtile_paths, " + str(args.comal_batch_size) + ");\n")
+        main_file.write("    }\n")
 
 if __name__ == "__main__":
 
@@ -418,14 +440,16 @@ if __name__ == "__main__":
                     description="Generate Cpp code for tiling and reduction given the input program and tensors")
     parser.add_argument("-t", "--tensor", type=str, default="./input/tensor.txt")
     parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
+    parser.add_argument("-d", "--design", type=str, default="./input/design_meta.json")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
+    parser.add_argument("-w", "--workspace", type=int, default=0)
 
     args = parser.parse_args()
 
-    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict = tensor_path_type_dict(args.tensor)
+    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
     dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
@@ -436,6 +460,8 @@ if __name__ == "__main__":
     level = "cg"
     _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
 
+    mapping_dict = meta.mapping_dict_gen(args.design)
+    
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
         tensor_schedule = []
@@ -461,13 +487,14 @@ if __name__ == "__main__":
         transpose      = tensor_transpose_dict[key]  
         format         = tensor_format_dict[key]  
         nnz            = tensor_nnz_dict[key]
+        dtype          = tensor_dtype_dict[key]
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check)    
-
-
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
     
+    workspace = args.workspace
+
     if(args.gold_check == "s"):
-        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, "./lego_scratch/", scalar)
+        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, "./lego_scratch/", scalar, workspace)
     elif(args.gold_check == "d"):
         gold_file = open("gold_check.py", "w+") 
         stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")
@@ -510,7 +537,7 @@ if __name__ == "__main__":
     main_file.write("double* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -522,8 +549,11 @@ if __name__ == "__main__":
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
-    else: 
-        stmt = "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
+    elif(mode == "onyx"):
+
+        stmt = "    if(curr_subtile_num == 0){header_check_gold(output_gold_file, output_subtile_size);}"
+        stmt += "\n"
+        stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\");"
 
     main_file.write(stmt)
     main_file.write("\n")
@@ -548,7 +578,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -579,24 +609,33 @@ if __name__ == "__main__":
 
     cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode)
     main_file.write("\n")
-    main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
-    main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar):
+    if(workspace):
+        main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
+        main_file.write("\n")
+
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, mapping_dict)
     main_file.write("\n")
-    stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
-    for line in stmt:
-        main_file.write(line)
+
+    if(workspace):
+        stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
+        for line in stmt:
+            main_file.write(line)
     
     main_file.write("\n")
     for key in cg_dest_id.keys():
         return_key = key
-    main_file.write("    return " + return_key + "_vals;\n")
+    
+    if(workspace):
+        main_file.write("    return " + return_key + "_vals;\n")
+    else: 
+        main_file.write("    return NULL;\n")
+
     main_file.write("}\n")
     main_file.write("\n")
 
@@ -619,27 +658,33 @@ if __name__ == "__main__":
         main_file.write("    std::vector<std::string> subtile_paths;\n")
 
     main_file.write("\n")
-    main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
-    main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar):
+
+    if(workspace):
+        main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
+        main_file.write("\n")
+
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
-    stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar)
-    for line in stmt:
-        main_file.write(line)
-    main_file.write("\n")
+
+    if(workspace):        
+        stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar)
+        for line in stmt:
+            main_file.write(line)
+        main_file.write("\n")
     
     # generate code that applies the activation function specified in the argument
     apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
 
-    # generate code that write the output matrix to file
-    write_output(main_file, ap_split_factor, ap_dest_id, scalar)
-    main_file.write("\n")
+
+    if(workspace):
+        # generate code that write the output matrix to file
+        write_output(main_file, ap_split_factor, ap_dest_id, scalar)
+        main_file.write("\n")
 
     # genearte the toml path list file for comal
-    if mode == "rtl":
-        write_subtile_paths(main_file, args.comal_batch_size)
+    write_subtile_paths(main_file, args.comal_batch_size, mode)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")

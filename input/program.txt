@@ -1,7 +1,6 @@
-stmt: A = B(i, j, k) * C(i, j, k)
-schedule_ap:   [ijk]
-schedule_cp:   [ijk]
-schedule_cgra: [ijk]
-i:split:100:50:25
-j:split:200:100:50
-k:split:300:150:30
+stmt: X(i, j) = B(i, j) * C(i, j)
+schedule_ap:   [ij]
+schedule_cp:   [ij]
+schedule_cgra: [ij]
+i:split:35:4:2
+j:split:35:4:2

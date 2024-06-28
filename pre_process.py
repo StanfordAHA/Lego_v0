@@ -16,10 +16,10 @@ from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
     FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
-# InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
+    # InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 
-def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -61,7 +61,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
 
     # Create n_levels * n_dim lists to store the coordinates and data
     n_lists = np.zeros(((n_levels + 1) * n_dim, num_values), dtype=int)
-    d_list = np.zeros((num_values), dtype=np.float32)
+    d_list = np.zeros((num_values), dtype=dtype)
 
     # Creating the COO representation for the tiled tensor at each level
     for i in range(num_values):
@@ -134,7 +134,10 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict):
     d_list_path = output_dir_path + "/tcsf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % (tiled_COO.data[val]))
+            if(dtype == "float"):
+                f.write("%s\n" % (tiled_COO.data[val]))
+            else:
+                f.write("%s\n" % (int(tiled_COO.data[val])))
                 
     return n_lists, d_list, crd_dict, pos_dict
 
@@ -188,12 +191,11 @@ def write_csf(COO, output_dir_path):
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             f.write("%s\n" % (COO.data[val]))
-                
 
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, nnz, gold_check):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, nnz, gold_check, dtype):
 
     tensor = None
     cwd = os.getcwd()
@@ -203,7 +205,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
         nnz = int(np.prod(size) * nnz / 100)
-        tensor = sparse.COO(sparse.random(size, nnz=nnz))
+        if(dtype == "float"):
+            tensor = sparse.COO(sparse.random(size, nnz=nnz))
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
@@ -224,7 +227,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor = sparse.COO(tensor)
     elif tensor_type == "sparse_ml":
         inputCache = InputCacheSparseML()
-        tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
+        tensor_path = os.path.join(SPARSE_ML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
         tensor = sparse.COO(tensor)
@@ -244,5 +247,5 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         write_csf(tensor, output_dir_path)
 
     tile_size = tensor_size[1:]
-    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, dtype)
 
