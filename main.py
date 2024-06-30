@@ -4,7 +4,14 @@ import sys
 import argparse
 import einsum
 import gold_cgen
-import meta
+
+
+from onyx_codegen.meta import *
+from onyx_codegen.main_codegen import *
+from onyx_codegen.io_placement import *
+from onyx_codegen.raw_to_h_16 import *
+from onyx_codegen.bs_to_h import *
+
 
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
@@ -47,16 +54,20 @@ def data_parser(data):
 
     data = [i.replace(" ", "") for i in data]
 
-    arith_op = one_of("+ - * /")
+    stmt = data[0].split(":")
+    app_name = stmt[1]
+
+    data = data[1:]
 
     stmt = data[0].split(":")
     stmt = stmt[1]
+
+    arith_op = one_of("+ - * /")
 
     parsed_stmt = einsum.parser.parse(stmt)
     expr = einsum.build_expr(parsed_stmt)
     dest, op = einsum.build_dict(parsed_stmt, 1, {}, {})
     op_list = list(op.keys()) 
-    num_op = len(op_list)  
 
     schedule_rule = Word(alphanums) + "_" + Word(alphanums) + ':' + '[' + Word(alphas) + ']'
 
@@ -74,13 +85,13 @@ def data_parser(data):
         parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    return num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr
+    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    num_op, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr = data_parser(data)
+    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr = data_parser(data)
 
     expr = expr.split("=")
     expr = expr[1]
@@ -133,7 +144,7 @@ def parse(input_file, level):
     else: 
         dest_id = dest
     
-    return dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar
+    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar
 
 def ap_tensor_decleration(main_file, ap_source_id):
 
@@ -239,14 +250,14 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
     main_file.write("\n")
 
     if(mode == 'onyx'):
-        main_file.write("    " + "std::string input_data_path = out_dir + \"/input_data.h\";\n")
+        main_file.write("    " + "std::string input_data_path = out_dir + \"/" + app_name + "_input_script.h\";\n")
         main_file.write("    " + "std::ofstream input_data_file;\n")
         main_file.write("\n")
-        main_file.write("    " + "std::string input_meta_data_path = out_dir + \"/input_meta_data.h\";\n")
+        main_file.write("    " + "std::string input_meta_data_path = out_dir + \"/" + app_name + "_extents.h\";\n")
         main_file.write("    " + "std::ofstream input_meta_data_file;\n")
         main_file.write("\n")
     
-    main_file.write("    " + "std::string output_gold_path = out_dir + \"/output_gold.h\";\n")
+    main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
     main_file.write("    " + "std::ofstream output_gold_file;\n")
 
     if(mode == 'rtl'): 
@@ -452,15 +463,35 @@ if __name__ == "__main__":
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
+    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
 
     level = "cp"
-    _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar = parse(args.program, level)
+    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar = parse(args.program, level)
 
     level = "cg"
-    _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
+    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
 
-    mapping_dict = meta.mapping_dict_gen(args.design)
+    mapping_dict = {}
+
+    for key, value in dest.items():
+        dest_read = key
+
+    mode = args.mode
+    if mode == "onyx":
+        mapping_dict = mapping_dict_gen(args.design)
+        main_file = open("lego_scratch/main.c", "w+")
+        main_gen_header_files(main_file)
+        main_spec_header_files(main_file, app_name)
+        main_block_1(main_file)
+        main_block_2(main_file, mapping_dict, op_list)
+        main_block_3(main_file, mapping_dict, dest_read)    
+
+        inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design)
+
+        unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
+        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
+
+
     
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -500,7 +531,7 @@ if __name__ == "__main__":
         stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")
         gold_file.write("".join(stmt))
 
-    mode = args.mode
+    
     main_file = open("main.cpp", "w+")
 
     # Printing the header files

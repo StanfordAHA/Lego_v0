@@ -1,3 +1,4 @@
+app_name: matmul_ijk_football
 stmt: X(i, j) = B(i, j) * C(i, j)
 schedule_ap:   [ij]
 schedule_cp:   [ij]
