@@ -21,6 +21,7 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype);
 int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const int &batch_size);
 int header_check_gold(ofstream &output_gold_file, int output_subtile_size);
+int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size);
 int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim);
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim);
 int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id);

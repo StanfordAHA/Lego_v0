@@ -582,7 +582,17 @@ if __name__ == "__main__":
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
     elif(mode == "onyx"):
 
-        stmt = "    if(curr_subtile_num == 0){header_check_gold(output_gold_file, output_subtile_size);}"
+        stmt = "    if(curr_subtile_num == 0){"
+        stmt += "\n"
+        
+        for key in cg_dest_id.keys():
+            out_id_list = cg_dest_id[key]
+            out_id_map = cg_dest_map[key]
+        for i in range(0, len(out_id_list)):
+            stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+        stmt += "        header_check_gold(output_gold_file, output_subtile_size);\n"
+        stmt += "    }"
+        stmt += "\n"
         stmt += "\n"
         stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\");"
 

@@ -225,6 +225,11 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size){
 	return 0;
 }
 
+int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
+	header_file << "#define STILE_DIM" << dim_id << " " << dim_size << "\n";
+	return 0;
+}
+
 int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim){
 	output_gold_file << "\n"; 
 	output_gold_file << "uint16_t check_gold_data(){" << "\n";
@@ -234,6 +239,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	for(int i = 0; i < tensor_dim; i++){
 		output_gold_file << "    uint16_t mode" << i << "_idx = 0;" << "\n";
 	}
+	output_gold_file << "    uint16_t vals_idx = 0;" << "\n";	
 	
 	output_gold_file << "\n"; 
 	output_gold_file << "    const uint32_t read_start_addr = 0x20000;" << "\n";
@@ -332,6 +338,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	int i  = 0;
 	output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < mode" << i << "_stream_size; i" << i << "++){" << "\n";
 	output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + i" << i << "];" << "\n";
+	i++;
 	output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i << " + 1];" << "\n";
 
 	for(int i = 1; i < tensor_dim; i++){
@@ -339,6 +346,10 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + x" << i << "_idx + i" << i << "];" << "\n";
 		if(i == tensor_dim - 1){
 			output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
+		}
+		else{
+			int j = i + 1; 
+			output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j << " + 1];" << "\n";
 		}
 	}
 
@@ -378,3 +389,4 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 	return 0;
 }
+

@@ -161,10 +161,10 @@ def main_block_3(file, mapping_dict, dest):
     file.write("        int size;\n")
 
     for i in range(out_tensor_dim - 1): 
-        file.write("        size = output_read_base0[" + dest + "_mode_" + str(i) + "_idx];\n")
-        file.write("        int " + dest + "_mode_" + str(i) + "_size = size + 1 + output_read_base0[" + dest + "_mode_" + str(i) + "_idx + size + 1] + 1;\n")
+        file.write("        size = output_read_base" + str(i) + "[" + dest + "_mode_" + str(i) + "_idx];\n")
+        file.write("        int " + dest + "_mode_" + str(i) + "_size = size + 1 + output_read_base" + str(i) + "[" + dest + "_mode_" + str(i) + "_idx + size + 1] + 1;\n")
     
-    file.write("        int " + dest + "_mode_vals_size = output_read_base" + str(out_tensor_dim) + "[" + dest + "_mode_vals_idx] + 1;\n")
+    file.write("        int " + dest + "_mode_vals_size = output_read_base" + str(out_tensor_dim - 1) + "[" + dest + "_mode_vals_idx] + 1;\n")
     file.write("\n")
 
     for i in range(out_tensor_dim - 1):
@@ -196,8 +196,8 @@ def main_block_3(file, mapping_dict, dest):
     file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*0 + 0x20000;\n")
 
     for i in range(out_tensor_dim):
-        file.write("        output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*" + str(i) + " + 0x20000;\n")
-        file.write("        trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")
+        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*" + str(i) + " + 0x20000;\n")
+        file.write("    trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")
 
     file.write("    trace_printf(\"check gold data\\n\");\n")
     file.write("    errors = check_gold_data();\n")
