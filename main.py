@@ -515,10 +515,6 @@ if __name__ == "__main__":
     stmt = ""
     stmt = stmt + "(" + "subtile" + tensor_dim + " subtile_" + op_list[0]  
 
-    # TODO: hack for now, we would like to output the shape of the subtile in the order of
-    # the indices in the expression
-    op_dict = op
-
     for op in op_list[1:]: 
         tensor_dim = str(len(cg_source_id[op]))
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
@@ -526,7 +522,7 @@ if __name__ == "__main__":
 
     main_file.write("double* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, op_dict):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -564,7 +560,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, op_dict):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -598,7 +594,7 @@ if __name__ == "__main__":
     main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
     main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, op_dict):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -637,7 +633,7 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
     main_file.write("\n")
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, op):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
