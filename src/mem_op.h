@@ -27,5 +27,8 @@ tile3 tensor_zero_op_3(tile3 tile_op);
 subtile1 tile_zero_op_1(subtile1 subtile_op);
 subtile2 tile_zero_op_2(subtile2 subtile_op);
 subtile3 tile_zero_op_3(subtile3 subtile_op);
+cg_subtile1 cg_tile_zero_op_1(int **store_subtile_op, cg_subtile1 cg_subtile_op, int id_store_op);
+cg_subtile2 cg_tile_zero_op_2(int **store_subtile_op, cg_subtile2 cg_subtile_op, int id_store_op);
+cg_subtile3 cg_tile_zero_op_3(int **store_subtile_op, cg_subtile3 cg_subtile_op, int id_store_op);
 
 #endif

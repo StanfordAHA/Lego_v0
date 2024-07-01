@@ -1,7 +1,8 @@
-stmt: A = B(i, j, k) * C(i, j, k)
-schedule_ap:   [ijk]
-schedule_cp:   [ijk]
+app_name: matmul_ijk_football
+stmt: X(i, j) = B(i, k) * C(k, j)
+schedule_ap:   [ikj]
+schedule_cp:   [ikj]
 schedule_cgra: [ijk]
-i:split:100:50:25
-j:split:200:100:50
-k:split:300:150:30
+i:split:35:4:2
+j:split:35:4:2
+k:split:35:4:2

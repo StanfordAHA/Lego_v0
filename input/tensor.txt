@@ -1,2 +1,2 @@
-B:gen:football:s:0:60
-C:gen:football:s:0:70
+B:ss:football:s:0:60:int
+C:ss:football:s:0:60:int
