@@ -168,11 +168,14 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     return 0;
 }
 
-int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &kernel_name, const int &batch_size) {
+int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
+						  const std::string &output_dir,
+						  const std::string &kernel_name, 
+						  const int &batch_size) {
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./output/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = "./" + output_dir + "/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
