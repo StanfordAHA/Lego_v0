@@ -457,20 +457,10 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
-    parser.add_argument("-n", "--kernel_name", type=str, default="test", help="Name given to the tile pairs generated")
     parser.add_argument("-w", "--workspace", type=int, default=0)
     parser.add_argument("-o", "--output_dir", type=str, default="output", help="Output directory for the generated tiles")
 
     args = parser.parse_args()
-
-    # create the required directories
-    if os.path.exists("./lego_scratch"):
-        shutil.rmtree("./lego_scratch")
-    os.mkdir("./lego_scratch")
-    
-    if os.path.exists(os.path.join(args.output_dir, args.kernel_name)):
-        shutil.rmtree(os.path.join(args.output_dir, args.kernel_name))
-    os.mkdir(os.path.join(args.output_dir, args.kernel_name))
 
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
@@ -482,6 +472,15 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
+
+    # create the required directories
+    if os.path.exists("./lego_scratch"):
+        shutil.rmtree("./lego_scratch")
+    os.mkdir("./lego_scratch")
+    
+    if os.path.exists(os.path.join(args.output_dir, app_name)):
+        shutil.rmtree(os.path.join(args.output_dir, app_name))
+    os.mkdir(os.path.join(args.output_dir, app_name))
 
     mapping_dict = {}
 
@@ -659,7 +658,7 @@ if __name__ == "__main__":
 
     main_file.write("double* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, args.kernel_name)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name)
     main_file.write("\n")
 
     if(workspace):
@@ -731,12 +730,12 @@ if __name__ == "__main__":
 
     # generate code that write the output matrix to file
     if (workspace):
-        write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.output_dir, args.kernel_name)
+        write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.output_dir, app_name)
         main_file.write("\n")
 
     # genearte the toml path list file for comal
     if mode == "rtl":
-        write_subtile_paths(main_file, args.output_dir, args.kernel_name, args.comal_batch_size)
+        write_subtile_paths(main_file, args.output_dir, app_name, args.comal_batch_size)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")
