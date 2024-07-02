@@ -1,7 +1,7 @@
-#ifndef ACTIVATION_H
-#define ACTIVATION_H
+#ifndef BF16_OP_H
+#define BF16_OP_H
 
-double bf_add(double input1, double input2);
-double bf_mul(double input1, double input2);
+float bf16_add(float input1, float input2);
+float bf16_mul(float input1, float input2);
 
 #endif

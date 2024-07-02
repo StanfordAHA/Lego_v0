@@ -4,7 +4,7 @@
 #include <iostream>
 #include <bitset>
 
-float bf_add(float input1, float input2) {
+float bf16_add(float input1, float input2) {
     
     std::bitset<32> bf16_mask(0x0000FFFF);
     std::bitset<32> input1_bin(*reinterpret_cast<unsigned int*>(&input1));
@@ -61,7 +61,7 @@ float bf_add(float input1, float input2) {
     return result_bf16;
 }
 
-float bf_mul(float input1, float input2) {
+float bf16_mul(float input1, float input2) {
     
     std::bitset<32> bf16_mask(0x0000FFFF);
     std::bitset<32> input1_bin(*reinterpret_cast<unsigned int*>(&input1));

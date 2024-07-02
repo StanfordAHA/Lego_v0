@@ -160,7 +160,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
             main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
             main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
 
-        main_file.write("    " + "std::vector<double> " + key + "_vals;\n")
+        main_file.write("    " + "std::vector<float> " + key + "_vals;\n")
 
         main_file.write("\n")
 
@@ -202,7 +202,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "int *" + key + str(i + 1) + "_pos = tile_" + key + ".pos" + str(i + 1) + ".data();\n")
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = tile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
-        main_file.write("    " + "double *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
+        main_file.write("    " + "float *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
 
         main_file.write("    " + "subtile" + str(tensor_dim) + " subtile_" + key + ";\n")
@@ -329,7 +329,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
-        main_file.write("    " + "double *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
+        main_file.write("    " + "float *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
 
     outsize = 1
@@ -344,7 +344,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
 
-        main_file.write("    " + "double *" + key + "_vals = (double*)malloc(sizeof(double) * output_subtile_size);\n")
+        main_file.write("    " + "float *" + key + "_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
         main_file.write("\n")
 
         main_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_subtile_size; p" + key + "++) {\n")
@@ -362,7 +362,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     for idx, _ in enumerate(dest_id[dest_name]):
         main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_pos_vec;\n")
         main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_crd_vec;\n")
-    main_file.write("    std::vector<double> " + dest_name + "_vals_vec;\n")
+    main_file.write("    std::vector<float> " + dest_name + "_vals_vec;\n")
 
     main_file.write("\n")
 
@@ -378,7 +378,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     for idx, _ in enumerate(dest_id[dest_name]):
         main_file.write("    int *" + dest_name + str(idx + 1) + "_pos = " + dest_name + str(idx + 1) + "_pos_vec.data();\n")
         main_file.write("    int *" + dest_name + str(idx + 1) + "_crd = " + dest_name + str(idx + 1) + "_crd_vec.data();\n")
-    main_file.write("    double *" + dest_name + "_vals = " + dest_name + "_vals_vec.data();\n")
+    main_file.write("    float *" + dest_name + "_vals = " + dest_name + "_vals_vec.data();\n")
 
     main_file.write("\n")
 
@@ -394,7 +394,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
 
-        main_file.write("    " + "double *" + key + "_output_vals = (double*)malloc(sizeof(double) * output_subtile_size);\n")
+        main_file.write("    " + "float *" + key + "_output_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
         main_file.write("\n")
 
         main_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_subtile_size; p" + key + "++) {\n")
@@ -457,7 +457,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
-    parser.add_argument("-w", "--workspace", type=int, default=0)
+    parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="output", help="Output directory for the generated tiles")
 
     args = parser.parse_args()
@@ -575,7 +575,7 @@ if __name__ == "__main__":
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
-    main_file.write("double* subtile_gold" + stmt + " {\n")
+    main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
     for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
@@ -616,7 +616,7 @@ if __name__ == "__main__":
     main_file.write("}\n")
     main_file.write("\n")
 
-    main_file.write("double* read_subtile_output(std::string subtile_path) {\n")
+    main_file.write("float* read_subtile_output(std::string subtile_path) {\n")
     subtile_output_decleration(main_file, cg_dest_id, cg_split_factor, scalar)
     rtl_output_dest_id = {}
     for key in cg_dest_id.keys():
@@ -656,7 +656,7 @@ if __name__ == "__main__":
 
     stmt = stmt + ")"
 
-    main_file.write("double* tile_operate" + stmt + " {\n")
+    main_file.write("float* tile_operate" + stmt + " {\n")
 
     cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name)
     main_file.write("\n")

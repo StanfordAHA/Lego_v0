@@ -554,7 +554,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
     if(valid_op_list != []):
         if(len(valid_op_list) != 1 or mode == "rtl"):
             stmt += "    " * (level + 2)
-            stmt += "double* partial = tile_operate" + "(" + "tile_" + op_list[0]
+            stmt += "float* partial = tile_operate" + "(" + "tile_" + op_list[0]
             op_list = op_list[1:]
 
             for op in op_list:
@@ -676,7 +676,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
                 stmt += "\n"
                 stmt += "    " * (level + 2)
-                stmt += "double *partial = nullptr;\n"
+                stmt += "float *partial = nullptr;\n"
                 stmt += "    " * (level + 2)
 
                 if(mode == "rtl"): 
@@ -887,7 +887,7 @@ def workspace_declaration(split_factor, dest_id, scalar):
                     n_subtiles *= math.ceil(split_factor[i][0] / split_factor[i][1])
             else:
                 n_subtiles = 1
-    return "    std::vector<std::vector<double *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<double *>());\n"
+    return "    std::vector<std::vector<float *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<float *>());\n"
 
 def workspace_reduction(split_factor, target, dest_id, scalar):
     # allcoate the array that is going to store the recombined tile
@@ -905,7 +905,7 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
                     output_tile_size *= split_factor[i][0]
             else:
                 output_tile_size = 1
-    stmt.append("    double* " + dest_name + "_vals = (double*)malloc(sizeof(double) * " + str(output_tile_size) + ");\n")
+    stmt.append("    float* " + dest_name + "_vals = (float*)malloc(sizeof(float) * " + str(output_tile_size) + ");\n")
     stmt.append("\n")
     # initialize the recombined tile to zero 
     stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(output_tile_size) + "; " + "p" + dest_name + " ++) {\n")
@@ -941,7 +941,7 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
             offset_id = dest_id[dest_name][i]
             workspace_index_str += " * " + str(dim_n_subtile[offset_id])
         workspace_index_str += " +  subtile_" + id
-    stmt.append(("    " * level) + "for (std::vector<double*>::iterator it = subtile_workspace[" + workspace_index_str + "].begin(); it != subtile_workspace[" + workspace_index_str + "].end(); it++) {\n")
+    stmt.append(("    " * level) + "for (std::vector<float*>::iterator it = subtile_workspace[" + workspace_index_str + "].begin(); it != subtile_workspace[" + workspace_index_str + "].end(); it++) {\n")
     level = level + 1
     for id in dest_id[dest_name]:
         stmt.append(("    " * level) + "for (int " + id + " = 0; "  + id + " < " + str(subtile_size[id]) + "; " + id + " ++) {\n")

@@ -104,7 +104,7 @@ def gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
             gold_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
             gold_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
         
-        gold_file.write("    " + "std::vector<double> " + key + "_vals;\n")
+        gold_file.write("    " + "std::vector<float> " + key + "_vals;\n")
         gold_file.write("\n")
 
         for i in range(0, tensor_dim): 
@@ -125,7 +125,7 @@ def gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
         gold_file.write("    " + "int output_size = " + str(outsize) + ";\n")
         gold_file.write("\n")
 
-        gold_file.write("    " + "double *" + key + "_vals = (double*)malloc(sizeof(double) * output_size);\n")
+        gold_file.write("    " + "float *" + key + "_vals = (float*)malloc(sizeof(float) * output_size);\n")
         gold_file.write("\n")
 
         gold_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_size; p" + key + "++) {\n")

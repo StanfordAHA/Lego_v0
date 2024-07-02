@@ -17,8 +17,8 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
     return 0;
 }
 
-int build_vec_val(std::vector<double> &vec, std::string file_path) {
-    double val;
+int build_vec_val(std::vector<float> &vec, std::string file_path) {
+    float val;
     ifstream input_file(file_path);   
 	if (input_file.good()) {
     	while(input_file >> setprecision(30) >> val){
@@ -56,7 +56,7 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 	return 0;
 }
 
-int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<double> mode_0, std::string dtype){
+int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype){
 
 	if(dtype == "int"){
 		header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
@@ -79,7 +79,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	}
 	
 	// if(dtype == "float"){
-		// Add functions to store double data to bfloat16 hex
+		// Add functions to store float data to bfloat16 hex
 	// 	}
 
 	return 0;
@@ -110,7 +110,7 @@ int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std:
 	return 0;
 }
 
-int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, std::string tensor_name) {
+int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, std::string tensor_name) {
 
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_vals";
 	ofstream output_file(output_file_name.c_str());
@@ -157,7 +157,7 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	return 0;
 }
 
-int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
+int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
 
 	if(dtype == "int"){
 

@@ -6,7 +6,7 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     int *crd1 = tile_op.crd3.data();
     int *pos2 = tile_op.pos4.data();
     int *crd2 = tile_op.crd4.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
 
     int stile_pos1_len = 2;	
 	int stile_pos2_len = pos1[index + 1] - pos1[index] + 1;
