@@ -2,7 +2,7 @@ app_name: matmul_ijk_football
 stmt: X(i, j) = B(i, k) * C(k, j)
 schedule_ap:   [ikj]
 schedule_cp:   [ikj]
-schedule_cgra: [ijk]
-i:split:35:4:2
-j:split:35:4:2
-k:split:35:4:2
+schedule_cgra: [ikj]
+i:split:2000:2000:30
+j:split:2000:2000:30
+k:split:2000:2000:30
