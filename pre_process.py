@@ -202,6 +202,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     cwd = os.getcwd()
     inputCache = None
 
+    other_nonempty = True
+
     if tensor_type == "gen":
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
@@ -262,9 +264,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         path = constructOtherVecKey(tensorName, variant)
         tensor_c_loader = FrosttTensor(path)
         tensor_c = tensor_c_loader.load().todense()
-        # size_i, size_j, size_k = tensor.shape  # i,j,k
-        # print("OTHER SIZES: ", size_i, size_j, size_k)
-        # tensor_c = scipy.sparse.random(size_k, 1, data_rvs=np.ones).toarray().flatten()
+        size_i, size_j, size_k = tensor.shape  # i,j,k
+        tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
         if other_nonempty:
             tensor_c[0] = 1
         tensor = tensor_c   
@@ -284,7 +285,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
             matrix_c[0] = 1
         tensor = matrix_c
     elif gen_tensor == "tensor3_mttkrp1":
-        size_i, size_j, size_l = tensor.shape  # i,j,k
+        size_i, size_j, size_l = tensor.shape  
         tensorName = input_path
         variant = "mode1_mttkrp"
         path = constructOtherMatKey(tensorName, variant)
@@ -326,4 +327,3 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
 
     tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, dtype)
-
