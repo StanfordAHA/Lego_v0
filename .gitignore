@@ -7,3 +7,6 @@ gold
 gold.cpp
 *.toml
 sam/*
+output/*
+*.pyc
+.vscode/*

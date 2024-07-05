@@ -4,6 +4,8 @@ import sys
 import argparse
 import einsum
 import gold_cgen
+import shutil
+import os
 
 
 from onyx_codegen.meta import *
@@ -158,7 +160,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
             main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
             main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
 
-        main_file.write("    " + "std::vector<double> " + key + "_vals;\n")
+        main_file.write("    " + "std::vector<float> " + key + "_vals;\n")
 
         main_file.write("\n")
 
@@ -189,7 +191,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name):
 
     for key, value in cp_source_id.items():
 
@@ -200,7 +202,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
             main_file.write("    " + "int *" + key + str(i + 1) + "_pos = tile_" + key + ".pos" + str(i + 1) + ".data();\n")
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = tile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
-        main_file.write("    " + "double *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
+        main_file.write("    " + "float *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
 
         main_file.write("    " + "subtile" + str(tensor_dim) + " subtile_" + key + ";\n")
@@ -245,7 +247,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode):
     main_file.write("\n")
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
-    main_file.write("    " + "std::string out_dir = \"lego_scratch/data_files/\" + curr_tile;\n")
+    main_file.write("    " + "std::string out_dir = \"" + output_dir + "/" + kernel_name + "/\" + curr_tile;\n")
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
@@ -327,7 +329,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
-        main_file.write("    " + "double *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
+        main_file.write("    " + "float *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
 
     outsize = 1
@@ -342,7 +344,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
 
-        main_file.write("    " + "double *" + key + "_vals = (double*)malloc(sizeof(double) * output_subtile_size);\n")
+        main_file.write("    " + "float *" + key + "_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
         main_file.write("\n")
 
         main_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_subtile_size; p" + key + "++) {\n")
@@ -360,7 +362,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     for idx, _ in enumerate(dest_id[dest_name]):
         main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_pos_vec;\n")
         main_file.write("    std::vector<int> " + dest_name + str(idx + 1) + "_crd_vec;\n")
-    main_file.write("    std::vector<double> " + dest_name + "_vals_vec;\n")
+    main_file.write("    std::vector<float> " + dest_name + "_vals_vec;\n")
 
     main_file.write("\n")
 
@@ -376,7 +378,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     for idx, _ in enumerate(dest_id[dest_name]):
         main_file.write("    int *" + dest_name + str(idx + 1) + "_pos = " + dest_name + str(idx + 1) + "_pos_vec.data();\n")
         main_file.write("    int *" + dest_name + str(idx + 1) + "_crd = " + dest_name + str(idx + 1) + "_crd_vec.data();\n")
-    main_file.write("    double *" + dest_name + "_vals = " + dest_name + "_vals_vec.data();\n")
+    main_file.write("    float *" + dest_name + "_vals = " + dest_name + "_vals_vec.data();\n")
 
     main_file.write("\n")
 
@@ -392,7 +394,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
         main_file.write("\n")
 
-        main_file.write("    " + "double *" + key + "_output_vals = (double*)malloc(sizeof(double) * output_subtile_size);\n")
+        main_file.write("    " + "float *" + key + "_output_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
         main_file.write("\n")
 
         main_file.write("    " + "for (int p" + key + " = 0; p" + key + " < output_subtile_size; p" + key + "++) {\n")
@@ -418,7 +420,7 @@ def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
     main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
-def write_output(main_file, ap_split_factor, dest_id, scalar):
+def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel_name):
     output_tile_size = 0
     dest_name = None
     for name, id in dest_id.items():
@@ -432,17 +434,16 @@ def write_output(main_file, ap_split_factor, dest_id, scalar):
         else:
             output_tile_size = 1
 
-    main_file.write("    std::string output_path = \"lego_scratch/data_files/output.txt\";\n")
+    main_file.write("    std::string output_path = \"" + output_dir + "/" + kernel_name + "/output.txt\";\n")
     main_file.write("    std::ofstream output_file;\n")
     main_file.write("    output_file.open(output_path, std::ios::app);\n")
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
-def write_subtile_paths(main_file, batch_size, mode):
-    if(mode == 'rtl'):
-        main_file.write("    if (mode == \"tiling\") {\n")
-        main_file.write("        subtile_paths_printer(subtile_paths, " + str(args.comal_batch_size) + ");\n")
-        main_file.write("    }\n")
+def write_subtile_paths(main_file, output_dir, kernel_name, batch_size):
+    main_file.write("    if (mode == \"tiling\") {\n")
+    main_file.write("        subtile_paths_printer(subtile_paths, std::string(\"" + output_dir + "\"), std::string(\"" + kernel_name + "\"), " + str(batch_size) + ");\n")
+    main_file.write("    }\n")
 
 if __name__ == "__main__":
 
@@ -456,7 +457,8 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
-    parser.add_argument("-w", "--workspace", type=int, default=0)
+    parser.add_argument("-w", "--workspace", action="store_true")
+    parser.add_argument("-o", "--output_dir", type=str, default="output", help="Output directory for the generated tiles")
 
     args = parser.parse_args()
 
@@ -470,6 +472,15 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
+
+    # create the required directories
+    if os.path.exists("./lego_scratch"):
+        shutil.rmtree("./lego_scratch")
+    os.mkdir("./lego_scratch")
+    
+    if os.path.exists(os.path.join(args.output_dir, app_name)):
+        shutil.rmtree(os.path.join(args.output_dir, app_name))
+    os.mkdir(os.path.join(args.output_dir, app_name))
 
     mapping_dict = {}
 
@@ -499,7 +510,6 @@ if __name__ == "__main__":
         tensor_schedule.append(ap_source_map[key])
         tensor_schedule.append(cp_source_map[key])
         tensor_schedule.append(cg_source_map[key])
-
         tensor_size = []
         id_list = op[key]
 
@@ -565,7 +575,7 @@ if __name__ == "__main__":
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
-    main_file.write("double* subtile_gold" + stmt + " {\n")
+    main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
     for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
@@ -606,7 +616,7 @@ if __name__ == "__main__":
     main_file.write("}\n")
     main_file.write("\n")
 
-    main_file.write("double* read_subtile_output(std::string subtile_path) {\n")
+    main_file.write("float* read_subtile_output(std::string subtile_path) {\n")
     subtile_output_decleration(main_file, cg_dest_id, cg_split_factor, scalar)
     rtl_output_dest_id = {}
     for key in cg_dest_id.keys():
@@ -646,9 +656,9 @@ if __name__ == "__main__":
 
     stmt = stmt + ")"
 
-    main_file.write("double* tile_operate" + stmt + " {\n")
+    main_file.write("float* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name)
     main_file.write("\n")
 
     if(workspace):
@@ -718,14 +728,14 @@ if __name__ == "__main__":
     # generate code that applies the activation function specified in the argument
     apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
 
-
-    if(workspace):
-        # generate code that write the output matrix to file
-        write_output(main_file, ap_split_factor, ap_dest_id, scalar)
+    # generate code that write the output matrix to file
+    if (workspace):
+        write_output(main_file, ap_split_factor, ap_dest_id, scalar, args.output_dir, app_name)
         main_file.write("\n")
 
     # genearte the toml path list file for comal
-    write_subtile_paths(main_file, args.comal_batch_size, mode)
+    if mode == "rtl":
+        write_subtile_paths(main_file, args.output_dir, app_name, args.comal_batch_size)
 
     main_file.write("\n")
     main_file.write("    return 0;\n")

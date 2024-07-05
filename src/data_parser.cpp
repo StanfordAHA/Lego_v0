@@ -17,8 +17,8 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
     return 0;
 }
 
-int build_vec_val(std::vector<double> &vec, std::string file_path) {
-    double val;
+int build_vec_val(std::vector<float> &vec, std::string file_path) {
+    float val;
     ifstream input_file(file_path);   
 	if (input_file.good()) {
     	while(input_file >> setprecision(30) >> val){
@@ -56,7 +56,7 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 	return 0;
 }
 
-int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<double> mode_0, std::string dtype){
+int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype){
 
 	if(dtype == "int"){
 		header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
@@ -79,7 +79,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	}
 	
 	// if(dtype == "float"){
-		// Add functions to store double data to bfloat16 hex
+		// Add functions to store float data to bfloat16 hex
 	// 	}
 
 	return 0;
@@ -110,7 +110,7 @@ int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std:
 	return 0;
 }
 
-int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, std::string tensor_name) {
+int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, std::string tensor_name) {
 
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_vals";
 	ofstream output_file(output_file_name.c_str());
@@ -118,7 +118,7 @@ int rtl_vals_data_printer(std::vector<double> mode_0, std::string output_path, s
 	for (int pA = 0; pA < mode_0.size(); pA++) {
 		// FIXME: Temporary fix to avoid precision loss
 		// TODO: Find a better way to set the digit precision
-		output_file << setprecision(30) << mode_0[pA];
+		output_file << std::fixed << setprecision(30) << mode_0[pA];
 		output_file << "\n";
 	}
 	return 0;
@@ -157,7 +157,7 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	return 0;
 }
 
-int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
+int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
 
 	if(dtype == "int"){
 
@@ -168,7 +168,7 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
         	if(pA != output_subtile_size - 1){
             	output_gold_file << ", ";
         	}
-    	}
+    	} 
     	output_gold_file << "};\n";
 	} 
 
@@ -179,20 +179,32 @@ int output_subtile_printer(double *op_vals, int output_subtile_size, int curr_su
     return 0;
 }
 
-int subtile_paths_printer(const std::vector<std::string> & subtile_paths, const int &batch_size) {
+int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
+						  const std::string &output_dir,
+						  const std::string &kernel_name, 
+						  const int &batch_size) {
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = "./" + output_dir + "/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
 		// prefix fields required by comal
 		subtile_paths_file << "[sam_config]" << "\n";
+		subtile_paths_file << "name = \"" << kernel_name << "\"\n";
 		subtile_paths_file << "sam_path = [ \n";
 
+		std::string path_prefix = "output/" + kernel_name + "/";
+
 		for (int j = 0; j < batch_size && i+j < subtile_paths.size(); j++) {
-			subtile_paths_file << "    \"" << subtile_paths[i+j] << "\",\n";
+			std::string subtile_path = subtile_paths[i+j];
+			std::string::size_type i = subtile_path.find(path_prefix);
+			if (i != std::string::npos) {
+				subtile_path.erase(i, path_prefix.length());
+			}
+
+			subtile_paths_file << "    \"" << subtile_path << "\",\n";
 		}
 
 		subtile_paths_file << "    ]";

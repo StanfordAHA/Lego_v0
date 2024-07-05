@@ -19,7 +19,7 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
 cg_extents1 build_extents_1(cg_extents1 op_extents, int **store_subtile_op, int id_store_op);
 cg_extents2 build_extents_2(cg_extents2 op_extents, int **store_subtile_op, int id_store_op);
 cg_extents3 build_extents_3(cg_extents3 op_extents, int **store_subtile_op, int id_store_op);
-int rtl_output_subtile_printer(double *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file);
+int rtl_output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file);
 int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string mode_name, int dim1, int dim2);
 tile1 tensor_zero_op_1(tile1 tile_op);
 tile2 tensor_zero_op_2(tile2 tile_op);

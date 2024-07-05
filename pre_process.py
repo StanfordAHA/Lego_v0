@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
-    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
-    # InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
+    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
+    InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
@@ -227,7 +227,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor = inputCache.load(frostt_tensor, False)
     elif tensor_type == "sparse_ml":
         inputCache = InputCacheSparseML()
-        tensor_path = os.path.join(SPARSE_ML_PATH, input_path + ".npy")
+        tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
     else:

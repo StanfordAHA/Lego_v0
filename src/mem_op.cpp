@@ -6,7 +6,7 @@ tile1 tensor_mem_op_1(int **tensor_op, int index){
     int *crd1 = tensor_op[3];
     int *pos2 = tensor_op[4];
     int *crd2 = tensor_op[5];
-    double *vals = (double *) tensor_op[6];
+    float *vals = (float *) tensor_op[6];
     
     tile1 tile_op;
     
@@ -38,7 +38,7 @@ tile2 tensor_mem_op_2(int **tensor_op, int index){
 	int *crd3 = tensor_op[9];
 	int *pos4 = tensor_op[10];
 	int *crd4 = tensor_op[11];
-	double *vals = (double *) tensor_op[12];
+	float *vals = (float *) tensor_op[12];
 
     tile2 tile_op;
 
@@ -99,7 +99,7 @@ tile3 tensor_mem_op_3(int **tensor_op, int index){
         int *crd5 = tensor_op[15];
         int *pos6 = tensor_op[16];
         int *crd6 = tensor_op[17];
-        double *vals = (double *) tensor_op[18];
+        float *vals = (float *) tensor_op[18];
     
         tile3 tile_op;
     
@@ -181,7 +181,7 @@ subtile1 tile_mem_op_1(tile1 tile_op, int index){
 
     int *pos1 = tile_op.pos2.data();
     int *crd1 = tile_op.crd2.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
 
     subtile1 subtile_op;
 
@@ -203,7 +203,7 @@ subtile2 tile_mem_op_2(tile2 tile_op, int index){
     int *crd1 = tile_op.crd3.data();
     int *pos2 = tile_op.pos4.data();
     int *crd2 = tile_op.crd4.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
 
     subtile2 subtile_op;
 
@@ -233,7 +233,7 @@ subtile3 tile_mem_op_3(tile3 tile_op, int index){
     int *crd2 = tile_op.crd5.data();
     int *pos3 = tile_op.pos6.data();
     int *crd3 = tile_op.crd6.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
 
     subtile3 subtile_op;
 
@@ -269,7 +269,7 @@ cg_subtile1 cg_tile_mem_op_1(cg_subtile1 cg_subtile_op, int **store_subtile_op, 
     
     int *pos1 = tile_op.pos2.data();
     int *crd1 = tile_op.crd2.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
     
     int stile_pos1_len = 2;	
     int stile_crd1_len = pos1[index + 1] - pos1[index];
@@ -310,7 +310,7 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     int *crd1 = tile_op.crd3.data();
     int *pos2 = tile_op.pos4.data();
     int *crd2 = tile_op.crd4.data();
-    double *vals = tile_op.vals.data();
+    float *vals = tile_op.vals.data();
 
     int stile_pos1_len = 2;	
 	int stile_pos2_len = pos1[index + 1] - pos1[index] + 1;
@@ -473,7 +473,7 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         int *crd2 = tile_op.crd5.data();
         int *pos3 = tile_op.pos6.data();
         int *crd3 = tile_op.crd6.data();
-        double *vals = tile_op.vals.data();
+        float *vals = tile_op.vals.data();
     
         int stile_pos1_len = 2;	
         int stile_pos2_len = pos1[index + 1] - pos1[index] + 1;
@@ -651,7 +651,7 @@ int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string
 
 }
 
-int rtl_output_subtile_printer(double *A_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file){
+int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file){
 
     for (int pA = 0; pA < output_subtile_size; pA++) {
         output_gold_file << A_vals[pA];

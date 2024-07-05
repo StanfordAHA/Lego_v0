@@ -1,5 +1,5 @@
-numops: 2
-stmt: X(ij) = B(ik) * C(kj) 
+app_name: matmul_ijk_crddrop_gcn_layer2_adj_src_scale
+stmt: X(i, j) = B(i, k) * C(k, j) 
 schedule_ap:   [ijk]
 schedule_cp:   [ijk]
 schedule_cgra: [ijk]
