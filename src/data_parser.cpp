@@ -351,7 +351,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < mode" << i << "_stream_size; i" << i << "++){" << "\n";
 	output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + i" << i << "];" << "\n";
 	i++;
-	output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i << " + 1];" << "\n";
+	output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 1];" << "\n";
 
 	for(int i = 1; i < tensor_dim; i++){
 		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < x" << i << "_dim; i" << i << "++){" << "\n";
@@ -361,7 +361,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		}
 		else{
 			int j = i + 1; 
-			output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j << " + 1];" << "\n";
+			output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 1];" << "\n";
 		}
 	}
 

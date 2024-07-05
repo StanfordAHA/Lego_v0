@@ -530,7 +530,7 @@ if __name__ == "__main__":
         nnz            = tensor_nnz_dict[key]
         dtype          = tensor_dtype_dict[key]
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype, app_name)    
     
     workspace = args.workspace
 

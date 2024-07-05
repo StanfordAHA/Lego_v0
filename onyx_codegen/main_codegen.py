@@ -73,6 +73,7 @@ def main_block_2(file, mapping_dict, op_list):
     file.write("    uint16_t* input_read_base = AHASOC_CGRA_DATA_BASE;\n")
     
     num_tiles = 0
+
     for op in op_list:
         num_tiles += len(mapping_dict[op]) 
 
