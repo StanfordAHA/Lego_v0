@@ -199,7 +199,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, density, gold_check, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, dtype):
 
     tensor = None
     cwd = os.getcwd()
