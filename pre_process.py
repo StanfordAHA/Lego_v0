@@ -11,13 +11,16 @@ import pickle
 import random
 import sparse
 import sys
+import math
 
 from pathlib import Path
+from pydoc import locate
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
     FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
     InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
+from lassen.utils import float2bfbin, bfbin2float
 
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
     
@@ -195,7 +198,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, nnz, gold_check, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, transpose, density, gold_check, dtype):
 
     tensor = None
     cwd = os.getcwd()
@@ -204,9 +207,18 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     if tensor_type == "gen":
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
-        nnz = int(np.prod(size) * nnz / 100)
-        if(dtype == "float"):
-            tensor = sparse.COO(sparse.random(size, nnz=nnz))
+        tensor = None
+        value_cap = int(math.pow(2, 8)) - 1
+        tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+        tensor = tensor.astype(locate(dtype))
+        num_zero = int(np.prod(tensor.shape) * (1 - density / 100))
+        zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
+        tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
+        for idx, val in np.ndenumerate(tensor):
+            if val != 0:
+                tensor[idx] = bfbin2float(float2bfbin(val))
+        tensor = scipy.sparse.coo_array(tensor)
+        tensor = sparse.COO(tensor)
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
