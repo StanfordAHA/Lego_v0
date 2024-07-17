@@ -85,6 +85,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
                     n_lists[idx1][i] = n_lists[idx1][i] // tile_dims[level][crd_dim]
                     n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
 
+
     tiled_COO = sparse.COO(n_lists, d_list)
 
     # tiled_coo.coords holds the COO coordinates for each level
@@ -204,6 +205,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     cwd = os.getcwd()
     inputCache = None
 
+    other_nonempty = True
+
     if tensor_type == "gen":
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
@@ -222,29 +225,105 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
-        tensor = sparse.COO(tensor)
     elif tensor_type == "ss":
         # Reading a SuiteSparse tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheSuiteSparse
         tensor_path = os.path.join(SUITESPARSE_PATH, input_path + ".mtx")
         ss_tensor = SuiteSparseTensor(tensor_path)
         tensor = inputCache.load(ss_tensor, False)
-        tensor = sparse.COO(tensor)
     elif tensor_type == "frostt":
         # Reading a FROSTT tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheTensor
         tensor_path = os.path.join(FROSTT_PATH, input_path + ".tns")
         frostt_tensor = FrosttTensor(tensor_path)
         tensor = inputCache.load(frostt_tensor, False)
-        tensor = sparse.COO(tensor)
     elif tensor_type == "sparse_ml":
         inputCache = InputCacheSparseML()
         tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
-        tensor = sparse.COO(tensor)
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
+
+    if gen_tensor == "t":
+        tensor = tensor.transpose()
+    elif gen_tensor == "s":
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        tensor = shifted
+    elif gen_tensor == "st": 
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        tensor = shifted.transpose()
+    elif gen_tensor == "ss":
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
+        tensor = shifted2
+    elif gen_tensor == "vec_col":
+        rows, cols = tensor.shape
+        tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
+        if other_nonempty: tensor_c[0] = 1
+        tensor = tensor_c
+    elif gen_tensor == "vec_row":
+        rows, cols = tensor.shape
+        tensor_c = scipy.sparse.random(rows, 1, data_rvs=np.ones).toarray().flatten()
+        if other_nonempty: tensor_c[0] = 1 
+        tensor = tensor_c
+    elif gen_tensor == "s3": 
+        shifted = PydataTensorShifter().shiftLastMode(tensor)
+        tensor = shifted
+    elif gen_tensor == "tensor3_ttv":
+        tensorName = input_path
+        variant = "mode2"  
+        path = constructOtherVecKey(tensorName, variant)
+        tensor_c_loader = FrosttTensor(path)
+        tensor_c = tensor_c_loader.load().todense()
+        size_i, size_j, size_k = tensor.shape  # i,j,k
+        tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
+        if other_nonempty:
+            tensor_c[0] = 1
+        tensor = tensor_c   
+    elif gen_tensor == "tensor3_ttm":
+        tensorName = input_path
+        variant = "mode2_ttm"
+        path = constructOtherMatKey(tensorName, variant)
+        matrix_c_loader = FrosttTensor(path)
+        matrix_c = matrix_c_loader.load().todense()
+        # size_i, size_j, size_l = tensor.shape  # i,j,k
+        # print("OTHER SIZES: ", size_i, size_j, size_l)
+        # # dimension_k = random.randint(min(tensor.shape), 10)
+        # dimension_k = 3
+        # tensor_c = scipy.sparse.random(dimension_k, size_l, density=0.25, data_rvs=np.ones).toarray()
+        # tensor_c = scipy.sparse.random(dimension_k, size_l, data_rvs=np.ones).toarray().flatten()
+        if other_nonempty:
+            matrix_c[0] = 1
+        tensor = matrix_c
+    elif gen_tensor == "tensor3_mttkrp1":
+        size_i, size_j, size_l = tensor.shape  
+        tensorName = input_path
+        variant = "mode1_mttkrp"
+        path = constructOtherMatKey(tensorName, variant)
+        matrix_c_loader = FrosttTensor(path)
+        matrix_c = matrix_c_loader.load().todense()
+        if other_nonempty:
+            matrix_c[0] = 1
+        tensor = matrix_c
+    elif gen_tensor == "tensor3_mttkrp2":
+        size_i, size_j, size_l = tensor.shape
+        tensorName = input_path
+        variant = "mode2_mttkrp"
+        path = constructOtherMatKey(tensorName, variant)
+        matrix_d_loader = FrosttTensor(path)
+        matrix_d = matrix_d_loader.load().todense()
+        # size_k = random.randint(min(tensor.shape), 10)
+        # # C & D are dense according to TACO documentation
+        # matrix_c = scipy.sparse.random(size_j, size_k, density=1, data_rvs=np.ones).toarray()
+        # matrix_d = scipy.sparse.random(size_j, size_l, density=1, data_rvs=np.ones).toarray()
+        if other_nonempty:
+            matrix_d[0] = 1
+        tensor = matrix_d
+    elif gen_tensor != "0":
+        raise NotImplementedError
+
+    tensor = sparse.COO(tensor)
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
@@ -260,4 +339,3 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
 
     tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, dtype)
-

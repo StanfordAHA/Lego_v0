@@ -1,2 +1,2 @@
 B:ss:football:s:0:60:int
-C:ss:football:s:0:60:int
+C:ss:football:s:st:60:int
