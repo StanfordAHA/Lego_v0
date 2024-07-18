@@ -6,13 +6,14 @@ parser = argparse.ArgumentParser(
                 description='Check the Lego output against the gold input matrix',)
 
 parser.add_argument('--gold', type=str, help='The path to the gold matrix',)
+parser.add_argument('--input', type=str, help='The path to the input matrix',)
 
 args = parser.parse_args()
 
 gold_mat = np.load(args.gold)
 
 output_mat = np.zeros(gold_mat.shape, dtype=np.float32)
-with open("./lego_scratch/data_files/output.txt", "r") as f:
+with open(args.input, "r") as f:
     for i in range(gold_mat.shape[0]):
         for j in range(gold_mat.shape[1]):
             output_mat[i][j] = float(f.readline().strip())
