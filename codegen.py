@@ -174,41 +174,42 @@ def get_stmt(stmt, id_dict, dtype):
     if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         left = get_stmt(stmt.left, id_dict)
         right = get_stmt(stmt.right, id_dict)
-        if(dtype == "int"):
-            if(stmt.op == '+'):
-                lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
-            if(stmt.op == '*'):
-                lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
-        elif(dtype == "float"):
+        if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
                 return lower_stmts
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
                 return lower_stmts
-
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+  
     elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
         left = get_stmt(stmt.left, id_dict)
         if(id_dict[stmt.right] == ['-']):
             right = "0"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"  
-        if(dtype == "int"):
-            if(stmt.op == '+'):
-                lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
-            if(stmt.op == '*'):
-                lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
-        elif(dtype == "float"):
+        if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
                 return lower_stmts
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
                 return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+        
 
     elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         right = get_stmt(stmt.right, id_dict)
@@ -216,20 +217,21 @@ def get_stmt(stmt, id_dict, dtype):
             left = "0"
         else:
             left =  stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
-        if(dtype == "int"):
-            if(stmt.op == '+'):
-                lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
-            if(stmt.op == '*'):
-                lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
-        elif(dtype == "float"):
+        if(dtytpe == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
                 return lower_stmts
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
                 return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+            
 
     else:
         if stmt.left is not None and (id_dict[stmt.left] == ['-']):
@@ -241,20 +243,19 @@ def get_stmt(stmt, id_dict, dtype):
             right = "0"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"
-
-        if(dtype == "int"):
-            if(stmt.op == '+'):
-                lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
-            if(stmt.op == '*'):
-                lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
-        elif(dtype == "float"):
+        if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
                 return lower_stmts
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
+                return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
                 return lower_stmts
 
         if stmt.op is None:
@@ -838,16 +839,16 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
     
         stmt += ";"
         stmt += "\n"
-        if(dtype == "int"):
-            if(scalar != 1):
-                stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
-            else: 
-                stmt += "    " * (level + 2) + dest_read + "_vals[0] += " + op_stmt + ";"   
-        elif(dtype == "float"):
+        if(dtype == "bf16"):
             if (scalar != 1):
                 stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] = bf16_add(" + dest_read + "_vals[p" + dest_read + "], " + op_stmt + ");"
             else:
                 stmt += "    " * (level + 2) + dest_read + "vals[0] = bf16_add(" + dest_read + "_vals[0], " + op_stmt + ");"
+        else:
+            if(scalar != 1):
+                stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
+            else: 
+                stmt += "    " * (level + 2) + dest_read + "_vals[0] += " + op_stmt + ";"   
         stmt += "\n"
   
         return [stmt]
