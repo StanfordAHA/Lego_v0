@@ -16,10 +16,10 @@ import math
 from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
-    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
-    InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
+    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
+    # InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
-from lassen.utils import float2bfbin, bfbin2float
+# from lassen.utils import float2bfbin, bfbin2float
 
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
     
@@ -251,7 +251,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif gen_tensor == "s":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         tensor = shifted
-    elif gen_tensor == "st": 
+    elif gen_tensor == "shift_transpose": 
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         tensor = shifted.transpose()
     elif gen_tensor == "ss":

@@ -458,7 +458,8 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
-    parser.add_argument("-o", "--output_dir", type=str, default="output", help="Output directory for the generated tiles")
+    parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
+    parser.add_argument("-n", "--no_preprocess", type=str, default="no")
 
     args = parser.parse_args()
 
@@ -474,9 +475,9 @@ if __name__ == "__main__":
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
 
     # create the required directories
-    if os.path.exists("./lego_scratch"):
-        shutil.rmtree("./lego_scratch")
-    os.mkdir("./lego_scratch")
+    # if os.path.exists("./lego_scratch"):
+    #    shutil.rmtree("./lego_scratch")
+    # os.mkdir("./lego_scratch")
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
@@ -502,7 +503,17 @@ if __name__ == "__main__":
         unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
         unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
 
+        bitstream_file = "./input/bitstream.bs"
+        bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
+        convert_bs(bitstream_file, bitstream_header_file)
 
+        reg_write_file = "./input/reg_write.h"
+        with open(reg_write_file, 'r') as file:
+            data = file.read()
+            data = data.replace('glb_reg_write', 'HAL_Cgra_Glb_WriteReg')
+
+        with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
+            file.write(data)
     
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -530,7 +541,8 @@ if __name__ == "__main__":
         nnz            = tensor_nnz_dict[key]
         dtype          = tensor_dtype_dict[key]
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
+        if(args.no_preprocess != "yes"): 
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
     
     workspace = args.workspace
 

@@ -3,16 +3,13 @@
 import sys
 
 
-def convert_bs(bs_file_name, new_name):
+def convert_bs(bs_file_name, f):
 
     bs_lines = []
-    bs_file_str = new_name
-
     with open(bs_file_name) as bs_file:
         for bs_line in bs_file:
             bs_lines.append(bs_line)
 
-    f = open(bs_file_str+"_script.h", "w")
     # defines
     f.write("#ifndef BITSTREAM_H\n")
     f.write("#define BITSTREAM_H\n\n")
@@ -35,7 +32,3 @@ def convert_bs(bs_file_name, new_name):
 
     # defines
     f.write("#endif  // BITSTREAM_H\n")
-
-
-if __name__ == '__main__':
-    convert_bs(bs_file_name, new_name)

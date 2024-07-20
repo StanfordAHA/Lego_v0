@@ -34,7 +34,6 @@ int build_vec_val(std::vector<float> &vec, std::string file_path) {
 
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0){
 
-	
 	header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
 	header_file << "\n";		
 	
@@ -70,7 +69,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
-			header_file << "0x" << hex03 % int(mode_0[i]);
+			header_file << "0x" << hex03 % int(abs(mode_0[i]));
 		}
 		header_file << "\n";
 		header_file << "};"; 
