@@ -530,7 +530,7 @@ if __name__ == "__main__":
         nnz            = tensor_nnz_dict[key]
         dtype          = tensor_dtype_dict[key]
 
-        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype, app_name)    
+        pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
     
     workspace = args.workspace
 
@@ -563,6 +563,8 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write("#include \"src/activation.h\"")
     main_file.write("\n")
+    main_file.write("#include \"src/bf16_op.h\"")
+    main_file.write("\n")
     main_file.write("\n")
 
     # CGRA gold code
@@ -578,7 +580,7 @@ if __name__ == "__main__":
     main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")

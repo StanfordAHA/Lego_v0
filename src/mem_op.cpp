@@ -654,7 +654,7 @@ int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string
 int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file){
 
     for (int pA = 0; pA < output_subtile_size; pA++) {
-        output_gold_file << A_vals[pA];
+        output_gold_file << std::fixed << setprecision(30) << A_vals[pA];
         output_gold_file << "\n";
     }
     

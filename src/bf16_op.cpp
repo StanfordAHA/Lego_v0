@@ -30,7 +30,7 @@ float bf16_add(float input1, float input2) {
     std::bitset<16> hfrac_bit(hfrac);
 
     // rounding logic
-    if (hfrac_bit[15] == 1 && hfrac_bit[14] == 0 && hfrac_bit[13] == 0) {
+    if (hfrac_bit.to_ulong() == 32768) {
         // tie, round to even 
         if (lfrac_bit[0] == 1) {
             if (lfrac_bit == std::bitset<7>(0x7F)) {
@@ -40,7 +40,7 @@ float bf16_add(float input1, float input2) {
             lfrac = lfrac + 1;
         }
         
-    } else if (hfrac_bit[15] == 1) {
+    } else if (hfrac_bit.to_ulong() > 32768) {
         // round up
         if (lfrac_bit == std::bitset<7>(0x7F)) {
                 // roll over mantissa and increase exponent

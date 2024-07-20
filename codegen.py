@@ -165,7 +165,7 @@ def expr_to_lattice(expr, id_dict, id):
     lattice = get_lattice(stmt, id_dict, id)
     return lattice
 
-def get_stmt(stmt, id_dict):
+def get_stmt(stmt, id_dict, dtype):
     # When the input stmt is a identity expression
     # stmt.right stores the variable
     # stmt.left and stmt.op are both None
@@ -174,26 +174,42 @@ def get_stmt(stmt, id_dict):
     if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         left = get_stmt(stmt.left, id_dict)
         right = get_stmt(stmt.right, id_dict)
-        if(stmt.op == '+'):
-            lower_stmts = "(" + left + "+" + right + ")"
-            return lower_stmts
-        if(stmt.op == '*'):
-            lower_stmts = "(" + left + "*" + right + ")"
-            return lower_stmts
-
+        if(dtype == "bf16"):
+            if(stmt.op == '+'):
+                lower_stmts = "bf16_add(" + left + ", " + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "bf16_mul(" + left + ", " + right + ")"
+                return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+  
     elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
-
         left = get_stmt(stmt.left, id_dict)
         if(id_dict[stmt.right] == ['-']):
             right = "0"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"  
-        if(stmt.op == '+'):
-            lower_stmts = "(" + left + " + " + right + ")"
-            return lower_stmts
-        if(stmt.op == '*'):  
-            lower_stmts = "(" + left + " * " + right + ")"
-            return lower_stmts
+        if(dtype == "bf16"):
+            if(stmt.op == '+'):
+                lower_stmts = "bf16_add(" + left + ", " + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "bf16_mul(" + left + ", " + right + ")"
+                return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+        
 
     elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
         right = get_stmt(stmt.right, id_dict)
@@ -201,12 +217,21 @@ def get_stmt(stmt, id_dict):
             left = "0"
         else:
             left =  stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
-        if(stmt.op == '+'):
-            lower_stmts = "(" + left + " + " + right + ")"
-            return lower_stmts
-        if(stmt.op == '*'):
-            lower_stmts = "(" + left + " * " + right + ")"
-            return lower_stmts
+        if(dtytpe == "bf16"):
+            if(stmt.op == '+'):
+                lower_stmts = "bf16_add(" + left + ", " + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "bf16_mul(" + left + ", " + right + ")"
+                return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
+            
 
     else:
         if stmt.left is not None and (id_dict[stmt.left] == ['-']):
@@ -218,14 +243,20 @@ def get_stmt(stmt, id_dict):
             right = "0"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"
-
-        if(stmt.op == '+'):
-            lower_stmts = "(" + left + " + " + right + ")"
-            return lower_stmts
-
-        if(stmt.op == '*'):
-            lower_stmts = "(" + left + " * " + right + ")"
-            return lower_stmts
+        if(dtype == "bf16"):
+            if(stmt.op == '+'):
+                lower_stmts = "bf16_add(" + left + ", " + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "bf16_mul(" + left + ", " + right + ")"
+                return lower_stmts
+        else:
+            if(stmt.op == '+'):
+                lower_stmts = "(" + left + "+" + right + ")"
+                return lower_stmts
+            if(stmt.op == '*'):
+                lower_stmts = "(" + left + "*" + right + ")"
+                return lower_stmts
 
         if stmt.op is None:
             assert stmt.right is not None
@@ -759,7 +790,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
     
         return [stmt]
 
-def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, dest, split_dict, scalar):
+def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, dest, split_dict, scalar, dtype):
 
         stmt = ""
     
@@ -789,7 +820,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
             if op not in valid_op_list: 
                 temp_id_dict[op] = ['-']
 
-        op_stmt = get_stmt(expr_to_stmt(expr), temp_id_dict)
+        op_stmt = get_stmt(expr_to_stmt(expr), temp_id_dict, dtype)
 
         for keys in dest.keys():
             dest_read = keys
@@ -808,18 +839,21 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
     
         stmt += ";"
         stmt += "\n"
-
-        if(scalar != 1):
-            stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
-        else: 
-            stmt += "    " * (level + 2) + dest_read + "_vals[0] += " + op_stmt + ";"    
-        
+        if(dtype == "bf16"):
+            if (scalar != 1):
+                stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] = bf16_add(" + dest_read + "_vals[p" + dest_read + "], " + op_stmt + ");"
+            else:
+                stmt += "    " * (level + 2) + dest_read + "vals[0] = bf16_add(" + dest_read + "_vals[0], " + op_stmt + ");"
+        else:
+            if(scalar != 1):
+                stmt += "    " * (level + 2) + dest_read + "_vals[p" + dest_read + "] += " + op_stmt + ";"    
+            else: 
+                stmt += "    " * (level + 2) + dest_read + "_vals[0] += " + op_stmt + ";"   
         stmt += "\n"
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace):
-
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, dtype=None):
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
@@ -861,9 +895,9 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 elif(target == "cp"):
                     stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace))
                 elif(target == "cg"):
-                    stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar))
+                    stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, dtype))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         
