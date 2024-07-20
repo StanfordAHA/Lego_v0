@@ -1,6 +1,6 @@
 ## Lego_v0 
 
-### Setup
+### ONYX Setup
 
 On Kiwi clone sam inside the Lego_v0 repository and checkout branch with fixes: 
 
@@ -33,27 +33,64 @@ export FROSTT_FORMATTED_PATH=/nobackup/$(whoami)/sam/FROST_FORMATTED
 #### 
 -- program.txt
 ```
-numops: 2                                         // Number of operands
-stmt: A(ij) = B(ik) * C(kj)                       // Expression
-schedule_ap:   [ikj]                              // Schedule on tile-coordinates
-schedule_cp:   [ikj]                              // Schedule on subtile-coordinates
-schedule_cgra: [ijk]                              // Schedule on cgra-coordinates
-i:split:240:30                                    // Split for the index i
-j:split:240:30                                    // Split for the index j
-k:split:240:30                                    // Split for the index k
+app_name: matmul_ijk_football                   \\ Name of the app
+stmt: X(i, j) = B(i, k) * C(k, j)               \\ Tensor expression  
+schedule_ap:   [ikj]                            \\ Schedule to pair the tiles
+schedule_cp:   [ikj]                            \\ Schedule to pair the subtiles
+schedule_cgra: [ikj]                            \\ Schedule on the CGRA 
+i:split:10000:10000:30                          \\ <tensor-dim>:<tile-dim>:<subtile-dim> 
+j:split:10000:10000:30
+k:split:10000:10000:30
+```
+- So, if we need (30, 40) subtiles for B and (40, 30) subtiles for C, the schedule would be: 
+```
+i:split:10000:10000:30                          
+j:split:10000:10000:30
+k:split:10000:10000:40
 ```
 ####
 -- tensor.txt 
 ```
-B:ss:nemeth01     // tensor_name:app_type:app_name (ss - Suitesparse, nemeth01 - app_name)
-C:ss:nemeth02
+tensor_name:dataset:dataset_name:gcn_flag sparse/dense:get_other_tensor_flag:random_matrix_sparsity:data_type
+B:ss:quilp:s:0:60:int 
+C:ss:quilp:s:shift_transpose:60:int
 ```
-####
--- To run: 
-```
-chmod  +x lego_run.sh
-./lego_run.sh rtl // "rtl" is an optional flag for rtl test-outputs
-```
+- dataset:
+  - ss: SUITESPARSE
+  - frostt: FROSTT
+  - gen: random tensor generation
+  - sparse_ml: Sparse ML datasets
+  - ex: extensor
+  - New datasets could be updated in pre_process.py
 
+- dataset_name: The name of the actual .mtx or .tns file within the dataset
+  
+- GCN Flag <TODO: Bo Wun>
+
+- get_other_tensor_flag:
+  - Process the tensor to generate a new tensor, Ex: shift_transpose, shifts the last mode and transposes the tensor. C = B.T
+  - More operations can be found in pre_process,py
+ 
+- random_matrix_sparsity:    
+  - Percentage sparsity of random matrix being generated
+    
+- data_type: int - int16, float - bfloat16
 ####
-Output tiles/sub-tiles are available at ```lego_scratch/data_files/```. 
+-- bitstream.bs
+
+-- design_meta.json
+
+-- reg_write.h
+
+All the above files are to be placed within: ```input/```
+
+### Organisation
+
+- ```main.py``` generates the ```main.cpp``` code and the tiled_CSF formats for the tensors stored in ```lego_scratch/```
+- Executing ```main.cpp``` performs the subtile pairing and packing of data into the ONYX format
+- Execution: ```python3 main.py --mode onyx``` // Check other arguments that might be useful
+- ```./lego_onyx_codegen.sh```          // For all apps 
+- ```./lego_onyx_matmul_codegen.sh```   // For matmul data generation, with different schedules for tiling and pairing
+- General output scripts are available at ```lego_scratch/```
+- Paired sub-tiles, extents and gold data are available at ```lego_scratch/app_name/```
+
