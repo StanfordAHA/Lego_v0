@@ -355,7 +355,6 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
         main_file.write("    " + "int p" + key + ";\n")
 
 def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
-    # dest_name = "Res"
     for name, id in dest_id.items():
         dest_name = name
     # declare the vectors 
@@ -401,6 +400,15 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("        " + key + "_output_vals[p" + key + "] = 0;\n")
         main_file.write("    }\n")
 
+        main_file.write("\n")
+        main_file.write("    " + "if (")
+        for idx, _ in enumerate(dest_id[dest_name]):
+            if idx != 0:
+                main_file.write(" && ")
+            main_file.write(f"{dest_name}{idx + 1}_crd_vec.size() == 0")
+        main_file.write(") {\n")
+        main_file.write(f"        return {dest_name}_output_vals;\n")
+        main_file.write("    }\n")
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 

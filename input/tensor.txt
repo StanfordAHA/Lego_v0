@@ -1,2 +1,7 @@
+<<<<<<< Updated upstream
 B:ss:football:s:0:60:int
 C:ss:football:s:shift_transpose:60:int
+=======
+B:gen:football:s:0:60:int
+C:gen:football:s:0:60:int
+>>>>>>> Stashed changes
