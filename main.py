@@ -481,11 +481,6 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
-
-    # create the required directories
-    # if os.path.exists("./lego_scratch"):
-    #    shutil.rmtree("./lego_scratch")
-    # os.mkdir("./lego_scratch")
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
