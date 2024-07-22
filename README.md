@@ -4,13 +4,15 @@
 
 Use docker_create.sh to create the docker container and within the docker container:  
 
+-- Within sam:
 ```
-Within sam:
 git checkout mapping_to_cgra
 pip install -r requirements.txt
 pip install -e .
+```
 
-Within Lego_v0
+--  Within Lego_v0
+```
 ./requirements.sh
 ```
 
