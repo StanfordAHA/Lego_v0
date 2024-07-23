@@ -87,27 +87,38 @@ def data_parser(data):
         parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr
+    activation_rule = "activation_" + Word(alphas) + ":" + Word(alphas)
+
+    activation = []
+
+    activation.append(list(activation_rule.parseString(data[4 + num_ids]))[3])
+    activation.append(list(activation_rule.parseString(data[5 + num_ids]))[3])
+    activation.append(list(activation_rule.parseString(data[6 + num_ids]))[3])
+
+    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr = data_parser(data)
+    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation = data_parser(data)
 
     expr = expr.split("=")
     expr = expr[1]
 
     if(level == "ap"): 
         schedule = schedule_1
+        activation = activation[0]
         for id in split_factor:
             split_factor[id].pop()
     elif(level == "cp"):
         schedule = schedule_2
+        activation = activation[1]
         for id in split_factor:
             split_factor[id].pop(0)
     else:
         schedule = schedule_3
+        activation = activation[2]
         for id in split_factor:
             split_factor[id].pop(0)
     dest_id = {}
@@ -146,7 +157,7 @@ def parse(input_file, level):
     else: 
         dest_id = dest
     
-    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar
+    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
 
 def ap_tensor_decleration(main_file, ap_source_id):
 
@@ -412,18 +423,9 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 
-def apply_activation(main_file, ap_split_factor, dest_id, activation_function):
+def apply_activation(main_file, output_tile_size, activation_function):
     if activation_function == "none":
         return
-    output_tile_size = 0
-    dest_name = None
-    for name, id in dest_id.items():
-        dest_name = name
-        for i in id:
-            if output_tile_size == 0:
-                output_tile_size = ap_split_factor[i][0]
-            else:
-                output_tile_size *= ap_split_factor[i][0]
     
     main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
@@ -463,7 +465,6 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--design", type=str, default="./input/design_meta.json")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
-    parser.add_argument("-a", "--activation_function", choices=["none" ,"relu"], default="none")
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
@@ -474,13 +475,13 @@ if __name__ == "__main__":
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar = parse(args.program, level)
+    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation = parse(args.program, level)
 
     level = "cp"
-    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar = parse(args.program, level)
+    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation = parse(args.program, level)
 
     level = "cg"
-    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
+    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
@@ -603,7 +604,12 @@ if __name__ == "__main__":
     for key in dest.keys():
         dest = key
 
-    main_file.write("\n")  
+    main_file.write("\n")
+    cg_tile_size = 1
+    for key in cg_dest_id.keys():
+        for id in cg_dest_id[key]:
+            cg_tile_size *= cg_split_factor[id][1]
+    apply_activation(main_file, cg_tile_size, cg_activation)
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
@@ -694,6 +700,13 @@ if __name__ == "__main__":
         stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
         for line in stmt:
             main_file.write(line)
+        main_file.write("\n")
+
+    cp_tile_size = 1
+    for key in cp_dest_id.keys():
+        for id in cp_dest_id[key]:
+            cp_tile_size *= cp_split_factor[id][0]
+    apply_activation(main_file, cp_split_factor, cp_activation)
     
     main_file.write("\n")
     for key in cg_dest_id.keys():
@@ -743,7 +756,11 @@ if __name__ == "__main__":
         main_file.write("\n")
     
     # generate code that applies the activation function specified in the argument
-    apply_activation(main_file, ap_split_factor, ap_dest_id, args.activation_function)
+    ap_tile_size = 1
+    for key in ap_dest_id.keys():
+        for id in ap_dest_id[key]:
+            ap_tile_size *= ap_split_factor[id][0]
+    apply_activation(main_file, ap_tile_size, ap_activation)
 
     # generate code that write the output matrix to file
     if (workspace):
