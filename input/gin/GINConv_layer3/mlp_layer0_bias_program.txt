@@ -5,3 +5,9 @@ schedule_cp:   [ij]
 schedule_cgra: [ij]
 i:split:3635:240:30
 j:split:64:64:30
+activation_ap:   none
+activation_cp:   none
+activation_cgra: relu
+
+
+
