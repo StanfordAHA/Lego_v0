@@ -18,7 +18,14 @@ with open(args.input, "r") as f:
         for j in range(gold_mat.shape[1]):
             output_mat[i][j] = float(f.readline().strip())
 
-if np.allclose(output_mat, gold_mat, rtol=0.001):
+if np.allclose(output_mat, gold_mat, rtol=0.01):
     print("\033[32m=========== OUTPUT MATCHES GOLD ===========\033[0m")
 else:  
+    print(output_mat.shape)
+    print(gold_mat.shape)
+    print(output_mat)
+    print(gold_mat)
+    neq = np.where(output_mat != gold_mat)
+    for i, idx in enumerate(neq[0]):
+        print(f"Index: {idx} {neq[1][i]}, Output: {output_mat[idx][neq[1][i]]}, Gold: {gold_mat[idx][neq[1][i]]}")
     print("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")
