@@ -1,32 +1,30 @@
 ## Lego_v0 
 
-### ONYX Setup
+### ONYX Docker Setup
 
-On Kiwi clone sam inside the Lego_v0 repository and checkout branch with fixes: 
+Use docker_create.sh to create the docker container and within the docker container:  
 
+-- Within sam:
 ```
-git clone https://github.com/weiya711/sam.git
 git checkout mapping_to_cgra
-```
-
-Follow read me to install sam (do this in a python 3.8.10 env) might be more steps to get it right
-
-```
-python3.8 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt (idk which one)
+pip install -r requirements.txt
 pip install -e .
+```
+
+--  Within Lego_v0
+```
+./requirements.sh
 ```
 
 Your bashrc should have (you might need to mkdir these as well)
 
 ```
-export SUITESPARSE_PATH=/nobackup/owhsu/sparse-datasets/suitesparse/
-export TACO_TENSOR_PATH=/nobackup/owhsu/sparse-datasets/other
-export FROSTT_PATH=/home/avb03/sparse-datasets/tensors/
-export SUITESPARSE_FORMATTED_PATH=/nobackup/$(whoami)/sam/SUITESPARSE_FORMATTED
-export FROSTT_FORMATTED_TACO_PATH=/nobackup/$(whoami)/sam/FROST_FORMATTED_TACO
-export FROSTT_FORMATTED_PATH=/nobackup/$(whoami)/sam/FROST_FORMATTED
+export SUITESPARSE_PATH=/aha/datasets/sparse-datasets/suitesparse/
+export TACO_TENSOR_PATH=/aha/datasets/sparse-datasets/other
+export FROSTT_PATH=/aha/datasets/sparse-datasets/tensors/
+export SUITESPARSE_FORMATTED_PATH=/aha/datasets/sam/SUITESPARSE_FORMATTED
+export FROSTT_FORMATTED_TACO_PATH=/aha/datasets/sam/FROST_FORMATTED_TACO
+export FROSTT_FORMATTED_PATH=/aha/datasets/sam/FROST_FORMATTED
 ```
 ### Input Language 
 
