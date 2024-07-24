@@ -28,4 +28,4 @@ else:
     neq = np.where(output_mat != gold_mat)
     for i, idx in enumerate(neq[0]):
         print(f"Index: {idx} {neq[1][i]}, Output: {output_mat[idx][neq[1][i]]}, Gold: {gold_mat[idx][neq[1][i]]}")
-    print("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")
+    raise ValueError("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")
