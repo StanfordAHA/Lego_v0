@@ -120,6 +120,11 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 		output_file << std::fixed << setprecision(30) << mode_0[pA];
 		output_file << "\n";
 	}
+
+	// TODO: Store integer values to file if dtype is integer 
+	// Propogate data type 
+
+
 	return 0;
 }
 

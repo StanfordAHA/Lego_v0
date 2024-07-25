@@ -1,0 +1,8 @@
+app_name: ctest_output
+stmt: X = B(i, j, k) * C(i, j, k)
+schedule_ap:   [jik]
+schedule_cp:   [kij]
+schedule_cgra: [ijk]
+i:split:32:16:4
+j:split:60:30:10
+k:split:80:40:8

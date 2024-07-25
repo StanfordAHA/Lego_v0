@@ -221,7 +221,11 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
             for idx, val in np.ndenumerate(tensor):
                 if val != 0:
                     tensor[idx] = bfbin2float(float2bfbin(val))
-        tensor = scipy.sparse.coo_array(tensor)
+        if dtype == "int":
+            for idx, val in np.ndenumerate(tensor):
+                if val != 0:
+                    tensor[idx] = np.random.randint(1, 100)
+        # tensor = scipy.sparse.coo_array(tensor)
         tensor = sparse.COO(tensor)
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
