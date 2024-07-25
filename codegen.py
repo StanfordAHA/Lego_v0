@@ -728,8 +728,8 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "else\n"
                     stmt += "    " * (level + 3)
                     stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
-                    stmt += "    " * (level + 2)
                 elif(mode == "onyx"):
+                    stmt += "    " * (level + 2)
                     stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
                     for op in op_list[1:]:  
                         stmt += ", " + "subtile_" + op
@@ -773,6 +773,13 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         for idx in cg_source_map[op]:
                             id = cg_source_id[op][idx]
                             stmt += ", " + str(split_dict[id][1]) 
+                        stmt += ");"
+                        stmt += "\n"
+                        for dest_name, ids in dest.items():
+                            stmt += "    " * (level + 3)
+                            stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + dest_name + "\""
+                            for idx in ids:
+                                stmt += ", " + str(split_dict[idx][0])
                         stmt += ");"
                         stmt += "\n"
                         stmt += "\n"
