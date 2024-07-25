@@ -26,7 +26,7 @@ def tensor_path_type_dict(tensor_path_input):
     tensor_type_dict = {}
     tensor_transpose_dict = {}
     tensor_format_dict = {}
-    tensor_nnz_dict = {} 
+    tensor_density_dict = {} 
     tensor_dtype_dict = {}
 
     tensor_path_dict_keys = [] 
@@ -47,10 +47,10 @@ def tensor_path_type_dict(tensor_path_input):
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
         tensor_format_dict[parsed_data[0]] = parsed_data[3]
         tensor_transpose_dict[parsed_data[0]] = parsed_data[4]
-        tensor_nnz_dict[parsed_data[0]] = int(parsed_data[5])
+        tensor_density_dict[parsed_data[0]] = int(parsed_data[5])
         tensor_dtype_dict[parsed_data[0]] = parsed_data[6]
 
-    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict
+    return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_density_dict, tensor_dtype_dict
 
 def data_parser(data):
 
@@ -468,11 +468,11 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
-    parser.add_argument("-n", "--no_preprocess", type=str, default="no")
+    parser.add_argument("-n", "--no_preprocess", action="store_true")
 
     args = parser.parse_args()
 
-    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_nnz_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
+    tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_density_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
     app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation = parse(args.program, level)
@@ -542,11 +542,11 @@ if __name__ == "__main__":
         tensor_type    = tensor_type_dict[key]
         transpose      = tensor_transpose_dict[key]  
         format         = tensor_format_dict[key]  
-        nnz            = tensor_nnz_dict[key]
+        density        = tensor_density_dict[key]
         dtype          = tensor_dtype_dict[key]
 
-        if(args.no_preprocess != "yes"): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, nnz, args.gold_check, dtype)    
+        if(not args.no_preprocess): 
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype)    
     
     workspace = args.workspace
 
