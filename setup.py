@@ -11,7 +11,8 @@ setup(
     ],
     install_requires=[
         "sam",
-        "lark"
+        "lark",
+        "sparse"
     ],
     python_requires='>=3.6'
 )
