@@ -20,6 +20,10 @@ for app in app_list:
             if regex.match(file):
                 program_file = app + "/" + file
                 tensor_file  = app + "/tensor" + file[7:]
+
+                print(program_file)
+                print(tensor_file)
+
                 os.system("./lego_test_sparse.sh " + program_file + " " + tensor_file)
                 
                 file1 = "lego_scratch/gold_output.txt"
@@ -37,14 +41,10 @@ for app in app_list:
 
                 check = np.allclose(output_mat, gold_mat, rtol=0.0000001)
                 total_count += 1
-                if check: 
-                    print(program_file)
-                    print(tensor_file)
+                if check:                     
                     pass_count += 1
                     print("\033[32m=========== OUTPUT MATCHES GOLD ===========\033[0m")
                 else: 
-                    print(program_file)
-                    print(tensor_file)
                     fail_count += 1
                     print("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")
 

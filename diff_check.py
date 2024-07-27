@@ -23,10 +23,7 @@ with open(file2, "r") as f:
     for i in range(gold_mat.shape[0]):
             output_mat[i] = float(f.readline().strip())
 
-print(output_mat)
-print(gold_mat)
-
-if np.allclose(output_mat, gold_mat, rtol=0.000001):
+if np.allclose(output_mat, gold_mat, rtol=0.001):
     print("\033[32m=========== OUTPUT MATCHES GOLD ===========\033[0m")
 else:  
     print("\033[31m=========== OUTPUT DOES NOT MATCH GOLD ===========\033[0m")

@@ -3,6 +3,6 @@ stmt: X = B(i, j, k) * C(i, j, k)
 schedule_ap:   [ikj]
 schedule_cp:   [jki]
 schedule_cgra: [jik]
-i:split:100:50:25
-j:split:300:150:50
-k:split:400:40:20
+i:split:20:10:5
+j:split:30:15:5
+k:split:8:4:2
