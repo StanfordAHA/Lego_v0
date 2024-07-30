@@ -1,0 +1,3 @@
+B:gen:football:s:0:50:int
+C:gen:football:s:0:70:int
+D:gen:football:s:0:60:int 

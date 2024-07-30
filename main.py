@@ -460,6 +460,7 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
     parser.add_argument("-n", "--no_preprocess", type=str, default="no")
+    parser.add_argument("-x", "--xplicit_zero", action="store_true")
 
     args = parser.parse_args()
 
@@ -473,6 +474,8 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
+
+    process_csf = args.xplicit_zero
 
     # create the required directories
     # if os.path.exists("./lego_scratch"):
@@ -489,6 +492,7 @@ if __name__ == "__main__":
         dest_read = key
 
     mode = args.mode
+
     if mode == "onyx":
         mapping_dict = mapping_dict_gen(args.design)
         main_file = open("lego_scratch/main.c", "w+")
@@ -564,7 +568,6 @@ if __name__ == "__main__":
     main_file.write("#include <fstream>\n")
     main_file.write("#include <vector>\n")
     main_file.write("#include <string>\n")
-    main_file.write("#include <boost/format.hpp>\n")
     main_file.write("#include <sys/types.h>\n")
     main_file.write("#include <sys/stat.h>\n")
     main_file.write("using namespace std;\n")
@@ -592,7 +595,7 @@ if __name__ == "__main__":
     main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -643,7 +646,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, dtype):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -679,7 +682,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -728,7 +731,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
