@@ -40,17 +40,17 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 	header_file << "\n";
 
-	boost::format hex03("%03x");
-	header_file << "0x" << hex03 % mode_0[0];
+	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << mode_0[0];
 
 	for(int i = 1; i < mode_0.size(); i++) {
 		header_file << ", ";
-		header_file << "0x" << hex03 % mode_0[i];
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << mode_0[i];
 	}
 	header_file << "\n";
 	header_file << "};"; 
 	header_file << "\n";
 	header_file << "\n";
+	header_file << std::dec;
 
 	return 0;
 }
@@ -64,17 +64,17 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 		header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 		header_file << "\n";
 
-		boost::format hex03("%03x");
-		header_file << "0x" << hex03 % int(mode_0[0]);
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
 
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
-			header_file << "0x" << hex03 % int(abs(mode_0[i]));
+			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[i]));
 		}
 		header_file << "\n";
 		header_file << "};"; 
 		header_file << "\n";
 		header_file << "\n";
+		header_file << std::dec;
 	}
 	
 	// if(dtype == "float"){
@@ -120,6 +120,11 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 		output_file << std::fixed << setprecision(30) << mode_0[pA];
 		output_file << "\n";
 	}
+
+	// TODO: Store integer values to file if dtype is integer 
+	// Propogate data type 
+
+
 	return 0;
 }
 
@@ -185,7 +190,7 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 	
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
-		std::string subtile_paths_file_path = "./" + output_dir + "/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
+		std::string subtile_paths_file_path = output_dir + "/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		

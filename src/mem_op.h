@@ -15,9 +15,9 @@ tile3 tensor_mem_op_3(int **tensor_op, int index);
 subtile1 tile_mem_op_1(tile1 tile_op, int index);
 subtile2 tile_mem_op_2(tile2 tile_op, int index);
 subtile3 tile_mem_op_3(tile3 tile_op, int index);
-cg_subtile1 cg_tile_mem_op_1(cg_subtile1 cg_subtile_op, int **store_subtile_op, tile1 tile_op, int index, int id_store_op); 
-cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, tile2 tile_op, int index, int id_store_op);
-cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, tile3 tile_op, int index, int id_store_op); 
+cg_subtile1 cg_tile_mem_op_1(cg_subtile1 cg_subtile_op, int **store_subtile_op, subtile1 subtile_op, int id_store_op); 
+cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, subtile2 subtile_op, int id_store_op);
+cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, subtile3 subtile_op, int id_store_op); 
 cg_extents1 build_extents_1(cg_extents1 op_extents, int **store_subtile_op, int id_store_op);
 cg_extents2 build_extents_2(cg_extents2 op_extents, int **store_subtile_op, int id_store_op);
 cg_extents3 build_extents_3(cg_extents3 op_extents, int **store_subtile_op, int id_store_op);
@@ -32,5 +32,7 @@ subtile3 tile_zero_op_3(subtile3 subtile_op);
 cg_subtile1 cg_tile_zero_op_1(int **store_subtile_op, cg_subtile1 cg_subtile_op, int id_store_op);
 cg_subtile2 cg_tile_zero_op_2(int **store_subtile_op, cg_subtile2 cg_subtile_op, int id_store_op);
 cg_subtile3 cg_tile_zero_op_3(int **store_subtile_op, cg_subtile3 cg_subtile_op, int id_store_op);
-
+subtile1 process_csf_1(subtile1 subtile_op, int dim1);
+subtile2 process_csf_2(subtile2 subtile_op, int dim1, int dim2);
+subtile3 process_csf_3(subtile3 subtile_op, int dim1, int dim2, int dim3);
 #endif

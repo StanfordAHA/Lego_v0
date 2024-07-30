@@ -16,7 +16,7 @@ else:
 if len(gold_mat.shape) == 0:
     gold_mat = np.array([gold_mat])
 
-file2 = "lego_scratch/data_files/output.txt"
+file2 = "lego_scratch/ctest_output/output.txt"
 
 output_mat = np.zeros(gold_mat.shape, dtype=np.float32)
 with open(file2, "r") as f:
