@@ -482,10 +482,7 @@ if __name__ == "__main__":
     _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation = parse(args.program, level)
 
     level = "cg"
-<<<<<<< HEAD
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
-=======
-    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar = parse(args.program, level)
 
     process_csf = args.xplicit_zero
 
@@ -493,7 +490,6 @@ if __name__ == "__main__":
     # if os.path.exists("./lego_scratch"):
     #    shutil.rmtree("./lego_scratch")
     # os.mkdir("./lego_scratch")
->>>>>>> main
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
