@@ -181,21 +181,11 @@ def get_split_factor(split_dict):
 
 
 def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scalar, workspace):
-
-    print(expr)
-    print(op_list)
-    print(op_dict)
-    print(dest_dict)
-    print(split_dict)
-    
    
     schedule = get_schedule(op_dict)
     op_map = get_op_map(op_dict)
     split_factor = get_split_factor(split_dict)
     gold_file = open("gold.cpp", "w+")
-
-    print(schedule)
-
 
     gold_file.write("#include <stdlib.h>\n")   
     gold_file.write("#include <stdio.h>\n")
@@ -220,7 +210,7 @@ def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scala
     outsize = gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
     gold_file.write("\n")
     
-    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace):
+    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False):
         if element != [""]:
             gold_file.write(element[0])
             gold_file.write("\n")
