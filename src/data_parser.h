@@ -5,7 +5,6 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <boost/format.hpp>
 using namespace std;
 
 int build_vec(std::vector<int> &vec, std::string file_path);
