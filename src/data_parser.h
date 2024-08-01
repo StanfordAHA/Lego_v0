@@ -5,6 +5,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <csignal>
+#include <iomanip>
+#include <cassert>
 #include <boost/format.hpp>
 using namespace std;
 
@@ -13,7 +16,7 @@ int build_vec_val(std::vector<float> &vec, std::string file_path);
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0);
 int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype);
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0);
-int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name);
+int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name, bool is_dense);
 int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, std::string tensor_name);
 int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, int dim1);
 int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, int dim1, int dim2);

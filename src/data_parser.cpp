@@ -1,6 +1,4 @@
 #include "data_parser.h"
-#include <csignal>
-#include <iomanip>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -96,14 +94,20 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
     return 0;
 }
 
-int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name) {
-
+int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name, bool is_dense) {
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_" + mode_name + "_" + mode_type;
 	ofstream output_file(output_file_name.c_str());
-
-	for (int pA = 0; pA < mode_0.size(); pA++) {
-		output_file << mode_0[pA];
-		output_file << "\n";
+	if (!is_dense) {
+		for (int pA = 0; pA < mode_0.size(); pA++) {
+			output_file << mode_0[pA];
+			output_file << "\n";
+		}
+	} else {
+		// for dense segment, we only need the first two values to serve as the size data for the dense scanner
+		// refer to the design of dense scanner in the RTL for more detail
+		assert(mode_type == "seg");
+		output_file << mode_0[0] << "\n";
+		output_file << mode_0[1] << "\n";
 	}
 
 	return 0;
