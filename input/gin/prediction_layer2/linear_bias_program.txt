@@ -1,0 +1,10 @@
+app_name: mat_elemadd_gin_prediction_layer2_linear_bias
+stmt: X(i, j) = B(i, j) + C(i, j) 
+schedule_ap:   [ij]
+schedule_cp:   [ij]
+schedule_cgra: [ij]
+i:split:64:64:30
+j:split:3:3:3
+activation_ap:   none
+activation_cp:   none
+activation_cgra: none
