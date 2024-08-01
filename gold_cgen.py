@@ -137,12 +137,29 @@ def gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
     
     return outsize
 
+def custom_sort(list1, list2):
+    # Create a set for quick lookup of elements in list2
+    list2_set = set(list2)
+    # Separate elements that are in list2 and those that are not
+    not_in_list2 = [x for x in list1 if x not in list2_set]
+    # Create a sorted list by maintaining order from list2 first and then the rest
+    sorted_list1 = not_in_list2[:1] + list2 + not_in_list2[1:]
+    return sorted_list1
+
 def get_schedule(op_dict):
     schedule = []
     for key, value in op_dict.items():
         for element in value: 
             if element not in schedule:
                 schedule.append(element)
+
+    for key, value in op_dict.items():
+        new_schedule = custom_sort(schedule, value)
+
+    while(schedule != new_schedule):
+        schedule = new_schedule
+        for key, value in op_dict.items():
+            new_schedule = custom_sort(schedule, value)
 
     return schedule
 
@@ -164,7 +181,7 @@ def get_split_factor(split_dict):
 
 
 def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scalar, workspace):
-
+   
     schedule = get_schedule(op_dict)
     op_map = get_op_map(op_dict)
     split_factor = get_split_factor(split_dict)
@@ -193,7 +210,7 @@ def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scala
     outsize = gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
     gold_file.write("\n")
     
-    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace):
+    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False):
         if element != [""]:
             gold_file.write(element[0])
             gold_file.write("\n")

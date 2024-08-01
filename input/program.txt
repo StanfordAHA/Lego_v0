@@ -1,5 +1,5 @@
 app_name: matmul_ijk_football
-stmt: X(i, j) = B(i, k) * C(k, j)
+stmt: X(i, j)= B(i, k) * C(k, j)
 schedule_ap:   [ikj]
 schedule_cp:   [ikj]
 schedule_cgra: [ikj]

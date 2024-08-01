@@ -40,17 +40,17 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 	header_file << "\n";
 
-	boost::format hex03("%03x");
-	header_file << "0x" << hex03 % mode_0[0];
+	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << mode_0[0];
 
 	for(int i = 1; i < mode_0.size(); i++) {
 		header_file << ", ";
-		header_file << "0x" << hex03 % mode_0[i];
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << mode_0[i];
 	}
 	header_file << "\n";
 	header_file << "};"; 
 	header_file << "\n";
 	header_file << "\n";
+	header_file << std::dec;
 
 	return 0;
 }
@@ -64,17 +64,17 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 		header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 		header_file << "\n";
 
-		boost::format hex03("%03x");
-		header_file << "0x" << hex03 % int(mode_0[0]);
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
 
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
-			header_file << "0x" << hex03 % int(abs(mode_0[i]));
+			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[i]));
 		}
 		header_file << "\n";
 		header_file << "};"; 
 		header_file << "\n";
 		header_file << "\n";
+		header_file << std::dec;
 	}
 	
 	// if(dtype == "float"){

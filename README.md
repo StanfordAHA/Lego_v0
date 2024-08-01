@@ -21,7 +21,7 @@ Your bashrc should have (you might need to mkdir these as well)
 ```
 export SUITESPARSE_PATH=/aha/datasets/sparse-datasets/suitesparse/
 export TACO_TENSOR_PATH=/aha/datasets/sparse-datasets/other
-export FROSTT_PATH=/aha/datasets/sparse-datasets/tensors/
+export FROSTT_PATH=/aha/datasets/sparse-datasets/frostt/
 export SUITESPARSE_FORMATTED_PATH=/aha/datasets/sam/SUITESPARSE_FORMATTED
 export FROSTT_FORMATTED_TACO_PATH=/aha/datasets/sam/FROST_FORMATTED_TACO
 export FROSTT_FORMATTED_PATH=/aha/datasets/sam/FROST_FORMATTED

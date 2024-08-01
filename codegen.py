@@ -178,8 +178,8 @@ def get_stmt(stmt, id_dict, dtype):
     lower_stmts = []
 
     if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
-        left = get_stmt(stmt.left, id_dict)
-        right = get_stmt(stmt.right, id_dict)
+        left = get_stmt(stmt.left, id_dict, dtype)
+        right = get_stmt(stmt.right, id_dict, dtype)
         if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
@@ -196,7 +196,7 @@ def get_stmt(stmt, id_dict, dtype):
                 return lower_stmts
   
     elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
-        left = get_stmt(stmt.left, id_dict)
+        left = get_stmt(stmt.left, id_dict, dtype)
         if(id_dict[stmt.right] == ['-']):
             right = "0"
         else:
@@ -218,12 +218,12 @@ def get_stmt(stmt, id_dict, dtype):
         
 
     elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
-        right = get_stmt(stmt.right, id_dict)
+        right = get_stmt(stmt.right, id_dict, dtype)
         if(id_dict[stmt.left] == ['-']):
             left = "0"
         else:
             left =  stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
-        if(dtytpe == "bf16"):
+        if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
                 return lower_stmts
@@ -500,7 +500,7 @@ def ap_mem_stmt(sub_point, id_dict, level, curr_id):
 
     return [stmt]
 
-def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
+def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_csf):
     
         stmt = ""
         loop_counter = 0
@@ -512,6 +512,16 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
 
                     if(loop_counter != 0):  
                         stmt = stmt + "\n" 
+
+                    stmt = stmt + "    " * (level + 2)
+                    stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
+                    stmt = stmt + "\n"
+                    if(process_csf):
+                        stmt = stmt + "    " * (level + 2)
+                        stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
+                        for id1 in id_dict[arr_read]:
+                            stmt = stmt + ", " + str(int(split_dict[id1][1]) - 1)
+                        stmt = stmt + ");"
 
                     if(mode != "rtl"):
                         stmt = stmt + "    " * (level + 2)
@@ -531,14 +541,13 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode):
                         stmt = stmt + "store_" + arr_read + "[id_store_" + arr_read + "] = 1;"
                         stmt = stmt + "\n"
                         stmt = stmt + "    " * (level + 3)
-                        stmt = stmt + "cg_subtile_" + arr_read + " = "  "cg_tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "cg_subtile_" + arr_read + ", store_subtile_" + arr_read + ", " + "tile_" + arr_read +  ", " + id + ", " + "id_store_" + arr_read + ");"
+                        stmt = stmt + "cg_subtile_" + arr_read + " = " + "cg_tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "cg_subtile_" + arr_read + ", store_subtile_" + arr_read + ", " + "subtile_" + arr_read +  ", " + "id_store_" + arr_read + ");"    
                         stmt = stmt + "\n"
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "}"
                         stmt = stmt + "\n"
 
-                    stmt = stmt + "    " * (level + 2)
-                    stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
+                    
                     loop_counter += 1
     
         return [stmt]
@@ -866,7 +875,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, dtype=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, dtype=None):
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
@@ -900,7 +909,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
             if(target == "ap"):
                 stmt_list.append(ap_mem_stmt(sub_point, id_dict, level, curr_id))
             elif(target == "cp"):
-                stmt_list.append(cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode))
+                stmt_list.append(cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_csf))
 
             if(len(schedule) == 1):
                 if(target == "ap"):
@@ -910,7 +919,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, dtype))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, dtype))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         
