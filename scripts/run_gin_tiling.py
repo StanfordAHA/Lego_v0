@@ -51,12 +51,12 @@ for ginconv_layer in GINConv_layers:
         except subprocess.CalledProcessError as e:
             print(e.stderr)
 
-prediction_layers = ["prediction_layer0"]
-prediction_kernels = ["graph_pool", "linear_trans", "linear_bias", "accu_score"]
+prediction_layers = ["prediction_layer0", "prediction_layer1", "prediction_layer2", "prediction_layer3"]
+prediction_kernels = ["graph_pool", "linear_trans", "linear_bias", "score_accu"]
 for prediction_layer in prediction_layers:
     prediction_layer_path = os.path.join("input/gin", prediction_layer)
     for kernel in prediction_kernels:
-        if kernel == "accu_score" and prediction_layer == "prediction_layer0":
+        if kernel == "score_accu" and prediction_layer == "prediction_layer0":
             continue
         print(f"Running {prediction_layer} {kernel}")
         program_file = os.path.join(prediction_layer_path, kernel + "_program.txt")
