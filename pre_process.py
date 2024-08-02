@@ -224,7 +224,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         if dtype == "int":
             for idx, val in np.ndenumerate(tensor):
                 if val != 0:
-                    tensor[idx] = np.random.randint(1, 100)
+                    tensor[idx] = int(val)
         # tensor = scipy.sparse.coo_array(tensor)
         tensor = sparse.COO(tensor)
     elif tensor_type == "ex":
