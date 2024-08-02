@@ -1,5 +1,5 @@
 app_name: vec_identity
-stmt: x(i) = (b(i))
+stmt: x(i) = b(i)
 schedule_ap:   [i]
 schedule_cp:   [i]
 schedule_cgra: [i]
