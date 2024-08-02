@@ -468,7 +468,7 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
-    parser.add_argument("-n", "--no_preprocess", type=str, default="no")
+    parser.add_argument("-n", "--no_preprocess", action="store_true")
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
 
     args = parser.parse_args()
