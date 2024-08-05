@@ -704,7 +704,7 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     if(workspace):
-        stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar, dtype)
+        stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
         for line in stmt:
             main_file.write(line)
         main_file.write("\n")
@@ -757,7 +757,7 @@ if __name__ == "__main__":
             main_file.write("\n")
 
     if(workspace):        
-        stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar, dtype)
+        stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar)
         for line in stmt:
             main_file.write(line)
         main_file.write("\n")

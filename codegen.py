@@ -737,8 +737,8 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "else\n"
                     stmt += "    " * (level + 3)
                     stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
-                    stmt += "    " * (level + 2)
                 elif(mode == "onyx"):
+                    stmt += "    " * (level + 2)
                     stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
                     for op in op_list[1:]:  
                         stmt += ", " + "subtile_" + op
@@ -1012,14 +1012,13 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
             offset_id = dest_id[dest_name][i]
             partial_index_str += " * " + str(subtile_size[offset_id])
         partial_index_str += " + " + id
-    # For ap, the tile size may not perfectly align with the actual output tensor size
+    # The tile size may not perfectly align with the actual output tensor size if the tile size if not
+    # devisable by the subtile size.
     # Need to put guard here so padded values in the tiles are not written to the output matrix
-    if target == "ap":
-        stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
-        level = level + 1
+    stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
+    level = level + 1
     stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")
-    if target == "ap":
-        level = level - 1
+    level = level - 1
     # close the subtile partial product loop
     for id in dest_id[dest_name]:
         level = level - 1
