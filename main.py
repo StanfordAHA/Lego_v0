@@ -159,7 +159,7 @@ def parse(input_file, level):
     
     return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
 
-def ap_tensor_decleration(main_file, ap_source_id):
+def ap_tensor_decleration(main_file, ap_source_id, scratch_dir):
 
     for key, value in ap_source_id.items():
 
@@ -176,10 +176,10 @@ def ap_tensor_decleration(main_file, ap_source_id):
         main_file.write("\n")
 
         for i in range(0, 3 * tensor_dim):
-            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_pos, " + "\"lego_scratch/tensor_" + key + "/tcsf_pos" + str(i + 1) + ".txt\");\n")
-            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_crd, " + "\"lego_scratch/tensor_" + key + "/tcsf_crd" + str(i + 1) + ".txt\");\n")
+            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_pos, " + f"\"{scratch_dir}/tensor_" + key + "/tcsf_pos" + str(i + 1) + ".txt\");\n")
+            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_crd, " + f"\"{scratch_dir}/tensor_" + key + "/tcsf_crd" + str(i + 1) + ".txt\");\n")
 
-        main_file.write("    " + "build_vec_val(" + key + "_vals, " + "\"lego_scratch/tensor_" + key + "/tcsf_vals.txt\");\n")
+        main_file.write("    " + "build_vec_val(" + key + "_vals, " + f"\"{scratch_dir}/tensor_" + key + "/tcsf_vals.txt\");\n")
         
         main_file.write("\n")
 
@@ -467,6 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
+    parser.add_argument("-s", "--scratch_dir", type=str, default="lego_scratch")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
     parser.add_argument("-n", "--no_preprocess", type=str, default="no")
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
@@ -487,9 +488,8 @@ if __name__ == "__main__":
     process_csf = args.xplicit_zero
 
     # create the required directories
-    # if os.path.exists("./lego_scratch"):
-    #    shutil.rmtree("./lego_scratch")
-    # os.mkdir("./lego_scratch")
+    if not os.path.exists(args.scratch_dir):
+        os.mkdir(args.scratch_dir)
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
@@ -504,7 +504,7 @@ if __name__ == "__main__":
 
     if mode == "onyx":
         mapping_dict = mapping_dict_gen(args.design)
-        main_file = open("lego_scratch/main.c", "w+")
+        main_file = open(f"{args.scratch_dir}/main.c", "w+")
         main_gen_header_files(main_file)
         main_spec_header_files(main_file, app_name)
         main_block_1(main_file)
@@ -513,11 +513,11 @@ if __name__ == "__main__":
 
         inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design)
 
-        unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
+        unrolling_header_file = open(f"{args.scratch_dir}/" + app_name + "_unrolling.h", "w+")
         unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
 
         bitstream_file = "./input/bitstream.bs"
-        bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
+        bitstream_header_file = open(f"{args.scratch_dir}/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
 
         reg_write_file = "./input/reg_write.h"
@@ -525,11 +525,11 @@ if __name__ == "__main__":
             data = file.read()
             data = data.replace('glb_reg_write', 'HAL_Cgra_Glb_WriteReg')
 
-        with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
+        with open(f'{args.scratch_dir}/' + app_name + '_reg_write.h', 'w+') as file:
             file.write(data)
     
     for key, value in tensor_path_dict.items():
-        output_dir_path = "./lego_scratch/" + "tensor_" + key 
+        output_dir_path = f"{args.scratch_dir}/" + "tensor_" + key 
         tensor_schedule = []
         tensor_schedule.append(ap_source_map[key])
         tensor_schedule.append(cp_source_map[key])
@@ -560,10 +560,10 @@ if __name__ == "__main__":
     workspace = args.workspace
 
     if(args.gold_check == "s"):
-        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, "./lego_scratch/", scalar, workspace)
+        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, f"{args.scratch_dir}/", scalar, workspace)
     elif(args.gold_check == "d"):
         gold_file = open("gold_check.py", "w+") 
-        stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")
+        stmt = gold_cgen.dense(expr, op_list, op, dest, f"{args.scratch_dir}/")
         gold_file.write("".join(stmt))
 
     
@@ -704,7 +704,7 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     if(workspace):
-        stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar)
+        stmt = codegen.workspace_reduction(cp_split_factor, "cp", cp_dest_id, scalar, dtype)
         for line in stmt:
             main_file.write(line)
         main_file.write("\n")
@@ -737,7 +737,7 @@ if __name__ == "__main__":
         main_file.write("    assert(argc == 2);\n")
         main_file.write("    std::string mode = argv[1];\n")
 
-    ap_tensor_decleration(main_file, ap_source_id)
+    ap_tensor_decleration(main_file, ap_source_id, args.scratch_dir)
 
     # vector for storing the list of all the subtile path 
     # this is for comal
@@ -757,7 +757,7 @@ if __name__ == "__main__":
             main_file.write("\n")
 
     if(workspace):        
-        stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar)
+        stmt = codegen.workspace_reduction(ap_split_factor, "ap", ap_dest_id, scalar, dtype)
         for line in stmt:
             main_file.write(line)
         main_file.write("\n")
