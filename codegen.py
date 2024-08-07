@@ -937,7 +937,7 @@ def workspace_declaration(split_factor, dest_id, scalar):
                 n_subtiles = 1
     return "    std::vector<std::vector<float *>>subtile_workspace(" + str(int(n_subtiles)) + " , std::vector<float *>());\n"
 
-def workspace_reduction(split_factor, target, dest_id, scalar):
+def workspace_reduction(split_factor, target, dest_id, scalar, dtype):
     # allcoate the array that is going to store the recombined tile
     # determine the size of the tile first
     stmt = []
@@ -1032,6 +1032,12 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
     for id in dest_id[dest_name]:
         level = level - 1
         stmt.append(("    " * level + "}\n"))
+
+    # convert the final output to bf16
+    if dtype == "bf16" and target == "ap":
+        stmt.append("    for (int p" + dest_name + " = 0; p" + dest_name + " < " + str(output_tile_size) + "; " + "p" + dest_name + " ++) {\n")
+        stmt.append("        " + dest_name + "_vals[p" + dest_name + "] = f32_to_bf16(" + dest_name + "_vals[p" + dest_name + "]);\n")
+        stmt.append("    }\n")
 
     return stmt
 
