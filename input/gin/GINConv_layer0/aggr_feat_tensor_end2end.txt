@@ -1,0 +1,2 @@
+B:sparse_ml:gin/bf16/COLLAB/GINConv_layer0/aggr_feat/B:s:0:0:bf16
+C:sparse_ml:gin/bf16/COLLAB/GINConv_layer0/aggr_feat/C:s:0:0:bf16
