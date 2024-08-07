@@ -4,6 +4,40 @@
 #include <iostream>
 #include <bitset>
 
+float f32_to_bf16(float input) {
+    std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
+    // extract sign, exponent, and mantissa
+    unsigned long exp = ((input_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
+    unsigned long lfrac = ((input_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
+    unsigned long hfrac = (input_bin & std::bitset<32>(0x0000FFFF)).to_ulong();
+        
+    std::bitset<1> sign_bit = std::bitset<1>(input_bin[31]);
+    std::bitset<8> exp_bit(exp);
+    std::bitset<7> lfrac_bit(lfrac);
+    std::bitset<16> hfrac_bit(hfrac);
+
+    // rounding logic (please refer to float2bfbin in lassen)
+    if ((hfrac_bit[15] == 1 && (hfrac_bit[14] == 1 || hfrac_bit[13] == 1))
+            || (lfrac_bit[0] == 1 && hfrac_bit[15] == 1)) {
+        // round up
+        if (lfrac_bit == std::bitset<7>(0x7F)) {
+                // roll over mantissa and increase exponent
+                exp = exp + 1;
+            }
+        lfrac = lfrac + 1;
+    }
+
+    // recombine rounded sign, exponent, and mantissa
+    std::bitset<8> exp_rounded_bit(exp);
+    std::bitset<7> lfrac_rounded_bit(lfrac);
+    std::bitset<32> result_bf16_bit(sign_bit.to_string() + exp_rounded_bit.to_string() + lfrac_rounded_bit.to_string() + "0000000000000000");
+
+    // convert to float
+    unsigned int tmp_result_bf16 =static_cast<unsigned int>(result_bf16_bit.to_ulong());
+    float result_bf16 = *reinterpret_cast<float *>(&tmp_result_bf16);
+
+    return result_bf16;
+}
 float bf16_add(float input1, float input2) {
     
     std::bitset<32> bf16_mask(0x0000FFFF);
