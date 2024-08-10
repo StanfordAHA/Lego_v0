@@ -212,7 +212,6 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 			if (i != std::string::npos) {
 				subtile_path.erase(i, path_prefix.length());
 			}
-			std::cout << subtile_path << std::endl;
 			subtile_paths_file << "    \"" << subtile_path << "\",\n";
 		}
 
