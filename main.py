@@ -443,10 +443,15 @@ def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel
                     output_tile_size *= ap_split_factor[i][0]
         else:
             output_tile_size = 1
-
+    main_file.write(f"    int output_tile_dim[{len(dest_id[dest_name])}];\n")
+    for idx, id in enumerate(dest_id[dest_name]):
+        main_file.write(f"    output_tile_dim[{idx}] = {ap_split_factor[id][0]};\n")
     main_file.write("    std::string output_path = \"" + output_dir + "/" + kernel_name + "/output.txt\";\n")
     main_file.write("    std::ofstream output_file;\n")
     main_file.write("    output_file.open(output_path, std::ios::app);\n")
+    main_file.write(f"    output_file << {len(dest_id[dest_name])} << std::endl;\n")
+    main_file.write(f"    for (int i = 0; i < {len(dest_id[dest_name])}; i++)\n")
+    main_file.write(f"         output_file << output_tile_dim[i] << std::endl;\n")
     main_file.write("    rtl_output_subtile_printer(" + dest_name + "_vals, " + str(output_tile_size) + ", 0, output_file);\n")
     main_file.write("    output_file.close();\n")
 
