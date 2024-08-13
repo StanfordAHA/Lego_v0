@@ -1,8 +1,11 @@
-app_name: matmul_ijk_crddrop_gcn_layer2_layer_out
+app_name: dense_matmul_gcn_layer2_layer_out
 stmt: X(i, j) = B(i, k) * C(k, j) 
 schedule_ap:   [ijk]
 schedule_cp:   [ijk]
 schedule_cgra: [ijk]
-i:split:3327:240:30
-j:split:6:6:6
-k:split:64:240:30
+i:split:4096:1024:1024
+j:split:8:8:8
+k:split:64:64:64
+activation_ap:   none
+activation_cp:   none
+activation_cgra: none
