@@ -521,12 +521,17 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_cs
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "id_store_" + arr_read + " = "
 
-                        for id1 in id_dict[arr_read]:
-                            if(id_dict[arr_read][-1] != id1):
-                                stmt += id1 + " * " + str(int(split_dict[id1][0]/split_dict[id1][1])) + " + " 
+                        cprod = 1
+                        for id1 in id_dict[arr_read][::-1]:
+                            if(cprod == 1):
+                                stmt += id1
+                                cprod *= (int(split_dict[id1][0]/split_dict[id1][1]))
                             else:
-                                stmt += id1 + ";"
-                                stmt += "\n"
+                                stmt += " + " + id1 + " * " + str(cprod)
+                                cprod *= int(split_dict[id1][0]/split_dict[id1][1])
+                        
+                        stmt += ";"
+                        stmt += "\n"
 
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "if(!store_" + arr_read + "[id_store_" + arr_read + "]){"

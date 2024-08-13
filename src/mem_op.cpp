@@ -525,6 +525,8 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
             }
         }
 
+        cg_subtile_op.mode_2.push_back(pos3[pos2[pos1[1]]]);
+
         cg_subtile_op.mode_2.push_back(stile_crd3_len);
         cg_subtile_op.mode_vals.push_back(stile_vals_len);
 

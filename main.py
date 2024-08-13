@@ -582,6 +582,7 @@ if __name__ == "__main__":
     main_file.write("#include <fstream>\n")
     main_file.write("#include <vector>\n")
     main_file.write("#include <string>\n")
+    main_file.write("#include <cassert>\n")
     main_file.write("#include <sys/types.h>\n")
     main_file.write("#include <sys/stat.h>\n")
     main_file.write("using namespace std;\n")
