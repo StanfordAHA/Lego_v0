@@ -1,6 +1,6 @@
 __pycache__/*
-lego_scratch/*
-main
+*scratch/*
+*main
 main.cpp
 gold_check.py
 gold
