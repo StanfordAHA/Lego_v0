@@ -138,6 +138,9 @@ def expr_to_stmt(expr):
 
     stmt = stack[0]
 
+    if isinstance(stmt, str):
+        stmt = Operation(None, None, stmt)
+
     return stmt
 
 def expr_to_lattice(expr, id_dict, id):
@@ -161,6 +164,9 @@ def expr_to_lattice(expr, id_dict, id):
             stack.append(c)
 
     stmt = stack[0]
+    
+    if isinstance(stmt, str):
+        stmt = Operation(None, None, stmt)
 
     lattice = get_lattice(stmt, id_dict, id)
     return lattice
@@ -792,6 +798,13 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         for idx in cg_source_map[op]:
                             id = cg_source_id[op][idx]
                             stmt += ", " + str(split_dict[id][1]) 
+                        stmt += ");"
+                        stmt += "\n"
+                        for dest_name, ids in dest.items():
+                            stmt += "    " * (level + 3)
+                            stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + "out" + "\""
+                            for idx in ids:
+                                stmt += ", " + str(split_dict[idx][0])
                         stmt += ");"
                         stmt += "\n"
                         stmt += "\n"

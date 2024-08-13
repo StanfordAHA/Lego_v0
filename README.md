@@ -49,7 +49,7 @@ k:split:10000:10000:40
 ####
 -- tensor.txt 
 ```
-tensor_name:dataset:dataset_name:gcn_flag sparse/dense:get_other_tensor_flag:random_matrix_sparsity:data_type
+tensor_name:dataset:dataset_name:gcn_flag sparse/dense:get_other_tensor_flag:random_matrix_density(%):data_type
 B:ss:quilp:s:0:60:int 
 C:ss:quilp:s:shift_transpose:60:int
 ```
@@ -69,10 +69,10 @@ C:ss:quilp:s:shift_transpose:60:int
   - Process the tensor to generate a new tensor, Ex: shift_transpose, shifts the last mode and transposes the tensor. C = B.T
   - More operations can be found in pre_process,py
  
-- random_matrix_sparsity:    
-  - Percentage sparsity of random matrix being generated
+- random_matrix_density:    
+  - Percentage density of the random matrix being generated
     
-- data_type: int - int16, float - bfloat16
+- data_type: int - int16, f32 - float32, bf16 - bfloat16
 ####
 -- bitstream.bs
 
@@ -82,7 +82,7 @@ C:ss:quilp:s:shift_transpose:60:int
 
 All the above files are to be placed within: ```input/```
 
-### Organisation
+### Organization
 
 - ```main.py``` generates the ```main.cpp``` code and the tiled_CSF formats for the tensors stored in ```lego_scratch/```
 - Executing ```main.cpp``` performs the subtile pairing and packing of data into the ONYX format
