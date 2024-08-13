@@ -1,4 +1,4 @@
-app_name: matmul_ijk_crddrop_gcn_layer1_layer_out_scale
+app_name: spmm_sd_ijk_crddrop_gcn_layer1_layer_out
 stmt: X(i, j) = B(i, k) * C(k, j) 
 schedule_ap:   [ijk]
 schedule_cp:   [ijk]
@@ -6,3 +6,6 @@ schedule_cgra: [ijk]
 i:split:3327:240:30
 j:split:64:60:30
 k:split:3703:240:30
+activation_ap:   relu
+activation_cp:   none
+activation_cgra: none
