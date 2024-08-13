@@ -21,6 +21,14 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
 
+def dense_tensor_padding(coo_tensor, tensor_size):
+    tensor = None
+    tensor = coo_tensor.todense()
+    padded_tensor = np.zeros(tensor_size, dtype=np.float32)
+    for idx, val in np.ndenumerate(tensor):
+        padded_tensor[idx] = val
+    return scipy.sparse.coo_array(padded_tensor)
+
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
     
     ''' 
@@ -247,6 +255,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor_path = os.path.join(SPARSEML_PATH, input_path + ".npy")
         sparse_ml_tensor = SparseMLTensor(tensor_path)
         tensor = inputCache.load(sparse_ml_tensor, False)
+        if format == "d":
+            tensor = dense_tensor_padding(tensor, tuple(tensor_size[0]))
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
 
@@ -258,33 +268,6 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif gen_tensor == "shift_transpose": 
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         tensor = shifted.transpose()
-    elif gen_tensor == "onyx_matmul": 
-        shifted = ScipyTensorShifter().shiftLastMode(tensor)
-        tensor = shifted.transpose()
-
-        tensor = sparse.COO(tensor)
-        num_values = len(tensor.data)
-
-        tile_op_crd_list = np.zeros((2, num_values), dtype=int)
-        tile_op_val_list = []
-        
-        for idx in range(0, num_values):
-
-            i = tensor.coords[0][idx]
-            j = tensor.coords[1][idx]
-   
-            crd_i = i%30
-            crd_j = j%30
-
-            ii = i - crd_i + crd_j
-            jj = j - crd_j + crd_i  
-
-            tile_op_crd_list[0][idx] = ii 
-            tile_op_crd_list[1][idx] = jj
-            tile_op_val_list.append(tensor.data[idx])
-        
-        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)
-        
     elif gen_tensor == "ss":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
