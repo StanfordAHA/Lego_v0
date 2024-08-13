@@ -16,6 +16,19 @@ parser.add_argument("--mode", type=str, help="The mode to run the script in", de
 parser.add_argument("--end2end", action="store_true", help="Run the entire gin model end to end")
 args = parser.parse_args()
 
+def generate_tiling_cpp(program_filename, tensor_filename, layer_name, kernel_name):
+    try:
+        print(f"=== Generating cpp code ===")
+        gen = subprocess.run(["python", "main.py", "--program", program_filename, 
+                                    "--tensor", tensor_filename, "--output_dir" , "output",
+                                    "--mode", "rtl", "--workspace", 
+                                    "--scratch_dir", f"{layer_name}_{kernel_name}_scratch"], 
+                                    capture_output=True, text=True)
+        gen.check_returncode()
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+        raise RuntimeError
+
 if args.mode == "tiling":
     prev_kernel = None
     for ginconv_layer in GINConv_layers:
@@ -85,7 +98,6 @@ if args.mode == "tiling":
                                   "--input", f"{output_dir[0]}/output.txt", "--bf16"]
                 if args.end2end:
                     check_gold_cmd.append("--dump_numpy")
-                    # check_gold_cmd.append("--skip_check")
                 check = subprocess.run(check_gold_cmd, capture_output=True, text=True)
                 print(check.stdout)
                 check.check_returncode()
@@ -222,7 +234,6 @@ if args.mode == "tiling":
                                   "--input", f"{output_dir[0]}/output.txt", "--bf16"]
                 if args.end2end:
                     check_gold_cmd.append("--dump_numpy")
-                    # check_gold_cmd.append("--skip_check")
                 check = subprocess.run(check_gold_cmd, capture_output=True, text=True)
                 print(check.stdout)
                 check.check_returncode()
