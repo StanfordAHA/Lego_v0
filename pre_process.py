@@ -16,10 +16,10 @@ import math
 from pathlib import Path
 
 from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse, PydataTensorShifter, ScipyTensorShifter, \
-    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey
-    # InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
+    FROSTT_PATH, FrosttTensor, PydataSparseTensorDumper, InputCacheTensor, constructOtherMatKey, constructOtherVecKey, \
+    InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
-# from lassen.utils import float2bfbin, bfbin2float
+from lassen.utils import float2bfbin, bfbin2float
 
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
     
@@ -213,18 +213,16 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         size = tuple(tensor_size[0])
         tensor = None
         value_cap = int(math.pow(2, 8)) - 1
-        tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+        if dtype == "int":
+            tensor = np.random.randint(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+        else:
+            tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+            if dtype == "bf16":
+                for idx, val in np.ndenumerate(tensor):
+                    tensor[idx] = bfbin2float(float2bfbin(val))
         num_zero = int(np.prod(tensor.shape) * (1 - density / 100))
         zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
         tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
-        if dtype == "bf16":
-            for idx, val in np.ndenumerate(tensor):
-                if val != 0:
-                    tensor[idx] = bfbin2float(float2bfbin(val))
-        if dtype == "int":
-            for idx, val in np.ndenumerate(tensor):
-                if val != 0:
-                    tensor[idx] = np.random.randint(1, 100)
         # tensor = scipy.sparse.coo_array(tensor)
         tensor = sparse.COO(tensor)
     elif tensor_type == "ex":

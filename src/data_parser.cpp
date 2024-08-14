@@ -194,6 +194,11 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
 		
+		if (!subtile_paths_file) {
+			std::cerr << "Error: Cannot open file " << subtile_paths_file_path << "for writing" << std::endl;
+			return 1;
+		}
+
 		// prefix fields required by comal
 		subtile_paths_file << "[sam_config]" << "\n";
 		subtile_paths_file << "name = \"" << kernel_name << "\"\n";
@@ -207,7 +212,6 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 			if (i != std::string::npos) {
 				subtile_path.erase(i, path_prefix.length());
 			}
-
 			subtile_paths_file << "    \"" << subtile_path << "\",\n";
 		}
 
