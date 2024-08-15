@@ -290,122 +290,136 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "                break;}" << "\n";
 	output_gold_file << "\n"; 
 
-	output_gold_file << "    size = read_base_0[mode0_idx];" << "\n";
-	output_gold_file << "    uint16_t mode0_size = size + 1 + read_base_0[mode0_idx + size + 1] + 1;" << "\n";
-	output_gold_file << "    uint16_t mode0_stream_size = read_base_0[mode0_idx + size + 1];" << "\n";
-	output_gold_file << "    uint16_t mode0_base = size + 1 + 1;" << "\n";
+	if(tensor_dim > 0) {
 
-	for(int i = 1; i < tensor_dim; i++){
+		output_gold_file << "    size = read_base_0[mode0_idx];" << "\n";
+		output_gold_file << "    uint16_t mode0_size = size + 1 + read_base_0[mode0_idx + size + 1] + 1;" << "\n";
+		output_gold_file << "    uint16_t mode0_stream_size = read_base_0[mode0_idx + size + 1];" << "\n";
+		output_gold_file << "    uint16_t mode0_base = size + 1 + 1;" << "\n";
+
+		for(int i = 1; i < tensor_dim; i++){
+			output_gold_file << "\n"; 
+			output_gold_file << "    size = read_base_" << i << "[mode" << i << "_idx];" << "\n";
+			output_gold_file << "    uint16_t mode" << i << "_base = size + 1 + 1;" << "\n";
+			output_gold_file << "    uint16_t mode" << i << "_size = size + 1 + read_base_" << i << "[mode" << i << "_idx + size + 1] + 1;" << "\n";
+		}
+
+		output_gold_file << "    uint16_t vals_size = read_base_" << tensor_dim << "[vals_idx] + 1;" << "\n";
+
 		output_gold_file << "\n"; 
-		output_gold_file << "    size = read_base_" << i << "[mode" << i << "_idx];" << "\n";
-		output_gold_file << "    uint16_t mode" << i << "_base = size + 1 + 1;" << "\n";
-		output_gold_file << "    uint16_t mode" << i << "_size = size + 1 + read_base_" << i << "[mode" << i << "_idx + size + 1] + 1;" << "\n";
-	}
+		output_gold_file << "    uint16_t x0;" << "\n";
 
-	output_gold_file << "    uint16_t vals_size = read_base_" << tensor_dim << "[vals_idx] + 1;" << "\n";
-
-	output_gold_file << "\n"; 
-	output_gold_file << "    uint16_t x0;" << "\n";
-
-	for(int i = 1; i < tensor_dim; i++){
-		output_gold_file << "    uint16_t x" << i << ";" << "\n";
-		output_gold_file << "    uint16_t x" << i << "_dim;" << "\n";
-		output_gold_file << "    uint16_t x" << i << "_idx = 0;" << "\n";
-	}
-
-	output_gold_file << "\n"; 
-
-	for(int i = 0; i < tensor_dim; i++){
-		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
-	}
-
-	std::string id; 
-	std::string id_x; 
-
-	id = ""; 
-
-	for(int i = 0; i < tensor_dim; i++){
-		id += "i" + std::to_string(i);
-		for(int j = i + 1; j < tensor_dim; j++){
-			id += " * STILE_DIM" + std::to_string(j);
+		for(int i = 1; i < tensor_dim; i++){
+			output_gold_file << "    uint16_t x" << i << ";" << "\n";
+			output_gold_file << "    uint16_t x" << i << "_dim;" << "\n";
+			output_gold_file << "    uint16_t x" << i << "_idx = 0;" << "\n";
 		}
-		if(i != tensor_dim - 1){
-			id += " + ";
+
+		output_gold_file << "\n"; 
+
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
 		}
-	}
 
-	output_gold_file << "        check_ptr[" << id << "] = 0;" << "\n";
+		std::string id; 
+		std::string id_x; 
 
-	for(int i = 0; i < tensor_dim; i++){
+		id = ""; 
+
+		for(int i = 0; i < tensor_dim; i++){
+			id += "i" + std::to_string(i);
+			for(int j = i + 1; j < tensor_dim; j++){
+				id += " * STILE_DIM" + std::to_string(j);
+			}
+			if(i != tensor_dim - 1){
+				id += " + ";
+			}
+		}
+
+		output_gold_file << "        check_ptr[" << id << "] = 0;" << "\n";
+
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "    }" << "\n";
+		}
+
+		output_gold_file << "\n"; 
+		
+
+		id_x = "";
+
+		for(int i = 0; i < tensor_dim; i++){
+			id_x += "x" + std::to_string(i);
+			for(int j = i + 1; j < tensor_dim; j++){
+				id_x += " * STILE_DIM" + std::to_string(j);
+			}
+			if(i != tensor_dim - 1){
+				id_x += " + ";
+			}
+		}
+
+		int i  = 0;
+		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < mode" << i << "_stream_size; i" << i << "++){" << "\n";
+		output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + i" << i << "];" << "\n";
+		i++;
+		output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 1];" << "\n";
+
+		for(int i = 1; i < tensor_dim; i++){
+			output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < x" << i << "_dim; i" << i << "++){" << "\n";
+			output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + x" << i << "_idx + i" << i << "];" << "\n";
+			if(i == tensor_dim - 1){
+				output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
+			}
+			else{
+				int j = i + 1; 
+				output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 1];" << "\n";
+			}
+		}
+
+		for(int i = tensor_dim - 1; i > 0; i--){
+			output_gold_file << "    }" << "\n";
+			output_gold_file << "        x" << i << "_idx += x" << i << "_dim;" << "\n";
+		}
+
 		output_gold_file << "    }" << "\n";
-	}
+		output_gold_file << "\n";
 
-	output_gold_file << "\n"; 
-	
-
-    id_x = "";
-
-	for(int i = 0; i < tensor_dim; i++){
-		id_x += "x" + std::to_string(i);
-		for(int j = i + 1; j < tensor_dim; j++){
-			id_x += " * STILE_DIM" + std::to_string(j);
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
 		}
-		if(i != tensor_dim - 1){
-			id_x += " + ";
-		}
-	}
 
-	int i  = 0;
-	output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < mode" << i << "_stream_size; i" << i << "++){" << "\n";
-	output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + i" << i << "];" << "\n";
-	i++;
-	output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 1];" << "\n";
-
-	for(int i = 1; i < tensor_dim; i++){
-		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < x" << i << "_dim; i" << i << "++){" << "\n";
-		output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + x" << i << "_idx + i" << i << "];" << "\n";
-		if(i == tensor_dim - 1){
-			output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
+		output_gold_file << "        if(check_ptr[" << id << "] != gold_ptr[" << id << "]){" << "\n";
+		output_gold_file << "            trace_printf(\"error! tile: %d, x: %d y:%d gold_ptr:%d check_ptr:%d\\n\", run, ";
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "i" << i << ", ";
 		}
-		else{
-			int j = i + 1; 
-			output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 1];" << "\n";
-		}
-	}
+		output_gold_file << "gold_ptr[" << id << "], check_ptr[" << id << "]);" << "\n";
+		output_gold_file << "            err++;" << "\n";
+		output_gold_file << "        }" << "\n";
 
-	for(int i = tensor_dim - 1; i > 0; i--){
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "    }" << "\n";
+		}
+
+		for(int i = 0; i < tensor_dim; i++){
+			output_gold_file << "    mode" << i << "_idx += mode" << i << "_size;" << "\n";
+		}
+
+		output_gold_file << "    vals_idx += vals_size;" << "\n";
 		output_gold_file << "    }" << "\n";
-		output_gold_file << "        x" << i << "_idx += x" << i << "_dim;" << "\n";
+		output_gold_file << "    return err;" << "\n";
+		output_gold_file << "}" << "\n";
 	}
-
-	output_gold_file << "    }" << "\n";
-	output_gold_file << "\n";
-
-	for(int i = 0; i < tensor_dim; i++){
-		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
-	}
-
-	output_gold_file << "        if(check_ptr[" << id << "] != gold_ptr[" << id << "]){" << "\n";
-	output_gold_file << "            trace_printf(\"error! tile: %d, x: %d y:%d gold_ptr:%d check_ptr:%d\\n\", run, ";
-	for(int i = 0; i < tensor_dim; i++){
-		output_gold_file << "i" << i << ", ";
-	}
-	output_gold_file << "gold_ptr[" << id << "], check_ptr[" << id << "]);" << "\n";
-	output_gold_file << "            err++;" << "\n";
-	output_gold_file << "        }" << "\n";
-
-	for(int i = 0; i < tensor_dim; i++){
+	else{
+		output_gold_file << "        uint16_t vals_size = read_base_0[vals_idx] + 1;" << "\n";
+		output_gold_file << "        if(read_base_0[vals_idx + 1] != gold_ptr[0]){" << "\n"; 
+		output_gold_file << "            trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx + 1]);" << "\n"; 
+		output_gold_file << "            err++;" << "\n";
+		output_gold_file << "        }" << "\n";
+		output_gold_file << "        vals_idx += vals_size;" << "\n";
 		output_gold_file << "    }" << "\n";
+		output_gold_file << "    return err;" << "\n";
+		output_gold_file << "}" << "\n";
 	}
-
-	for(int i = 0; i < tensor_dim; i++){
-		output_gold_file << "    mode" << i << "_idx += mode" << i << "_size;" << "\n";
-	}
-
-	output_gold_file << "    vals_idx += vals_size;" << "\n";
-	output_gold_file << "    }" << "\n";
-	output_gold_file << "    return err;" << "\n";
-	output_gold_file << "}" << "\n";
 
 	return 0;
 }

@@ -283,7 +283,10 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
     for key, value in dest_id.items(): 
         dest_read = key   
 
-    out_tensor_dim = len(dest_id[dest_read])
+    if(dest_id[dest_read][0] == '0'):
+        out_tensor_dim = 0
+    else:
+        out_tensor_dim = len(dest_id[dest_read])
 
     if(mode == 'onyx'):
         main_file.write("\n")
@@ -615,9 +618,10 @@ if __name__ == "__main__":
 
     main_file.write("\n")
     cg_tile_size = 1
-    for key in cg_dest_id.keys():
-        for id in cg_dest_id[key]:
-            cg_tile_size *= cg_split_factor[id][1]
+    if (scalar != 1):
+        for key in cg_dest_id.keys():
+            for id in cg_dest_id[key]:
+                cg_tile_size *= cg_split_factor[id][1]
     apply_activation(main_file, cg_tile_size, cg_activation)
 
     if(mode == "rtl"):
@@ -627,11 +631,12 @@ if __name__ == "__main__":
         stmt = "    if(curr_subtile_num == 0){"
         stmt += "\n"
         
-        for key in cg_dest_id.keys():
-            out_id_list = cg_dest_id[key]
-            out_id_map = cg_dest_map[key]
-        for i in range(0, len(out_id_list)):
-            stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+        if(scalar != 1):
+            for key in cg_dest_id.keys():
+                out_id_list = cg_dest_id[key]
+                out_id_map = cg_dest_map[key]
+            for i in range(0, len(out_id_list)):
+                stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
         stmt += "        header_check_gold(output_gold_file, output_subtile_size);\n"
         stmt += "    }"
         stmt += "\n"
@@ -712,9 +717,12 @@ if __name__ == "__main__":
         main_file.write("\n")
 
     cp_tile_size = 1
-    for key in cp_dest_id.keys():
-        for id in cp_dest_id[key]:
-            cp_tile_size *= cp_split_factor[id][0]
+
+    if(scalar != 1):
+        for key in cp_dest_id.keys():
+            for id in cp_dest_id[key]:
+                cp_tile_size *= cp_split_factor[id][0]
+
     apply_activation(main_file, cp_split_factor, cp_activation)
     
     main_file.write("\n")
@@ -766,9 +774,12 @@ if __name__ == "__main__":
     
     # generate code that applies the activation function specified in the argument
     ap_tile_size = 1
-    for key in ap_dest_id.keys():
-        for id in ap_dest_id[key]:
-            ap_tile_size *= ap_split_factor[id][0]
+
+    if(scalar != 1):
+        for key in ap_dest_id.keys():
+            for id in ap_dest_id[key]:
+                ap_tile_size *= ap_split_factor[id][0]
+                
     apply_activation(main_file, ap_tile_size, ap_activation)
 
     # generate code that write the output matrix to file

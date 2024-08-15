@@ -799,7 +799,10 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                             stmt += "    " * (level + 3)
                             stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + "out" + "\""
                             for idx in ids:
-                                stmt += ", " + str(split_dict[idx][0])
+                                if(idx == '0'): 
+                                    stmt += ", " + str(1)
+                                else:
+                                    stmt += ", " + str(split_dict[idx][0])
                         stmt += ");"
                         stmt += "\n"
                         stmt += "\n"
