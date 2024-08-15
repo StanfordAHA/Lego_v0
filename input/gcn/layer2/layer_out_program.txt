@@ -3,7 +3,7 @@ stmt: X(i, j) = B(i, k) * C(k, j)
 schedule_ap:   [ijk]
 schedule_cp:   [ijk]
 schedule_cgra: [ijk]
-i:split:4096:1024:1024
+i:split:3328:64:64
 j:split:8:8:8
 k:split:64:64:64
 activation_ap:   none
