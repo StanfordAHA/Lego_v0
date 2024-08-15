@@ -13,6 +13,7 @@ from onyx_codegen.main_codegen import *
 from onyx_codegen.io_placement import *
 from onyx_codegen.raw_to_h_16 import *
 from onyx_codegen.bs_to_h import *
+from onyx_codegen.generate_linker import *
 
 
 sys.path.insert(0, './')
@@ -522,6 +523,12 @@ if __name__ == "__main__":
         bitstream_file = "./input/bitstream.bs"
         bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
+
+        linker_header_file = open("lego_scratch/sections.ld", "w+")
+        first_half_of_body(linker_header_file)
+        input_list = [input.strip(".raw") for input in inputs]
+        linker_header_file.write(generate_data_location_content(input_list))
+        bottom_half_of_body(linker_header_file)
 
         reg_write_file = "./input/reg_write.h"
         with open(reg_write_file, 'r') as file:
