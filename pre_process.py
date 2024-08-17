@@ -141,7 +141,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-                f.write("%s\n" % (int(tiled_COO.data[val])))
+                f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
             else:
                 f.write("%s\n" % (tiled_COO.data[val]))                
     return n_lists, d_list, crd_dict, pos_dict
@@ -224,7 +224,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
         tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
         # tensor = scipy.sparse.coo_array(tensor)
-        tensor = sparse.COO(tensor)
+        # tensor = sparse.COO(tensor)
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)

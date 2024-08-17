@@ -513,45 +513,47 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_cs
                     if(loop_counter != 0):  
                         stmt = stmt + "\n" 
 
-                    stmt = stmt + "    " * (level + 2)
-                    stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
-                    stmt = stmt + "\n"
-                    if(process_csf):
+                    if(mode == "rtl" or len(sub_point) != 1):
                         stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
-                        for id1 in id_dict[arr_read]:
-                            stmt = stmt + ", " + str(int(split_dict[id1][1]) - 1)
-                        stmt = stmt + ");"
+                        stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
+                        stmt = stmt + "\n"
+                        if(process_csf):
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
+                            for id1 in id_dict[arr_read]:
+                                stmt = stmt + ", " + str(int(split_dict[id1][1]) - 1)
+                            stmt = stmt + ");"
 
                     if(mode != "rtl"):
-                        stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "id_store_" + arr_read + " = "
-
-                        cprod = 1
-                        for id1 in id_dict[arr_read][::-1]:
-                            if(cprod == 1):
-                                stmt += id1
-                                cprod *= (int(split_dict[id1][0]/split_dict[id1][1]))
-                            else:
-                                stmt += " + " + id1 + " * " + str(cprod)
-                                cprod *= int(split_dict[id1][0]/split_dict[id1][1])
+                        if(len(sub_point) != 1):
                         
-                        stmt += ";"
-                        stmt += "\n"
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "id_store_" + arr_read + " = "
 
-                        stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "if(!store_" + arr_read + "[id_store_" + arr_read + "]){"
-                        stmt = stmt + "\n"
-                        stmt = stmt + "    " * (level + 3)
-                        stmt = stmt + "store_" + arr_read + "[id_store_" + arr_read + "] = 1;"
-                        stmt = stmt + "\n"
-                        stmt = stmt + "    " * (level + 3)
-                        stmt = stmt + "cg_subtile_" + arr_read + " = " + "cg_tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "cg_subtile_" + arr_read + ", store_subtile_" + arr_read + ", " + "subtile_" + arr_read +  ", " + "id_store_" + arr_read + ");"    
-                        stmt = stmt + "\n"
-                        stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "}"
-                        stmt = stmt + "\n"
+                            cprod = 1
+                            for id1 in id_dict[arr_read][::-1]:
+                                if(cprod == 1):
+                                    stmt += id1
+                                    cprod *= (int(split_dict[id1][0]/split_dict[id1][1]))
+                                else:
+                                    stmt += " + " + id1 + " * " + str(cprod)
+                                    cprod *= int(split_dict[id1][0]/split_dict[id1][1])
+                            
+                            stmt += ";"
+                            stmt += "\n"
 
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "if(!store_" + arr_read + "[id_store_" + arr_read + "]){"
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 3)
+                            stmt = stmt + "store_" + arr_read + "[id_store_" + arr_read + "] = 1;"
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 3)
+                            stmt = stmt + "cg_subtile_" + arr_read + " = " + "cg_tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "cg_subtile_" + arr_read + ", store_subtile_" + arr_read + ", " + "subtile_" + arr_read +  ", " + "id_store_" + arr_read + ");"    
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "}"
+                            stmt = stmt + "\n"
                     
                     loop_counter += 1
     
@@ -677,6 +679,10 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         stmt += "    " * (level + 2)
                         stmt += "}"
                         stmt += "\n"
+                        stmt = stmt + "    " * (level + 2)
+                        stmt += "subtile_" + op + " = " 
+                        stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
+                        stmt += "\n" 
                     elif(mode == "rtl"): 
                         stmt = stmt + "    " * (level + 2)
                         stmt += "subtile_" + op + " = " 
