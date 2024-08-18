@@ -500,7 +500,24 @@ def ap_mem_stmt(sub_point, id_dict, level, curr_id):
 
     return [stmt]
 
-def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_csf):
+def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf):
+
+
+        valid_op_list = [] 
+    
+        for op in op_list: 
+            if not (curr_id in id_dict[op]): 
+                if(id_dict[op] != ['-']):
+                    valid_op_list.append(op)
+             
+        for id in sub_point:
+            arr_read = id[1]
+            arr_idx  = id[0]
+            if(arr_idx in id_dict[arr_read]):
+                if(id_dict[arr_read][-1] == arr_idx):
+                    valid_op_list.append(arr_read)
+
+        valid_op_list = [x for x in op_list if x in valid_op_list]
     
         stmt = ""
         loop_counter = 0
@@ -513,7 +530,7 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_cs
                     if(loop_counter != 0):  
                         stmt = stmt + "\n" 
 
-                    if(mode == "rtl" or len(sub_point) != 1):
+                    if((mode == "rtl") or (len(sub_point) != 1) or (len(valid_op_list) != 1)):
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
                         stmt = stmt + "\n"
@@ -525,7 +542,7 @@ def cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_cs
                             stmt = stmt + ");"
 
                     if(mode != "rtl"):
-                        if(len(sub_point) != 1):
+                        if(len(sub_point) != 1 or len(valid_op_list) != 1):
                         
                             stmt = stmt + "    " * (level + 2)
                             stmt = stmt + "id_store_" + arr_read + " = "
@@ -590,8 +607,6 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
                 stmt += "tile_" + op + " = " 
                 stmt += "tensor_zero_op_" + str(len(id_dict_true[op])) + "(" + "tile_" + op  + ");"
                 stmt += "\n"
-
-    
     
     if(len(valid_op_list) != 1 or mode == "rtl"):    
         stmt += "    " * (level + 2)
@@ -923,7 +938,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
             if(target == "ap"):
                 stmt_list.append(ap_mem_stmt(sub_point, id_dict, level, curr_id))
             elif(target == "cp"):
-                stmt_list.append(cp_mem_stmt(sub_point, id_dict, level, curr_id, split_dict, mode, process_csf))
+                stmt_list.append(cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf))
 
             if(len(schedule) == 1):
                 if(target == "ap"):
