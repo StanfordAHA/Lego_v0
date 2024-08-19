@@ -24,5 +24,5 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size);
 int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim);
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim);
 int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id);
-int header_meta_data(ofstream &header_file, int max_run);
+int header_meta_data(ofstream &header_file, std::string label, int max_run);
 #endif

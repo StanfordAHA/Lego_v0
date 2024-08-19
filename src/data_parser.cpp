@@ -223,8 +223,8 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 	return 0;
 }
 
-int header_meta_data(ofstream &header_file, int max_run){
-	header_file << "int runs = " << max_run << ";" << "\n";
+int header_meta_data(ofstream &header_file, std::string label, int max_run){
+	header_file << "int runs" << label << " = " << max_run << ";" << "\n";
 	return 0; 
 } 
 

@@ -203,7 +203,7 @@ def ap_tensor_decleration(main_file, ap_source_id):
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name):
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name, unroll):
 
     for key, value in cp_source_id.items():
 
@@ -231,34 +231,64 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "int id_store_" + key + ";\n")
             main_file.write("\n")
 
-            main_file.write("    " + "bool *store_" + key + " = (bool *) calloc((store_size_" + key + " + 1), sizeof(bool));\n")
+            main_file.write("    " + "bool *store_" + key + "1 = (bool *) calloc((store_size_" + key + " + 1), sizeof(bool));\n")
 
             for i in range(0, tensor_dim):
-                main_file.write("    " + "int *" + key + "_mode" + str(i) + "_start = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-                main_file.write("    " + "int *" + key + "_mode" + str(i) + "_end = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+                main_file.write("    " + "int *" + key + "_mode" + str(i) + "_start1 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+                main_file.write("    " + "int *" + key + "_mode" + str(i) + "_end1 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
             
-            main_file.write("    " + "int *" + key + "_mode_vals_start = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-            main_file.write("    " + "int *" + key + "_mode_vals_end = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+            main_file.write("    " + "int *" + key + "_mode_vals_start1 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+            main_file.write("    " + "int *" + key + "_mode_vals_end1 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
         
             main_file.write("\n")
-            main_file.write("    " + "int **store_subtile_" + key + ";\n")
-            main_file.write("    " + "store_subtile_" + key + " = (int**)malloc(sizeof(int*) * (" + str(2 * tensor_dim + 2) + "));\n")
+            main_file.write("    " + "int **store_subtile_" + key + "1;\n")
+            main_file.write("    " + "store_subtile_" + key + "1 = (int**)malloc(sizeof(int*) * (" + str(2 * tensor_dim + 2) + "));\n")
 
             for i in range(0, tensor_dim):
-                main_file.write("    " + "store_subtile_" + key + "[" + str(2 * i) + "] = " + key + "_mode" + str(i) + "_start;\n")
-                main_file.write("    " + "store_subtile_" + key + "[" + str(2 * i + 1) + "] = " + key + "_mode" + str(i) + "_end;\n")
+                main_file.write("    " + "store_subtile_" + key + "1[" + str(2 * i) + "] = " + key + "_mode" + str(i) + "_start1;\n")
+                main_file.write("    " + "store_subtile_" + key + "1[" + str(2 * i + 1) + "] = " + key + "_mode" + str(i) + "_end1;\n")
 
-            main_file.write("    " + "store_subtile_" + key + "[" + str(2 * tensor_dim) + "] = " + key + "_mode_vals_start;\n")
-            main_file.write("    " + "store_subtile_" + key + "[" + str(2 * tensor_dim + 1) + "] = " + key + "_mode_vals_end;\n")
+            main_file.write("    " + "store_subtile_" + key + "1[" + str(2 * tensor_dim) + "] = " + key + "_mode_vals_start1;\n")
+            main_file.write("    " + "store_subtile_" + key + "1[" + str(2 * tensor_dim + 1) + "] = " + key + "_mode_vals_end1;\n")
 
             main_file.write("\n")
 
-            main_file.write("    " + "cg_subtile" + str(tensor_dim) + " cg_subtile_" + key + ";\n")
-            main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + ";\n") 
+            main_file.write("    " + "cg_subtile" + str(tensor_dim) + " cg_subtile_" + key + "1;\n")
+            main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + "1;\n") 
+
+            if(unroll): 
+                
+                main_file.write("    " + "bool *store_" + key + "2 = (bool *) calloc((store_size_" + key + " + 1), sizeof(bool));\n")
+
+                for i in range(0, tensor_dim):
+                    main_file.write("    " + "int *" + key + "_mode" + str(i) + "_start2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+                    main_file.write("    " + "int *" + key + "_mode" + str(i) + "_end2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+                
+                main_file.write("    " + "int *" + key + "_mode_vals_start2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+                main_file.write("    " + "int *" + key + "_mode_vals_end2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
+            
+                main_file.write("\n")
+                main_file.write("    " + "int **store_subtile_" + key + "2;\n")
+                main_file.write("    " + "store_subtile_" + key + "2 = (int**)malloc(sizeof(int*) * (" + str(2 * tensor_dim + 2) + "));\n")
+
+                for i in range(0, tensor_dim):
+                    main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * i) + "] = " + key + "_mode" + str(i) + "_start2;\n")
+                    main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * i + 1) + "] = " + key + "_mode" + str(i) + "_end2;\n")
+
+                main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * tensor_dim) + "] = " + key + "_mode_vals_start2;\n")
+                main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * tensor_dim + 1) + "] = " + key + "_mode_vals_end2;\n")
+
+                main_file.write("\n")
+
+                main_file.write("    " + "cg_subtile" + str(tensor_dim) + " cg_subtile_" + key + "2;\n")
+                main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + "2;\n") 
 
     main_file.write("\n")
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
+    main_file.write("    " + "int curr_subtile_num1 = 0;\n")  
+    if(unroll):
+        main_file.write("    " + "int curr_subtile_num2 = 0;\n")  
     main_file.write("    " + "std::string out_dir = \"" + output_dir + "/" + kernel_name + "/\" + curr_tile;\n")
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
@@ -279,7 +309,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -300,8 +330,9 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("        " + "input_meta_data_file.open(input_meta_data_path);\n")
         main_file.write("\n")
 
+        main_file.write("        " + "if(curr_subtile_num1 > 0){")
         main_file.write("\n")
-        main_file.write("        " + "header_meta_data(input_meta_data_file, curr_subtile_num);\n")
+        main_file.write("            " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1);\n")
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
@@ -309,15 +340,39 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             tensor_dim = len(value)
 
             for i in range(0, tensor_dim):
-                main_file.write("        " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_subtile_" + key + ".mode_" + str(i) + ");\n")
-                main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + ".extents_mode_" + str(i) + ");\n")
+                main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
+                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ");\n")
                 main_file.write("\n")
 
-            main_file.write("        " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + ".mode_vals, \"" + dtype + "\");\n")
-            main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + ".extents_mode_vals);\n")
+            main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
+            main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + "1.extents_mode_vals);\n")
             main_file.write("\n")
 
+        main_file.write("        " + "}")
         main_file.write("\n")
+
+        if(unroll):
+            main_file.write("        " + "if(curr_subtile_num2 > 0){")
+            main_file.write("\n")
+            main_file.write("            " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
+            main_file.write("\n")
+
+            for key, value in cg_source_id.items():
+
+                tensor_dim = len(value)
+
+                for i in range(0, tensor_dim):
+                    main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "_unroll\", cg_subtile_" + key + "2.mode_" + str(i) + ");\n")
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "_unroll\", cg_extents_" + key + "2.extents_mode_" + str(i) + ");\n")
+                    main_file.write("\n")
+
+                main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "2.mode_vals, \"" + dtype + "\");\n")
+                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "2.extents_mode_vals);\n")
+                main_file.write("\n")
+
+            main_file.write("        " + "}")
+            main_file.write("\n")
+
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
         main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
 
@@ -472,8 +527,9 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
     parser.add_argument("-w", "--workspace", action="store_true")
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
-    parser.add_argument("-n", "--no_preprocess", action="store_true")
+    parser.add_argument("-n", "--no_preprocess", action="store_true")   
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
+    parser.add_argument("-u", "--unroll_cgen", action="store_true")
 
     args = parser.parse_args()
 
@@ -489,6 +545,7 @@ if __name__ == "__main__":
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
 
     process_csf = args.xplicit_zero
+    unroll      = args.unroll_cgen
 
     # create the required directories
     # if os.path.exists("./lego_scratch"):
@@ -702,19 +759,19 @@ if __name__ == "__main__":
 
     main_file.write("float* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name, unroll)
     main_file.write("\n")
 
     if(workspace):
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, dtype):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, mapping_dict)
     main_file.write("\n")
 
     if(workspace):
