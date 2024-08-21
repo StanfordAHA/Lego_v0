@@ -509,8 +509,9 @@ if __name__ == "__main__":
     if mode == "onyx":
         mapping_dict = mapping_dict_gen(args.design)
         main_file = open("lego_scratch/main.c", "w+")
-        main_gen_header_files(main_file)
-        main_spec_header_files(main_file, app_name)
+        main_gen_c_lib_include(main_file)
+        main_app_header_include(main_file, app_name)
+        main_gen_soc_lib_include(main_file)
         main_block_1(main_file)
         main_block_2(main_file, mapping_dict, op_list)
         main_block_3(main_file, mapping_dict, dest_read)    

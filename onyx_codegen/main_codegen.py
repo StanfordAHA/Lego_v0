@@ -1,22 +1,25 @@
-def main_gen_header_files(file):
+def main_gen_c_lib_include(file):
 
     file.write("#include <stdio.h>\n")
     file.write("#include <stdlib.h>\n")
     file.write("#include \"diag/trace.h\"\n")
-    file.write("#include \"amberm3vx_hal.h\"\n")
-    file.write("#include \"glb.h\"\n")
-    file.write("#include \"glc.h\"\n")
-    file.write("#include \"memory.h\"\n")
-    file.write("#include \"define.h\"\n")
     file.write("\n")
 
-def main_spec_header_files(file, app_name):
+def main_app_header_include(file, app_name):
 
     file.write("#include \"" + app_name + "_script.h\"\n")
     file.write("#include \"" + app_name + "_input_script.h\"\n")
     file.write("#include \"" + app_name + "_unrolling.h\"\n")
     file.write("#include \"" + app_name + "_reg_write.h\"\n")
     file.write("#include \"" + app_name + "_gold.h\"\n")
+    file.write("\n")
+
+def main_gen_soc_lib_include(file):
+    file.write("#include \"amberm3vx_hal.h\"\n")
+    file.write("#include \"glb.h\"\n")
+    file.write("#include \"glc.h\"\n")
+    file.write("#include \"memory.h\"\n")
+    file.write("#include \"define.h\"\n")
     file.write("\n")
 
 def main_block_1(file):
@@ -79,7 +82,7 @@ def main_block_2(file, mapping_dict, op_list):
 
     file.write("\n")
     for i in range(num_tiles):
-        file.write("    input_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * " + str(i) + ";\n")
+        file.write("    input_read_base = AHASOC_CGRA_DATA_BASE + 0x20000 * " + str(i) + ";\n")
         file.write("    trace_printf(\"first location: %lx\\n\", input_read_base[0]);\n")
 
     file.write("    trace_printf(\"\\nCONFIG GLB\\n\");\n") 
@@ -96,14 +99,14 @@ def main_block_2(file, mapping_dict, op_list):
     file.write("    trace_printf(\"\\n** Run code-gen  **\\n\");\n")
     file.write("\n")
     file.write("    const uint32_t start_addr = 0x0;\n")
-    file.write("    const uint32_t read_start_addr = 0x20000;\n")
+    file.write("    const uint32_t read_start_addr = 0x10000;\n")
 
 def main_block_3(file, mapping_dict, dest):
 
     out_tensor_dim = len(mapping_dict[dest])
     for i in range(out_tensor_dim):
         curr_mapping = mapping_dict[dest][i]    
-        file.write("    uint16_t* output_read_base" + str(i) + " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x40000*" + str(curr_mapping) + ");\n")
+        file.write("    uint16_t* output_read_base" + str(i) + " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x20000*" + str(curr_mapping) + ");\n")
     file.write("\n")
 
     for i in range(out_tensor_dim - 1):
@@ -175,9 +178,9 @@ def main_block_3(file, mapping_dict, dest):
 
     for i in range(out_tensor_dim - 1):
         curr_mapping = mapping_dict[dest][i]
-        file.write("        HAL_Cgra_Glb_WriteReg(0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx*2);\n")
+        file.write("        HAL_Cgra_Glb_WriteReg(0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x10000 + 0x20000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx*2);\n")
     val_mapping = mapping_dict[dest][out_tensor_dim - 1]
-    file.write("        HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
+    file.write("        HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x10000 + 0x20000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
     file.write("\n")
 
     file.write("    }\n")   
@@ -194,10 +197,10 @@ def main_block_3(file, mapping_dict, dest):
     file.write("\n")
     file.write("    int errors = 0;\n")
     file.write("\n")
-    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*0 + 0x20000;\n")
+    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x20000*0 + 0x10000;\n")
 
     for i in range(out_tensor_dim):
-        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*" + str(i) + " + 0x20000;\n")
+        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x20000*" + str(i) + " + 0x10000;\n")
         file.write("    trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")
 
     file.write("    trace_printf(\"check gold data\\n\");\n")

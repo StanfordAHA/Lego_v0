@@ -245,6 +245,6 @@ def generate_data_location_content(data_list):
         result += f"    *(.app_{data_name}_data)\n"
         result += f"    KEEP(*(.app_{data_name}_data))\n"
         result += "}\n"
-        increment += 0x40000
+        increment += 0x20000
 
     return result

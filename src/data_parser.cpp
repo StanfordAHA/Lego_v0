@@ -85,7 +85,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 }
 
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0){
-    header_file << "int tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << extents_mode_0.size() << "] = {";
+    header_file << "const int tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << extents_mode_0.size() << "] = {";
     header_file << extents_mode_0[0];
     for(int i = 1; i < extents_mode_0.size(); i++){
         header_file << ", " << extents_mode_0[i];
@@ -224,7 +224,7 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 }
 
 int header_meta_data(ofstream &header_file, int max_run){
-	header_file << "int runs = " << max_run << ";" << "\n";
+	header_file << "const int runs = " << max_run << ";" << "\n";
 	return 0; 
 } 
 
@@ -262,13 +262,13 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "    uint16_t vals_idx = 0;" << "\n";	
 	
 	output_gold_file << "\n"; 
-	output_gold_file << "    const uint32_t read_start_addr = 0x20000;" << "\n";
+	output_gold_file << "    const uint32_t read_start_addr = 0x10000;" << "\n";
 
 	return 0;
 } 
 
 int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id){
-	output_gold_file << "    uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * 0x40000);" << "\n";
+	output_gold_file << "    uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * 0x20000);" << "\n";
 	return 0; 
 }
 
