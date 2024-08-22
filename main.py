@@ -466,7 +466,9 @@ if __name__ == "__main__":
                     description="Generate Cpp code for tiling and reduction given the input program and tensors")
     parser.add_argument("-t", "--tensor", type=str, default="./input/tensor.txt")
     parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
-    parser.add_argument("-d", "--design", type=str, default="./input/design_meta.json")
+    parser.add_argument("--bitstream", type=str, default="./input/bitstream.bs")
+    parser.add_argument("--design_meta", type=str, default="./input/design_meta.json")
+    parser.add_argument("--reg_write", type=str, default="./input/reg_write.h")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
@@ -507,7 +509,7 @@ if __name__ == "__main__":
     mode = args.mode
 
     if mode == "onyx":
-        mapping_dict = mapping_dict_gen(args.design)
+        mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open("lego_scratch/main.c", "w+")
         main_gen_c_lib_include(main_file)
         main_app_header_include(main_file, app_name)
@@ -516,12 +518,12 @@ if __name__ == "__main__":
         main_block_2(main_file, mapping_dict, op_list)
         main_block_3(main_file, mapping_dict, dest_read)    
 
-        inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design)
+        inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design_meta)
 
         unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
         unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
 
-        bitstream_file = "./input/bitstream.bs"
+        bitstream_file = args.bitstream 
         bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
 
@@ -531,7 +533,7 @@ if __name__ == "__main__":
         linker_header_file.write(generate_data_location_content(input_list))
         bottom_half_of_body(linker_header_file)
 
-        reg_write_file = "./input/reg_write.h"
+        reg_write_file = args.reg_write
         with open(reg_write_file, 'r') as file:
             data = file.read()
             data = data.replace('glb_reg_write', 'HAL_Cgra_Glb_WriteReg')
