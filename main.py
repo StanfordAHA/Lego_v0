@@ -6,6 +6,7 @@ import einsum
 import gold_cgen
 import shutil
 import os
+import copy
 
 
 from onyx_codegen.meta import *
@@ -305,12 +306,21 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
-
+            
             tensor_dim = len(value)
 
+            # TODO: Introduce systematic change to replace this hack
+            # this hack is to cope with the old RTL bitstream generation that 
+            # always place the matrix modes in the data flow order 
+            # e.g. for X(i,j) = B(i, k) * C(k, j), C_mode_0 is k and C_mode_1 is j
+            # however, for RTL, C_mode_0 is mapped to j and C_mode_1 is mapped to k
+            cg_source_map_cpy = copy.deepcopy(cg_source_map)
+            for tensor_name, mode_list in cg_source_map_cpy.items():
+                mode_list.sort()
+
             for i in range(0, tensor_dim):
-                main_file.write("        " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_subtile_" + key + ".mode_" + str(i) + ");\n")
-                main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + ".extents_mode_" + str(i) + ");\n")
+                main_file.write("        " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + ".mode_" + str(i) + ");\n")
+                main_file.write("        " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + ".extents_mode_" + str(i) + ");\n")
                 main_file.write("\n")
 
             main_file.write("        " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + ".mode_vals, \"" + dtype + "\");\n")
