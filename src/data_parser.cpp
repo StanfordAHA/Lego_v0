@@ -360,20 +360,25 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		int i  = 0;
 		output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < mode" << i << "_stream_size; i" << i << "++){" << "\n";
 		output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + i" << i << "];" << "\n";
-		i++;
-		output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 1];" << "\n";
-
-		for(int i = 1; i < tensor_dim; i++){
-			output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < x" << i << "_dim; i" << i << "++){" << "\n";
-			output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + x" << i << "_idx + i" << i << "];" << "\n";
-			if(i == tensor_dim - 1){
-				output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
-			}
-			else{
-				int j = i + 1; 
-				output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 1];" << "\n";
+		
+		// the output is a vector
+		if (tensor_dim == 1) {
+			output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + " << "i" << i << " + 1];\n";
+		} else {
+			for(int i = 1; i < tensor_dim; i++){
+				output_gold_file << "        x" << i << "_dim = read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 2] - read_base_" << i << "[mode" << i << "_idx + i" << i - 1 << " + 1];" << "\n";
+				output_gold_file << "    for(uint16_t i" << i << " = 0; i" << i << " < x" << i << "_dim; i" << i << "++){" << "\n";
+				output_gold_file << "        x" << i << " = read_base_" << i << "[mode" << i << "_idx + mode" << i << "_base + x" << i << "_idx + i" << i << "];" << "\n";
+				if(i == tensor_dim - 1){
+					output_gold_file << "        check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
+				}
+				else{
+					int j = i + 1; 
+					output_gold_file << "        x" << j << "_dim = read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 2] - read_base_" << j << "[mode" << j << "_idx + i" << j - 1 << " + 1];" << "\n";
+				}
 			}
 		}
+		
 
 		for(int i = tensor_dim - 1; i > 0; i--){
 			output_gold_file << "    }" << "\n";
