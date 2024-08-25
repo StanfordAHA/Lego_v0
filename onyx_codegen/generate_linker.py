@@ -248,3 +248,18 @@ def generate_data_location_content(data_list):
         increment += 0x40000
 
     return result
+
+def generate_data_location_content_unroll(data_list):
+    result = ""
+    increment = 0x00000
+    base_location = 0x20600000
+
+    for data_name in data_list:
+        current_location = hex(base_location + increment)[2:]
+        result += f".data_at_specific_location 0x{current_location} : {{\n"
+        result += f"    *(.app_{data_name}_unroll_data)\n"
+        result += f"    KEEP(*(.app_{data_name}_unroll_data))\n"
+        result += "}\n"
+        increment += 0x40000
+
+    return result

@@ -374,15 +374,31 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("\n")
 
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
-        main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
 
+        if(unroll): 
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 1);\n")
+        else: 
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 0);\n")
+
+        if(unroll):
+            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
+        else: 
+            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
         for i in range(0, out_tensor_dim + 1):
             curr_mapping = mapping_dict[dest_read][i] 
             main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\");\n")
+        main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\");\n")
+        
+        if(unroll): 
+            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2);\n")
+            for i in range(0, out_tensor_dim + 1):
+                curr_mapping = mapping_dict[dest_read][i] 
+                main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\");\n")
+            main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\");\n")
 
-        main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
+        main_file.write("        " + "codegen_check_gold_ret(output_gold_file);\n")
+
         main_file.write("        " + "output_gold_file.close();\n")
-
         main_file.write("        " + "input_data_file.close();\n")
         main_file.write("        " + "input_meta_data_file.close();\n")
         
@@ -568,29 +584,39 @@ if __name__ == "__main__":
         main_file = open("lego_scratch/main.c", "w+")
         main_gen_header_files(main_file)
         main_spec_header_files(main_file, app_name)
-        main_block_1(main_file)
-        main_block_2(main_file, mapping_dict, op_list)
-        main_block_3(main_file, mapping_dict, dest_read)    
+        main_block_1(main_file, unroll)
+        main_block_2(main_file, mapping_dict, op_list, unroll)
+        main_block_3(main_file, mapping_dict, dest_read, unroll)    
 
         inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design)
 
         unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
-        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
+        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name, unroll)
 
         bitstream_file = "./input/bitstream.bs"
         bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
 
-        linker_header_file = open("lego_scratch/sections.ld", "w+")
+        linker_header_file = open("lego_scratch/sections11111.ld", "w+")
         first_half_of_body(linker_header_file)
         input_list = [input.strip(".raw") for input in inputs]
         linker_header_file.write(generate_data_location_content(input_list))
+        if(unroll): 
+            linker_header_file.write(generate_data_location_content_unroll(input_list))
         bottom_half_of_body(linker_header_file)
+
+        reg_write_input_list  = ['0x80, 0x0', '0x180, 0x40000', '0x280, 0x80000', '0x380, 0xc0000', '0x480, 0x100000', '0x580, 0x140000', '0x680, 0x180000', '0x780, 0x1c0000', '0x880, 0x200000', '0x980, 0x240000']
+        reg_write_output_list = ['0x1c, 0x20000', '0x11c, 0x60000', '0x21c, 0xa0000', '0x31c, 0xe0000']
 
         reg_write_file = "./input/reg_write.h"
         with open(reg_write_file, 'r') as file:
             data = file.read()
-            data = data.replace('glb_reg_write', 'HAL_Cgra_Glb_WriteReg')
+            data = data.replace('glb_config()', 'glb_config(int i)')
+            for item in reg_write_input_list:
+                data = data.replace(item, item + ' + 0x40000 * i')
+            for item in reg_write_output_list:
+                data = data.replace(item, item + ' + 0x40000 * i')
+            data = data.replace('glb_reg_write(', 'HAL_Cgra_Glb_WriteReg(0x100 * i + ')
 
         with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
             file.write(data)

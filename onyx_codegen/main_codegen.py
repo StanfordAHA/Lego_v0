@@ -19,7 +19,7 @@ def main_spec_header_files(file, app_name):
     file.write("#include \"" + app_name + "_gold.h\"\n")
     file.write("\n")
 
-def main_block_1(file):
+def main_block_1(file, unroll):
     
     file.write("HAL_PtfmCtrl_t PtfmCtl;\n")
     file.write("\n")
@@ -35,7 +35,6 @@ def main_block_1(file):
     file.write("    u32 cgra_mask = (1 << AHASOC_PCTRL_CGRA_Pos);\n")
     file.write("    u32 sys_mask = (1 << AHASOC_PCTRL_SYS_Pos);\n")
     file.write("\n")
-    file.write("\n")
     file.write("    // Slower clocks for configuration\n")
     file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, cgra_mask, 0); \n")
     file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 3); \n")
@@ -49,11 +48,24 @@ def main_block_1(file):
     file.write("    for (int config = 0; config < app_size; config++){\n")
     file.write("        HAL_Cgra_Tile_WriteReg(app_addrs_script[config], app_datas_script[config]);\n")
     file.write("    }\n")
+
+    if(unroll): 
+        file.write("    for (int config = 0; config < app_size; config++){\n")
+        file.write("        uint32_t addr = app_addrs_script[config];\n")
+        file.write("	    uint32_t addr_shifted = (addr & 0xFFFF00FF) | ((((addr & 0x0000FF00) >> 8) + 16) << 8);\n")
+        file.write("        HAL_Cgra_Tile_WriteReg(addr_shifted, app_datas_script[config]);\n")
+        file.write("    }\n")   
+
     file.write("\n")
     file.write("    trace_printf(\"\\nCheck Config\\n\\n\");\n")
     file.write("    for (int config = 0; config < app_size; config++){\n")
     file.write("        uint32_t read_data = HAL_Cgra_Tile_ReadReg(app_addrs_script[config]);\n")
     file.write("        uint32_t addr = app_addrs_script[config];\n")
+
+    if(unroll):
+        file.write("        uint32_t addr_shifted = (addr & 0xFFFF00FF) | ((((addr & 0x0000FF00) >> 8) + 16) << 8);\n")
+        file.write("        uint32_t read_data2 = HAL_Cgra_Tile_ReadReg(addr_shifted);\n")
+
     file.write("        uint32_t gold = app_datas_script[config];\n")
     file.write("\n")
     file.write("        if ( read_data != gold){\n")
@@ -62,13 +74,19 @@ def main_block_1(file):
     file.write("            trace_printf(\"read_data %lx \", read_data);\n")
     file.write("            trace_printf(\"gold data %lx\\n\", gold);\n")
     file.write("        }\n")
+    if(unroll): 
+        file.write("        if ( read_data2 != gold){\n")
+        file.write("            trace_printf(\"config error: %d \", config);\n")
+        file.write("            trace_printf(\"address: %lx \", addr);\n")
+        file.write("            trace_printf(\"read_data %lx \", read_data2);\n")
+        file.write("            trace_printf(\"gold data %lx\\n\", gold);\n")
+        file.write("        }\n")
     file.write("    }\n")
-    file.write("\n")
     file.write("\n")
     file.write("    // Faster clocks for App\n")
     file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 1); // 2^2 = 4 60/4 = 15\n")
 
-def main_block_2(file, mapping_dict, op_list):
+def main_block_2(file, mapping_dict, op_list, unroll):
 
     file.write("    uint16_t* input_read_base = AHASOC_CGRA_DATA_BASE;\n")
     
@@ -81,9 +99,20 @@ def main_block_2(file, mapping_dict, op_list):
     for i in range(num_tiles):
         file.write("    input_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * " + str(i) + ";\n")
         file.write("    trace_printf(\"first location: %lx\\n\", input_read_base[0]);\n")
+    file.write("\n")
+
+    if(unroll): 
+        for i in range(num_tiles):
+            file.write("    input_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * 8 + 0x40000 * " + str(i) + ";\n")
+            file.write("    trace_printf(\"first location: %lx\\n\", input_read_base[0]);\n")
+        file.write("\n")
 
     file.write("    trace_printf(\"\\nCONFIG GLB\\n\");\n") 
-    file.write("    app_glb_config();\n")
+    file.write("    app_glb_config(0);\n")
+
+    if(unroll): 
+        file.write("    app_glb_config(8);\n")
+
     file.write("\n")
     file.write("    trace_printf(\"\\nAPP Prep\\n\");\n")
     file.write("\n")
@@ -98,12 +127,12 @@ def main_block_2(file, mapping_dict, op_list):
     file.write("    const uint32_t start_addr = 0x0;\n")
     file.write("    const uint32_t read_start_addr = 0x20000;\n")
 
-def main_block_3(file, mapping_dict, dest):
+def main_block_3(file, mapping_dict, dest, unroll):
 
     out_tensor_dim = len(mapping_dict[dest])
     for i in range(out_tensor_dim):
         curr_mapping = mapping_dict[dest][i]    
-        file.write("    uint16_t* output_read_base" + str(i) + " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x40000*" + str(curr_mapping) + ");\n")
+        file.write("    uint16_t* output_read_base" + str(i) + " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x40000 * " + str(curr_mapping) + ");\n")
     file.write("\n")
 
     for i in range(out_tensor_dim - 1):
@@ -117,6 +146,23 @@ def main_block_3(file, mapping_dict, dest):
     file.write("    int " + dest + "_mode_vals_size;\n")
     file.write("\n")
 
+    if(unroll): 
+        for i in range(out_tensor_dim):
+            curr_mapping = mapping_dict[dest][i]    
+            file.write("    uint16_t* output_read_base" + str(i) + "_unroll = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x40000 * 8 + 0x40000 * " + str(curr_mapping) + ");\n")
+        file.write("\n")
+
+        for i in range(out_tensor_dim - 1):
+            file.write("    int " + dest + "_mode_" + str(i) + "_idx_unroll = 0;\n")
+        file.write("    int " + dest + "_mode_vals_idx_unroll = 0;\n")
+        file.write("\n")
+
+        file.write("    int size_unroll;\n")
+        for i in range(out_tensor_dim - 1):
+            file.write("    int " + dest + "_mode_" + str(i) + "_size_unroll;\n")
+        file.write("    int " + dest + "_mode_vals_size_unroll;\n")
+        file.write("\n")
+
     file.write("    uint32_t cycles = 0;\n")    
     file.write("\n")
     file.write("    // 1. Enable trace and debug (if not enabled already)\n")
@@ -128,7 +174,120 @@ def main_block_3(file, mapping_dict, dest):
     file.write("    // 3. Start cycle counter\n")
     file.write("    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;\n")
     file.write("\n")
+    file.write("    int run1 = 0;\n")
+    file.write("    update_glb_input(run1);\n")
+    if(unroll):
+        file.write("    int run2 = 0;\n")
+        file.write("    update_glb_input_unroll(run2);\n")
     file.write("\n")
+
+    file.write("    int input_mask = stream_pulse_g2f;\n")
+    file.write("    int output_mask = stream_pulse_f2g;\n")
+    file.write("\n")
+
+    file.write("    int input_in1 = 0;\n")
+    if(unroll):
+        file.write("    int input_in2 = 0;\n")
+    file.write("\n")
+    
+
+    file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, output_mask << 16 | input_mask);\n")
+    if(unroll): 
+	    file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8));\n")
+    file.write("\n")
+
+    if(unroll): 
+        file.write("    while(run1 < runs || run2 < runs_unroll){\n")
+    else: 
+        file.write("    while(run1 < runs){\n")
+    file.write("\n")
+
+    file.write("        // Wait for inputs to finish sending\n")
+    file.write("        if(((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & input_mask) == input_mask) && run1 < runs && (input_in1 == 0)){\n")
+    file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_G2F_ISR_R, input_mask);\n")
+    file.write("            update_glb_input(run1 + 1);\n")
+    file.write("            input_in1 = 1;\n")
+    file.write("        }\n")
+    file.write("\n")
+
+    if(unroll):
+        file.write("        if(((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & (input_mask << 8)) == (input_mask << 8)) && run2 < runs_unroll && (input_in2 == 0)){\n")
+        file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_G2F_ISR_R, input_mask << 8);\n")
+        file.write("            update_glb_input_unroll(run2 + 1);\n")
+        file.write("            input_in2 = 1;\n")
+        file.write("        }\n")
+        file.write("\n")
+
+    file.write("        // Wait for outputs to all fill in\n")
+    file.write("        if(((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & output_mask) == output_mask) && run1 < runs && (input_in1 == 1)){\n")
+    file.write("\n")
+    file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask);\n")
+    file.write("            run1++;\n")
+    file.write("\n")
+    file.write("            if(run1 < runs){\n")
+    file.write("\n")
+    file.write("            // Updating output pointers\n")
+
+    for i in range(out_tensor_dim - 1): 
+        file.write("                size = output_read_base" + str(i) + "[" + dest + "_mode_" + str(i) + "_idx];\n")
+        file.write("                int " + dest + "_mode_" + str(i) + "_size = size + 1 + output_read_base" + str(i) + "[" + dest + "_mode_" + str(i) + "_idx + size + 1] + 1;\n")
+    
+    file.write("                int " + dest + "_mode_vals_size = output_read_base" + str(out_tensor_dim - 1) + "[" + dest + "_mode_vals_idx] + 1;\n")
+    file.write("\n")
+
+    for i in range(out_tensor_dim - 1):
+        file.write("                " + dest + "_mode_" + str(i) + "_idx += " + dest + "_mode_" + str(i) + "_size;\n")
+    file.write("                " + dest + "_mode_vals_idx += " + dest + "_mode_vals_size;\n")
+    file.write("\n")
+    	
+    for i in range(out_tensor_dim - 1):
+        curr_mapping = mapping_dict[dest][i]
+        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx*2);\n")
+    val_mapping = mapping_dict[dest][out_tensor_dim - 1]
+    file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
+    file.write("\n")
+    
+    file.write("                HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, output_mask << 16 | input_mask); // pulsed reg.\n")
+    file.write("            }\n")
+    file.write("            input_in1 = 0;\n")
+    file.write("        }\n")
+    file.write("\n")
+    
+    if(unroll): 
+        file.write("        if(((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & (output_mask << 8)) == (output_mask << 8)) && run2 < runs_unroll && (input_in2 == 1)){\n")
+        file.write("\n")
+        file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask << 8);\n")      
+        file.write("            run2++;\n")
+        file.write("\n")
+        file.write("            if(run2 < runs_unroll){\n")
+        file.write("            // Updating output pointers\n")
+        for i in range(out_tensor_dim - 1): 
+            file.write("                size = output_read_base" + str(i) + "_unroll[" + dest + "_mode_" + str(i) + "_idx_unroll];\n")
+            file.write("                int " + dest + "_mode_" + str(i) + "_size_unroll = size + 1 + output_read_base" + str(i) + "_unroll[" + dest + "_mode_" + str(i) + "_idx_unroll + size + 1] + 1;\n")
+        
+        file.write("                int " + dest + "_mode_vals_size_unroll = output_read_base" + str(out_tensor_dim - 1) + "_unroll[" + dest + "_mode_vals_idx_unroll] + 1;\n")
+        file.write("\n")
+
+        for i in range(out_tensor_dim - 1):
+            file.write("                " + dest + "_mode_" + str(i) + "_idx_unroll += " + dest + "_mode_" + str(i) + "_size_unroll;\n")
+        file.write("                " + dest + "_mode_vals_idx_unroll += " + dest + "_mode_vals_size_unroll;\n")
+        file.write("\n")
+            
+        for i in range(out_tensor_dim - 1):
+            curr_mapping = mapping_dict[dest][i]
+            file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 * 8 + 0x40000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx_unroll*2);\n")
+        val_mapping = mapping_dict[dest][out_tensor_dim - 1]
+        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 * 8 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx_unroll*2);\n")
+        file.write("\n")
+        file.write("                HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8)); // pulsed reg.\n")
+        file.write("            }\n")
+        file.write("            input_in2 = 0;\n")
+        file.write("        }")
+        file.write("\n")
+    	
+    """
+
+
     file.write("    for(int run=0; run < runs; run++){\n")
     file.write("\n")
     file.write("        // Update Input Pointers\n")
@@ -179,6 +338,7 @@ def main_block_3(file, mapping_dict, dest):
     val_mapping = mapping_dict[dest][out_tensor_dim - 1]
     file.write("        HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
     file.write("\n")
+    """
 
     file.write("    }\n")   
     file.write("\n")
@@ -194,14 +354,21 @@ def main_block_3(file, mapping_dict, dest):
     file.write("\n")
     file.write("    int errors = 0;\n")
     file.write("\n")
-    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*0 + 0x20000;\n")
+    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * 0 + 0x20000;\n")
 
     for i in range(out_tensor_dim):
-        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000*" + str(i) + " + 0x20000;\n")
-        file.write("    trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")
+        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * " + str(i) + " + 0x20000;\n")
+        file.write("    trace_printf(\"first location: %lx\\n\", output_read_base[0]);\n")
 
+    if(unroll):
+        for i in range(out_tensor_dim):
+            file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * 8 + 0x40000 * " + str(i) + " + 0x20000;\n")
+            file.write("    trace_printf(\"first location_unroll: %lx\\n\", output_read_base[0]);\n")
+
+    file.write("\n")
     file.write("    trace_printf(\"check gold data\\n\");\n")
     file.write("    errors = check_gold_data();\n")
     file.write("    trace_printf(\"total errors: %d\\n\", errors);\n")
+    file.write("\n")
     file.write("    return 0;\n")
     file.write("}\n")
