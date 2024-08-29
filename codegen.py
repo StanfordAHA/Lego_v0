@@ -557,20 +557,7 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
                                     cprod *= int(split_dict[id1][0]/split_dict[id1][1])
                             
                             stmt += ";"
-                            stmt += "\n"
-
-                            stmt = stmt + "    " * (level + 2)
-                            stmt = stmt + "if(!store_" + arr_read + "[id_store_" + arr_read + "]){"
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 3)
-                            stmt = stmt + "store_" + arr_read + "[id_store_" + arr_read + "] = 1;"
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 3)
-                            stmt = stmt + "cg_subtile_" + arr_read + " = " + "cg_tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "cg_subtile_" + arr_read + ", store_subtile_" + arr_read + ", " + "subtile_" + arr_read +  ", " + "id_store_" + arr_read + ");"    
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 2)
-                            stmt = stmt + "}"
-                            stmt = stmt + "\n"
+                            stmt += "\n"                            
                     
                     loop_counter += 1
     
@@ -648,7 +635,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll):
     
         stmt = ""
     
@@ -674,8 +661,42 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
         if(len(valid_op_list) == 1):
             if(mode == "onyx"):
                 stmt = "    " * (level + 2) + "/* Reserved operation */"
+
+        if(unroll): 
+            unroll_factor = 2
+        else: 
+            unroll_factor = 1
     
         for op in op_list: 
+            if op in valid_op_list: 
+                if(len(valid_op_list) != 1):
+                    if(mode == "onyx"): 
+                        stmt = stmt + "    " * (level + 2)
+                        stmt = stmt + "if(!store_" + op + "1[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 0)){"
+                        stmt = stmt + "\n"
+                        stmt = stmt + "    " * (level + 3)
+                        stmt = stmt + "store_" + op + "1[id_store_" + op + "] = 1;"
+                        stmt = stmt + "\n"
+                        stmt = stmt + "    " * (level + 3)
+                        stmt = stmt + "cg_subtile_" + op + "1 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "1, store_subtile_" + op + "1, " + "subtile_" + op +  ", " + "id_store_" + op + ");"    
+                        stmt = stmt + "\n"
+                        stmt = stmt + "    " * (level + 2)
+                        stmt = stmt + "}"
+                        stmt = stmt + "\n" 
+                        if(unroll):   
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "if(!store_" + op + "2[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 1)){"
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 3)
+                            stmt = stmt + "store_" + op + "2[id_store_" + op + "] = 1;"
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 3)
+                            stmt = stmt + "cg_subtile_" + op + "2 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "2, store_subtile_" + op + "2, " + "subtile_" + op +  ", " + "id_store_" + op + ");"    
+                            stmt = stmt + "\n"
+                            stmt = stmt + "    " * (level + 2)
+                            stmt = stmt + "}"
+                            stmt = stmt + "\n"                      
+
             if op not in valid_op_list: 
                 if(len(valid_op_list) != 1 or mode == "rtl"):    
                     if(mode == "onyx"):
@@ -683,13 +704,13 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         stmt += "id_store_" + op + " = " + "store_size_" + op + ";"
                         stmt += "\n"
                         stmt += "    " * (level + 2)
-                        stmt += "if(!store_" + op + "[id_store_" + op + "]){"
+                        stmt += "if(!store_" + op + "1[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 0)){"
                         stmt += "\n"
                         stmt += "    " * (level + 3)
-                        stmt += "store_" + op + "[id_store_" + op + "] = 1;"
+                        stmt += "store_" + op + "1[id_store_" + op + "] = 1;"
                         stmt += "\n"
                         stmt += "    " * (level + 3)
-                        stmt += "cg_subtile_" + op + " = cg_tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "store_subtile_" + op + ", cg_subtile_" + op + ", id_store_" + op + ");"
+                        stmt += "cg_subtile_" + op + "1 = cg_tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "store_subtile_" + op + "1, cg_subtile_" + op + "1, id_store_" + op + ");"
                         stmt += "\n"
                         stmt += "    " * (level + 2)
                         stmt += "}"
@@ -708,11 +729,21 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
             if(len(valid_op_list) != 1 or mode == "rtl"):
 
                 if(mode == "onyx"):
+                    stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 0){\n"
                     for op in op_list:
-                        stmt += "    " * (level + 2)
-                        stmt += "cg_extents_" + op + " = "
-                        stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + ", store_subtile_" + op + ", id_store_" + op + ");"
+                        stmt += "    " * (level + 3)                        
+                        stmt += "cg_extents_" + op + "1 = "
+                        stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "1, store_subtile_" + op + "1, id_store_" + op + ");"
                         stmt += "\n"
+                    stmt += "    " * (level + 2)  + "}\n"
+                    if(unroll):
+                        stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 1){\n"
+                        for op in op_list:
+                            stmt += "    " * (level + 3)                        
+                            stmt += "cg_extents_" + op + "2 = "
+                            stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "2, store_subtile_" + op + "2, id_store_" + op + ");"
+                            stmt += "\n"
+                        stmt += "    " * (level + 2)  + "}\n"
 
                 stmt += "    " * (level + 2)
                 stmt += "mkdir(data_path, 0777);"
@@ -749,7 +780,6 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "\n"
                 stmt += "    " * (level + 2)
                 stmt += "float *partial = nullptr;\n"
-                stmt += "    " * (level + 2)
 
                 if(mode == "rtl"): 
                     stmt += "if (mode == \"tiling\")\n"
@@ -835,7 +865,12 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "\n"
 
                 stmt += "    " * (level + 2)
-                stmt += "curr_subtile_num++;\n"
+                stmt += "curr_subtile_num1 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 0) ?  curr_subtile_num1 + 1 : curr_subtile_num1;\n"
+                if(unroll): 
+                    stmt += "    " * (level + 2)
+                    stmt += "curr_subtile_num2 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 1) ?  curr_subtile_num2 + 1 : curr_subtile_num2;\n"      
+                stmt += "    " * (level + 2)
+                stmt += "curr_subtile_num++;\n"                                      
                 stmt += "    " * (level + 2)
                 stmt += "output_gold_file.close();"   
     
@@ -904,7 +939,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, dtype=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None):
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
@@ -944,11 +979,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, dtype))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         

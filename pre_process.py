@@ -248,12 +248,12 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     else:
        raise ValueError("This choice of 'tensor_type' is unreachable")
 
-    if gen_tensor == "t":
+    if gen_tensor == "transpose":
         tensor = tensor.transpose()
-    elif gen_tensor == "s":
+    elif gen_tensor == "shift_dim2":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         tensor = shifted
-    elif gen_tensor == "shift_transpose": 
+    elif gen_tensor == "shift_transpose_dim2": 
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         tensor = shifted.transpose()
     elif gen_tensor == "onyx_matmul": 
@@ -283,21 +283,21 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         
         tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)
         
-    elif gen_tensor == "ss":
+    elif gen_tensor == "shift_twice_dim2":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
         tensor = shifted2
-    elif gen_tensor == "vec_col":
+    elif gen_tensor == "gen_colvec_dim1":
         rows, cols = tensor.shape
         tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
         if other_nonempty: tensor_c[0] = 1
         tensor = tensor_c
-    elif gen_tensor == "vec_row":
+    elif gen_tensor == "gen_rowvec_dim1":
         rows, cols = tensor.shape
         tensor_c = scipy.sparse.random(rows, 1, data_rvs=np.ones).toarray().flatten()
         if other_nonempty: tensor_c[0] = 1 
         tensor = tensor_c
-    elif gen_tensor == "s3": 
+    elif gen_tensor == "shift_dim3": 
         shifted = PydataTensorShifter().shiftLastMode(tensor)
         tensor = shifted
     elif gen_tensor == "tensor3_ttv":
