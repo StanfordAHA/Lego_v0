@@ -89,7 +89,7 @@ def main_block_1(file, unroll):
     file.write("    // Faster clocks for App\n")
     file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 1); // 2^2 = 4 60/4 = 15\n")
 
-def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset):
+def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_offset):
 
     file.write("    uint16_t* input_read_base = AHASOC_CGRA_DATA_BASE;\n")
     
@@ -128,7 +128,7 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset):
     file.write("    trace_printf(\"\\n** Run code-gen  **\\n\");\n")
     file.write("\n")
     file.write("    const uint32_t start_addr = 0x0;\n")
-    file.write("    const uint32_t read_start_addr = 0x10000;\n")
+    file.write("    const uint32_t read_start_addr = " + glb_bank_offset + ";\n")
 
 def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_offset):
 
@@ -152,7 +152,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     if(unroll): 
         for i in range(out_tensor_dim):
             curr_mapping = mapping_dict[dest][i]    
-            file.write("    uint16_t* output_read_base" + str(i) + "_unroll = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + 0x40000 * 8 + 0x40000 * " + str(curr_mapping) + ");\n")
+            file.write("    uint16_t* output_read_base" + str(i) + "_unroll = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(curr_mapping) + ");\n")
         file.write("\n")
 
         for i in range(out_tensor_dim - 1):
@@ -196,7 +196,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
 
     file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, output_mask << 16 | input_mask);\n")
     if(unroll): 
-	    file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8));\n")
+        file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8));\n")
     file.write("\n")
 
     if(unroll): 
@@ -245,9 +245,9 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     	
     for i in range(out_tensor_dim - 1):
         curr_mapping = mapping_dict[dest][i]
-        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx*2);\n")
+        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, " + glb_bank_offset + " + " + glb_tile_offset + " * " + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx*2);\n")
     val_mapping = mapping_dict[dest][out_tensor_dim - 1]
-    file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
+    file.write("                HAL_Cgra_Glb_WriteReg(0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, " + glb_bank_offset + " + " + glb_tile_offset + " * " + str(val_mapping) + " + " + dest + "_mode_vals_idx*2);\n")
     file.write("\n")
     
     file.write("                HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, output_mask << 16 | input_mask); // pulsed reg.\n")
@@ -278,9 +278,9 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
             
         for i in range(out_tensor_dim - 1):
             curr_mapping = mapping_dict[dest][i]
-            file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 * 8 + 0x40000 *" + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx_unroll*2);\n")
+            file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(curr_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, " + glb_bank_offset + " + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(curr_mapping) + " + " + dest + "_mode_" + str(i) + "_idx_unroll*2);\n")
         val_mapping = mapping_dict[dest][out_tensor_dim - 1]
-        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, 0x20000 + 0x40000 * 8 + 0x40000 *" + str(val_mapping) + " + " + dest + "_mode_vals_idx_unroll*2);\n")
+        file.write("                HAL_Cgra_Glb_WriteReg(0x100 * 8 + 0x100 * " + str(val_mapping) + " + GLB_ST_DMA_HEADER_0_START_ADDR_R, " + glb_bank_offset + " + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(val_mapping) + " + " + dest + "_mode_vals_idx_unroll*2);\n")
         file.write("\n")
         file.write("                HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8)); // pulsed reg.\n")
         file.write("            }\n")
@@ -357,15 +357,15 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     file.write("\n")
     file.write("    int errors = 0;\n")
     file.write("\n")
-    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + 0x20000*0 + 0x10000;\n")
+    file.write("    uint16_t* output_read_base = AHASOC_CGRA_DATA_BASE + " + glb_tile_offset + " * 0 + " + glb_bank_offset + ";\n")
 
     for i in range(out_tensor_dim):
-        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x20000*" + str(i) + " + 0x10000;\n")
+        file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + " + glb_tile_offset + " * " + str(i) + " + " + glb_bank_offset + ";\n")
         file.write("    trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")
 
     if(unroll):
         for i in range(out_tensor_dim):
-            file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + 0x40000 * 8 + 0x40000 * " + str(i) + " + 0x20000;\n")
+            file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(i) + " + " + glb_bank_offset + ";\n")
             file.write("    trace_printf(\"first location_unroll: %lx\\n\", output_read_base[0]);\n")
 
     file.write("\n")

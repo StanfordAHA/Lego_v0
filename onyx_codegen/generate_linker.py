@@ -234,7 +234,7 @@ libgcc.a ( * )
 }"""
     f.write(string)
 
-def generate_data_location_content(data_list):
+def generate_data_location_content(data_list, glb_tile_offset):
     result = ""
     increment = 0x00000
     base_location = 0x20400000
@@ -245,11 +245,11 @@ def generate_data_location_content(data_list):
         result += f"    *(.app_{data_name}_data)\n"
         result += f"    KEEP(*(.app_{data_name}_data))\n"
         result += "}\n"
-        increment += 0x20000
+        increment += glb_tile_offset
 
     return result
 
-def generate_data_location_content_unroll(data_list):
+def generate_data_location_content_unroll(data_list, glb_tile_offset):
     result = ""
     increment = 0x00000
     base_location = 0x20600000
@@ -260,6 +260,6 @@ def generate_data_location_content_unroll(data_list):
         result += f"    *(.app_{data_name}_unroll_data)\n"
         result += f"    KEEP(*(.app_{data_name}_unroll_data))\n"
         result += "}\n"
-        increment += 0x40000
+        increment += glb_tile_offset
 
     return result
