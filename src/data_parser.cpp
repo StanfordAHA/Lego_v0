@@ -309,13 +309,13 @@ int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select)
 	return 0; 
 }
 
-int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id){
-	output_gold_file << "            uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * 0x40000);" << "\n";
+int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset){
+	output_gold_file << "            uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << ");" << "\n";
 	return 0; 
 }
 
-int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id){
-	output_gold_file << "            uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * 0x40000 + 0x40000 * 8);" << "\n";
+int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset){
+	output_gold_file << "            uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << " + " << glb_tile_offset <<  " * 8);" << "\n";
 	return 0; 
 }
 

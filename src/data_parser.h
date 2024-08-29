@@ -25,8 +25,8 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim, std::string type);
 int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select);
 int codegen_check_gold_unroll_ifdef_close(ofstream &output_gold_file); 
-int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id);
-int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id);
+int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
+int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 int codegen_check_gold_unroll_ifdef_open(int select); 
 int codegen_check_gold_ret(ofstream &output_gold_file); 
 int header_meta_data(ofstream &header_file, std::string label, int max_run);
