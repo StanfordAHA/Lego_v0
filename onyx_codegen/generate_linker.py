@@ -245,7 +245,7 @@ def generate_data_location_content(data_list, glb_tile_offset):
         result += f"    *(.app_{data_name}_data)\n"
         result += f"    KEEP(*(.app_{data_name}_data))\n"
         result += "}\n"
-        increment += glb_tile_offset
+        increment += int(glb_tile_offset, 16)
 
     return result
 
@@ -260,6 +260,6 @@ def generate_data_location_content_unroll(data_list, glb_tile_offset):
         result += f"    *(.app_{data_name}_unroll_data)\n"
         result += f"    KEEP(*(.app_{data_name}_unroll_data))\n"
         result += "}\n"
-        increment += glb_tile_offset
+        increment += int(glb_tile_offset, 16)
 
     return result
