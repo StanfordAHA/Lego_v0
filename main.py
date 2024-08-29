@@ -15,6 +15,7 @@ from onyx_codegen.io_placement import *
 from onyx_codegen.raw_to_h_16 import *
 from onyx_codegen.bs_to_h import *
 from onyx_codegen.generate_linker import *
+from onyx_codegen.generate_reg_write import *
 
 
 sys.path.insert(0, './')
@@ -590,8 +591,19 @@ if __name__ == "__main__":
         dest_read = key
 
     mode = args.mode
+    
+    glb_tile_offset = None
+    glb_bank_offset = None
+    if mode == "onyx" or mode == "opal":
+    
+        # decide the bank and tile offset of GLB base on the chip
+        if mode == "onyx":
+            glb_bank_offset = "0x40000"
+            glb_tile_offset = "0x20000"
+        elif mode == "opal":
+            glb_bank_offset = "0x20000"
+            glb_tile_offset = "0x10000"
 
-    if mode == "onyx":
         mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open("lego_scratch/main.c", "w+")
         main_gen_c_lib_include(main_file)
@@ -604,14 +616,14 @@ if __name__ == "__main__":
         inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design_meta)
 
         unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
-        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name, unroll)
+        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name, unroll, glb_tile_offset, glb_bank_offset)
 
         bitstream_file = args.bitstream 
         bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
 
         linker_header_file = open("lego_scratch/sections.ld", "w+")
-        first_half_of_body(linker_header_file)
+        first_half_of_body(linker_header_file, glb_tile_offset)
         input_list = [input.strip(".raw") for input in inputs]
         linker_header_file.write(generate_data_location_content(input_list))
         if(unroll): 
@@ -619,20 +631,11 @@ if __name__ == "__main__":
         bottom_half_of_body(linker_header_file)
 
         reg_write_file = args.reg_write
-        reg_write_input_list  = ['0x80, 0x0', '0x180, 0x40000', '0x280, 0x80000', '0x380, 0xc0000', '0x480, 0x100000', '0x580, 0x140000', '0x680, 0x180000', '0x780, 0x1c0000', '0x880, 0x200000', '0x980, 0x240000']
-        reg_write_output_list = ['0x1c, 0x20000', '0x11c, 0x60000', '0x21c, 0xa0000', '0x31c, 0xe0000']
 
-        with open(reg_write_file, 'r') as file:
-            data = file.read()
-            data = data.replace('glb_config()', 'glb_config(int i)')
-            for item in reg_write_input_list:
-                data = data.replace(item, item + ' + 0x40000 * i')
-            for item in reg_write_output_list:
-                data = data.replace(item, item + ' + 0x40000 * i')
-            data = data.replace('glb_reg_write(', 'HAL_Cgra_Glb_WriteReg(0x100 * i + ')
+        reg_write_content = generate_reg_write(reg_write_file, glb_tile_offset, glb_bank_offset)
 
         with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
-            file.write(data)
+            file.write(reg_write_content)
     
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
