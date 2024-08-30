@@ -341,7 +341,6 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             
             tensor_dim = len(value)
 
-            print(mode_list)
             # TODO: Introduce systematic change to replace this hack
             # this hack is to cope with the old RTL bitstream generation that 
             # always place the matrix modes in the data flow order 
