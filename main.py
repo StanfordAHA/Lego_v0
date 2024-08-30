@@ -387,9 +387,9 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
 
         if(unroll): 
-            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 1, \"" + glb_tile_offset + "\");\n")
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 1, \"" + glb_bank_offset + "\");\n")
         else: 
-            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 0, \"" + glb_tile_offset + "\");\n")
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 0, \"" + glb_bank_offset + "\");\n")
 
         if(unroll):
             main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
