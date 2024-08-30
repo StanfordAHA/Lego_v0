@@ -341,6 +341,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             
             tensor_dim = len(value)
 
+            print(mode_list)
             # TODO: Introduce systematic change to replace this hack
             # this hack is to cope with the old RTL bitstream generation that 
             # always place the matrix modes in the data flow order 
@@ -351,8 +352,8 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 mode_list.sort()
 
             for i in range(0, tensor_dim):
-                main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
-                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ");\n")
+                main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
+                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ");\n")
                 main_file.write("\n")
 
             main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
