@@ -64,19 +64,29 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 	header_file << "\n";
 
-	if(dtype == "int"){
-		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
+	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
+	int run_length = int(abs(mode_0[0]));
 
+	if(dtype == "int"){
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
 			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[i]));
 		}
 	} else if (dtype == "bf16"){
-		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[0], true);
-
-		for (int i = 0; i < mode_0.size(); i++) {
-			header_file << ", ";
-			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[i], true);
+		for (int index = 1; index < mode_0.size();) {
+			for (int i = 0; i < run_length; i++) {
+				header_file << ", ";
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
+				index++;
+			}
+			if (index < mode_0.size()) {
+				run_length = int(abs(mode_0[index]));
+				header_file << ", ";
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[index]));
+				index++;
+			} else {
+				break;
+			}
 		}
 	}
 
