@@ -1,6 +1,7 @@
 #include "data_parser.h"
 #include <csignal>
 #include <iomanip>
+#include <bitset>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -163,10 +164,8 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 
 int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
 
-	if(dtype == "int"){
-
-    	output_gold_file << "const uint16_t gold_" << curr_subtile_num << "_[" << output_subtile_size << "] = {";
-
+    output_gold_file << "const uint16_t gold_" << curr_subtile_num << "_[" << output_subtile_size << "] = {";
+    if(dtype == "int"){
     	for (int pA = 0; pA < output_subtile_size; pA++) {
         	output_gold_file << int(op_vals[pA]);
         	if(pA != output_subtile_size - 1){
@@ -175,10 +174,17 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
     	} 
     	output_gold_file << "};\n";
 	} 
-
-	// if(dtype == "float"){
-	// 	Float processing 
-	// }
+    
+    if (dtype == "bf16"){
+        for (int pA = 0; pA < output_subtile_size; pA++) {
+            std::bitset<32> op_vals_bin(*reinterpret_cast<unsigned int*>(&op_vals[pA]));
+            output_gold_file << op_vals_bin.to_ulong();
+            if (pA != output_subtile_size - 1){
+                output_gold_file << ", ";
+            }
+        }
+        output_gold_file << "};\n";
+    }
 
     return 0;
 }
