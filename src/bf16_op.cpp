@@ -109,7 +109,7 @@ float bf16_mul(float input1, float input2) {
     return result_bf16;
 }
 
-float float2bfbin(float input, bool return_hex) {
+std::string float2bfbin(float input, bool return_hex) {
 
     // convert the input float to binary
     std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
