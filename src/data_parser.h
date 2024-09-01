@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "bf16_op.h"
+
 using namespace std;
 
 int build_vec(std::vector<int> &vec, std::string file_path);
