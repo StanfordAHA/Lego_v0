@@ -58,29 +58,33 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 
 int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype){
 
-	if(dtype == "int"){
-		header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
-		header_file << "\n";		
-		
-		header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
-		header_file << "\n";
+	header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
+	header_file << "\n";		
+	
+	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
+	header_file << "\n";
 
+	if(dtype == "int"){
 		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
 
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
 			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[i]));
 		}
-		header_file << "\n";
-		header_file << "};"; 
-		header_file << "\n";
-		header_file << "\n";
-		header_file << std::dec;
+	} else if (dtype == "bf16"){
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[0], true);
+
+		for (int i = 0; i < mode_0.size(); i++) {
+			header_file << ", ";
+			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[i], true);
+		}
 	}
-	
-	// if(dtype == "float"){
-		// Add functions to store float data to bfloat16 hex
-	// 	}
+
+	header_file << "\n";
+	header_file << "};"; 
+	header_file << "\n";
+	header_file << "\n";
+	header_file << std::dec;
 
 	return 0;
 }
@@ -177,8 +181,7 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
     
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
-            std::bitset<32> op_vals_bin(*reinterpret_cast<unsigned int*>(&op_vals[pA]));
-            output_gold_file << op_vals_bin.to_ulong();
+            output_gold_file << float2bfbin(op_vals[pA], false);
             if (pA != output_subtile_size - 1){
                 output_gold_file << ", ";
             }

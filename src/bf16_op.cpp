@@ -108,3 +108,21 @@ float bf16_mul(float input1, float input2) {
 
     return result_bf16;
 }
+
+float float2bfbin(float input, bool return_hex) {
+
+    // convert the input float to binary
+    std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
+    std::bitset<32> conversion_mask(0xFFFF0000);
+
+    // convert to bf16 by masking the lower 16 bits and shifting right 
+    std::bitset<16> bfbin = (input_bin & conversion_mask) >> 16;
+    
+    if (return_hex) {
+        std::stringstream ss;
+        ss << hex << bfbin.to_ulong();
+        return ss.str();
+    } else {
+        return std::to_string(bfbin.to_ulong());
+    }
+}
