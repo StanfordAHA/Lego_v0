@@ -625,7 +625,7 @@ if __name__ == "__main__":
         linker_header_file = open("lego_scratch/sections.ld", "w+")
         first_half_of_body(linker_header_file)
         input_list = [input.strip(".raw") for input in inputs]
-        linker_header_file.write(generate_data_location_content(input_list, glb_tile_offset))
+        linker_header_file.write(generate_data_location_content(input_list, input_order, glb_tile_offset))
         if(unroll): 
             linker_header_file.write(generate_data_location_content_unroll(input_list, glb_tile_offset))
         bottom_half_of_body(linker_header_file)
