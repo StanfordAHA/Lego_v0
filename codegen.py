@@ -584,7 +584,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
     valid_op_list = [x for x in op_list if x in valid_op_list]
 
     if(len(valid_op_list) == 1):
-        if(mode == "onyx"):
+        if(mode == "onyx" or mode == "opal"):
             stmt = "    " * (level + 2) + "/* Reserved operation */"
 
     for op in op_list: 
@@ -659,7 +659,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
         valid_op_list = [x for x in op_list if x in valid_op_list]
     
         if(len(valid_op_list) == 1):
-            if(mode == "onyx"):
+            if(mode == "onyx" or mode == "opal"):
                 stmt = "    " * (level + 2) + "/* Reserved operation */"
 
         if(unroll): 
@@ -670,7 +670,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
         for op in op_list: 
             if op in valid_op_list: 
                 if(len(valid_op_list) != 1):
-                    if(mode == "onyx"): 
+                    if(mode == "onyx" or mode == "opal"): 
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "if(!store_" + op + "1[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 0)){"
                         stmt = stmt + "\n"
@@ -699,7 +699,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
 
             if op not in valid_op_list: 
                 if(len(valid_op_list) != 1 or mode == "rtl"):    
-                    if(mode == "onyx"):
+                    if(mode == "onyx" or mode == "opal"):
                         stmt = stmt + "    " * (level + 2)
                         stmt += "id_store_" + op + " = " + "store_size_" + op + ";"
                         stmt += "\n"
@@ -728,7 +728,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
         if(valid_op_list != []):
             if(len(valid_op_list) != 1 or mode == "rtl"):
 
-                if(mode == "onyx"):
+                if(mode == "onyx" or mode == "opal"):
                     stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 0){\n"
                     for op in op_list:
                         stmt += "    " * (level + 3)                        
@@ -799,7 +799,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "else\n"
                     stmt += "    " * (level + 3)
                     stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
-                elif(mode == "onyx"):
+                elif(mode == "onyx" or mode == "opal"):
                     stmt += "    " * (level + 2)
                     stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
                     for op in op_list[1:]:  

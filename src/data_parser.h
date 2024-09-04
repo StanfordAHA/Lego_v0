@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "bf16_op.h"
+
 using namespace std;
 
 int build_vec(std::vector<int> &vec, std::string file_path);
@@ -21,12 +23,12 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_dir, const std::string &kernel_name, const int &batch_size);
 int header_check_gold(ofstream &output_gold_file, int output_subtile_size);
 int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size);
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll);
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset);
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim, std::string type);
 int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select);
 int codegen_check_gold_unroll_ifdef_close(ofstream &output_gold_file); 
-int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id);
-int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id);
+int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
+int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 int codegen_check_gold_unroll_ifdef_open(int select); 
 int codegen_check_gold_ret(ofstream &output_gold_file); 
 int header_meta_data(ofstream &header_file, std::string label, int max_run);

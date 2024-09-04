@@ -10,3 +10,4 @@ sam/*
 output/*
 *.pyc
 .vscode/*
+venv/*

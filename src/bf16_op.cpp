@@ -1,8 +1,4 @@
 #include "bf16_op.h"
-#include <stdint.h> 
-#include <cassert>
-#include <iostream>
-#include <bitset>
 
 float bf16_add(float input1, float input2) {
     
@@ -107,4 +103,22 @@ float bf16_mul(float input1, float input2) {
     float result_bf16 = *reinterpret_cast<float *>(&tmp_result_bf16);
 
     return result_bf16;
+}
+
+std::string float2bfbin(float input, bool return_hex) {
+
+    // convert the input float to binary
+    std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
+    std::bitset<32> conversion_mask(0xFFFF0000);
+
+    // convert to bf16 by masking the lower 16 bits and shifting right 
+    std::bitset<32> bfbin = (input_bin & conversion_mask) >> 16;
+    
+    if (return_hex) {
+        std::stringstream ss;
+        ss << std::hex << bfbin.to_ulong();
+        return ss.str();
+    } else {
+        return std::to_string(bfbin.to_ulong());
+    }
 }
