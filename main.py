@@ -7,7 +7,7 @@ import gold_cgen
 import shutil
 import os
 import copy
-
+import math
 
 from onyx_codegen.meta import *
 from onyx_codegen.main_codegen import *
@@ -16,6 +16,7 @@ from onyx_codegen.raw_to_h_16 import *
 from onyx_codegen.bs_to_h import *
 from onyx_codegen.generate_linker import *
 from onyx_codegen.generate_reg_write import *
+
 
 
 sys.path.insert(0, './')
@@ -227,7 +228,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
             total_size = 1
             for id in cp_source_id[key]:
-                total_size *= int(split_dict[id][0]/split_dict[id][1])
+                total_size *= int(math.ceil(split_dict[id][0]/split_dict[id][1]))
 
             main_file.write("    " + "int store_size_" + key + " = " + str(total_size) + ";\n")
             main_file.write("    " + "int id_store_" + key + ";\n")

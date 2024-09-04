@@ -210,7 +210,7 @@ def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scala
     outsize = gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
     gold_file.write("\n")
     
-    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False):
+    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False, False):
         if element != [""]:
             gold_file.write(element[0])
             gold_file.write("\n")
