@@ -551,10 +551,10 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
                             for id1 in id_dict[arr_read][::-1]:
                                 if(cprod == 1):
                                     stmt += id1
-                                    cprod *= (int(split_dict[id1][0]/split_dict[id1][1]))
+                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
                                 else:
                                     stmt += " + " + id1 + " * " + str(cprod)
-                                    cprod *= int(split_dict[id1][0]/split_dict[id1][1])
+                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
                             
                             stmt += ";"
                             stmt += "\n"                            
