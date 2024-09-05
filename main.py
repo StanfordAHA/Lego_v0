@@ -560,6 +560,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--no_preprocess", action="store_true")   
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
     parser.add_argument("-u", "--unroll_cgen", action="store_true")
+    parser.add_argument("-f", "--fill_diag", action="store_true")
 
     args = parser.parse_args()
 
@@ -576,6 +577,7 @@ if __name__ == "__main__":
 
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
+    fill_diag   = args.fill_diag
 
     # create the required directories
     # if os.path.exists("./lego_scratch"):
@@ -665,7 +667,7 @@ if __name__ == "__main__":
         dtype          = tensor_dtype_dict[key]
 
         if(not args.no_preprocess): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype)    
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype, fill_diag)    
     
     workspace = args.workspace
 

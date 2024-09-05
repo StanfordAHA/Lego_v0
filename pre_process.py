@@ -200,7 +200,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, dtype, fill_diag):
 
     tensor = None
     cwd = os.getcwd()
@@ -280,9 +280,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
             tile_op_crd_list[0][idx] = ii 
             tile_op_crd_list[1][idx] = jj
             tile_op_val_list.append(tensor.data[idx])
-        
-        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)
-        
+        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)                                   
     elif gen_tensor == "shift_twice_dim2":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
@@ -354,6 +352,52 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         raise NotImplementedError
 
     tensor = sparse.COO(tensor)
+
+    fill_diag = 1
+
+    if(fill_diag):
+
+        subtile_size = tensor_size[-1]
+        tensor_dim = len(subtile_size)
+        subtile_dim = min(subtile_size[0], subtile_size[1])
+
+        if(tensor_dim > 1): 
+            coords_0 = tensor.coords[0]
+            coords_1 = tensor.coords[1]
+            data     = tensor.data
+            num_values = len(data)
+
+            tile_dict = {}
+           
+            for id1 in range(0, num_values):
+                id_key = ""
+
+                tile_id1 = coords_0[id1] // subtile_size[0]
+                tile_id2 = coords_1[id1] // subtile_size[1]
+
+                id_key = str(tile_id1) + "." + str(tile_id2)
+
+                if id_key not in tile_dict.keys():         
+                    tile_dict[id_key] = 1
+                    
+                    for ii in range(0, subtile_dim):
+                        glob_id1 = tile_id1 * subtile_size[0] + ii 
+                        glob_id2 = tile_id1 * subtile_size[1] + ii 
+
+                        is_present = False
+
+                        if(glob_id1 in coords_0):
+                            idx_glob_id1 = [idx for idx, value in enumerate(coords_0) if value == glob_id1]
+                            for idx in idx_glob_id1:                             
+                                if(coords_1[idx] == glob_id2): 
+                                    is_present = True
+                        
+                        if not is_present: 
+                            coords_0 = np.append(coords_0, [glob_id1])
+                            coords_1 = np.append(coords_1, [glob_id2])
+                            data = np.append(data, [0])
+
+            tensor = sparse.COO([coords_0, coords_1], data)
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
