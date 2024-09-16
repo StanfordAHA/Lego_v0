@@ -143,7 +143,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
             if(dtype == "int"):
                 f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
             else:
-                f.write("%s\n" % (tiled_COO.data[val]))                
+                f.write("%s\n" % (tiled_COO.data[val]))         
     return n_lists, d_list, crd_dict, pos_dict
 
 def write_csf(COO, output_dir_path): 
@@ -267,10 +267,9 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tile_op_val_list = []
         
         for idx in range(0, num_values):
-
             i = tensor.coords[0][idx]
             j = tensor.coords[1][idx]
-   
+
             crd_i = i%30
             crd_j = j%30
 
@@ -353,15 +352,14 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
 
     tensor = sparse.COO(tensor)
 
-    fill_diag = 1
-
     if(fill_diag):
 
         subtile_size = tensor_size[-1]
-        tensor_dim = len(subtile_size)
-        subtile_dim = min(subtile_size[0], subtile_size[1])
+        tensor_dim = len(subtile_size)        
 
         if(tensor_dim > 1): 
+            
+            subtile_dim = min(subtile_size[0], subtile_size[1])
             coords_0 = tensor.coords[0]
             coords_1 = tensor.coords[1]
             data     = tensor.data
@@ -382,7 +380,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
                     
                     for ii in range(0, subtile_dim):
                         glob_id1 = tile_id1 * subtile_size[0] + ii 
-                        glob_id2 = tile_id1 * subtile_size[1] + ii 
+                        glob_id2 = tile_id2 * subtile_size[1] + ii 
 
                         is_present = False
 
