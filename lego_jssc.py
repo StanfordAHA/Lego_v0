@@ -43,5 +43,12 @@ for app in app_list:
             os.system("./lego_onyx_codegen.sh " + program_file + " " + tensor_file + " " + bitstream_file + " " + design_meta_file + " " + reg_write_file + " " + output_dir)
 
     
+out_dir = "/aha/Lego_v0/jssc_outputs/"
 
+out_list = os.listdir(out_dir)
 
+for out in out_list: 
+    os.chdir(out_dir + out)
+    os.system("find . -type f -exec cp {} . \;")
+    dir_list = next(os.walk(out_dir + out))[1]
+    os.system("rm -rf " + dir_list[0])
