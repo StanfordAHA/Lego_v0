@@ -6,7 +6,8 @@ import einsum
 import gold_cgen
 import shutil
 import os
-
+import copy
+import math
 
 from onyx_codegen.meta import *
 from onyx_codegen.main_codegen import *
@@ -14,6 +15,8 @@ from onyx_codegen.io_placement import *
 from onyx_codegen.raw_to_h_16 import *
 from onyx_codegen.bs_to_h import *
 from onyx_codegen.generate_linker import *
+from onyx_codegen.generate_reg_write import *
+
 
 
 sys.path.insert(0, './')
@@ -221,11 +224,11 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
         main_file.write("\n")
 
-        if(mode == 'onyx'):
+        if(mode == 'onyx' or mode == 'opal'):
 
             total_size = 1
             for id in cp_source_id[key]:
-                total_size *= int(split_dict[id][0]/split_dict[id][1])
+                total_size *= int(math.ceil(split_dict[id][0]/split_dict[id][1]))
 
             main_file.write("    " + "int store_size_" + key + " = " + str(total_size) + ";\n")
             main_file.write("    " + "int id_store_" + key + ";\n")
@@ -293,7 +296,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
-    if(mode == 'onyx'):
+    if(mode == 'onyx' or mode == 'opal'):
         main_file.write("    " + "std::string input_data_path = out_dir + \"/" + app_name + "_input_script.h\";\n")
         main_file.write("    " + "std::ofstream input_data_file;\n")
         main_file.write("\n")
@@ -309,7 +312,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -319,7 +322,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
     else:
         out_tensor_dim = len(dest_id[dest_read])
 
-    if(mode == 'onyx'):
+    if(mode == 'onyx' or mode == 'opal'):
         main_file.write("\n")
         stmt = "    "
         stmt += "if(curr_subtile_num > 0) {" 
@@ -336,12 +339,21 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
-
+            
             tensor_dim = len(value)
 
+            # TODO: Introduce systematic change to replace this hack
+            # this hack is to cope with the old RTL bitstream generation that 
+            # always place the matrix modes in the data flow order 
+            # e.g. for X(i,j) = B(i, k) * C(k, j), C_mode_0 is k and C_mode_1 is j
+            # however, for RTL, C_mode_0 is mapped to j and C_mode_1 is mapped to k
+            cg_source_map_cpy = copy.deepcopy(cg_source_map)
+            for tensor_name, mode_list in cg_source_map_cpy.items():
+                mode_list.sort()
+
             for i in range(0, tensor_dim):
-                main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
-                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ");\n")
+                main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
+                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ");\n")
                 main_file.write("\n")
 
             main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
@@ -374,27 +386,31 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("\n")
 
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
-        main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
 
-        print(unroll)
+        if(unroll): 
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 1, \"" + glb_bank_offset + "\");\n")
+        else: 
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 0, \"" + glb_bank_offset + "\");\n")
+
         if(unroll):
             main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
-
+        else: 
+            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
         for i in range(0, out_tensor_dim + 1):
             curr_mapping = mapping_dict[dest_read][i] 
-            main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\");\n")
+            main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
+        main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\");\n")
         
         if(unroll): 
-            main_file.write("        " + "codegen_check_gold_unroll_ifdef_close(output_gold_file);\n")
-            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
+            main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2);\n")
             for i in range(0, out_tensor_dim + 1):
                 curr_mapping = mapping_dict[dest_read][i] 
-                main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\");\n")
-            main_file.write("        " + "codegen_check_gold_unroll_ifdef_close(output_gold_file);\n")
+                main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
+            main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\");\n")
 
-        main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ");\n")
+        main_file.write("        " + "codegen_check_gold_ret(output_gold_file);\n")
+
         main_file.write("        " + "output_gold_file.close();\n")
-
         main_file.write("        " + "input_data_file.close();\n")
         main_file.write("        " + "input_meta_data_file.close();\n")
         
@@ -533,7 +549,9 @@ if __name__ == "__main__":
                     description="Generate Cpp code for tiling and reduction given the input program and tensors")
     parser.add_argument("-t", "--tensor", type=str, default="./input/tensor.txt")
     parser.add_argument("-p", "--program", type=str, default="./input/program.txt")
-    parser.add_argument("-d", "--design", type=str, default="./input/design_meta.json")
+    parser.add_argument("--bitstream", type=str, default="./input/bitstream.bs")
+    parser.add_argument("--design_meta", type=str, default="./input/design_meta.json")
+    parser.add_argument("--reg_write", type=str, default="./input/reg_write.h")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
@@ -542,6 +560,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--no_preprocess", action="store_true")   
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
     parser.add_argument("-u", "--unroll_cgen", action="store_true")
+    parser.add_argument("-f", "--fill_diag", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--gcheck", action="store_true")
 
@@ -560,17 +579,17 @@ if __name__ == "__main__":
 
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
-    debug       = args.debug
-    gcheck      = args.gcheck
+    fill_diag   = args.fill_diag
 
-    # create the required directories
-    # if os.path.exists("./lego_scratch"):
-    #    shutil.rmtree("./lego_scratch")
-    # os.mkdir("./lego_scratch")
+    if os.path.exists("./lego_scratch"):
+        shutil.rmtree("./lego_scratch")
+    os.mkdir("./lego_scratch")
+
+    
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
-    os.mkdir(os.path.join(args.output_dir, app_name))
+    os.makedirs(os.path.join(args.output_dir, app_name), exist_ok=True)
 
     mapping_dict = {}
 
@@ -578,38 +597,51 @@ if __name__ == "__main__":
         dest_read = key
 
     mode = args.mode
+    
+    glb_tile_offset = None
+    glb_bank_offset = None
+    if mode == "onyx" or mode == "opal":
+    
+        # decide the bank and tile offset of GLB base on the chip
+        if mode == "onyx":
+            glb_tile_offset = "0x40000"
+            glb_bank_offset = "0x20000"
+        elif mode == "opal":
+            glb_tile_offset = "0x20000"
+            glb_bank_offset = "0x10000"
 
-    if mode == "onyx":
-        mapping_dict = mapping_dict_gen(args.design)
+        mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open("lego_scratch/main.c", "w+")
-        main_gen_header_files(main_file)
-        main_spec_header_files(main_file, app_name)
-        main_block_1(main_file, debug)
-        main_block_2(main_file, mapping_dict, op_list, debug)
-        main_block_3(main_file, mapping_dict, dest_read, debug, gcheck)    
+        main_gen_c_lib_include(main_file)
+        main_app_header_include(main_file, app_name)
+        main_gen_soc_lib_include(main_file)
+        main_block_1(main_file, args.unroll_cgen, args.debug)
+        main_block_2(main_file, mapping_dict, op_list, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug)
+        main_block_3(main_file, mapping_dict, dest_read, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug, args.gcheck)    
 
-        inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design)
+        inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design_meta)
 
-        unrolling_header_file = open("lego_scratch/" + app_name + "_unrolling.h", "w+")
-        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name)
+        unrolling_header_file = open(os.path.join(args.output_dir, app_name) + "/" + app_name + "_unrolling.h", "w+")
+        unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name, unroll, glb_tile_offset, glb_bank_offset)
 
-        bitstream_file = "./input/bitstream.bs"
-        bitstream_header_file = open("lego_scratch/" + app_name + "_script.h", "w+")
+        bitstream_file = args.bitstream 
+        bitstream_header_file = open(os.path.join(args.output_dir, app_name) + "/" + app_name + "_script.h", "w+")
         convert_bs(bitstream_file, bitstream_header_file)
 
-        linker_header_file = open("lego_scratch/sections.ld", "w+")
+        linker_header_file = open(os.path.join(args.output_dir, app_name) + "/sections.ld", "w+")
         first_half_of_body(linker_header_file)
         input_list = [input.strip(".raw") for input in inputs]
-        linker_header_file.write(generate_data_location_content(input_list))
+        linker_header_file.write(generate_data_location_content(input_list, input_order, glb_tile_offset))
+        if(unroll): 
+            linker_header_file.write(generate_data_location_content_unroll(input_list, glb_tile_offset))
         bottom_half_of_body(linker_header_file)
 
-        reg_write_file = "./input/reg_write.h"
-        with open(reg_write_file, 'r') as file:
-            data = file.read()
-            data = data.replace('glb_reg_write', 'HAL_Cgra_Glb_WriteReg')
+        reg_write_file = args.reg_write
 
-        with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
-            file.write(data)
+        reg_write_content = generate_reg_write(reg_write_file, glb_tile_offset, glb_bank_offset)
+
+        with open(os.path.join(args.output_dir, app_name) + '/' + app_name + '_reg_write.h', 'w+') as file:
+            file.write(reg_write_content)
     
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -638,7 +670,7 @@ if __name__ == "__main__":
         dtype          = tensor_dtype_dict[key]
 
         if(not args.no_preprocess): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype)    
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype, fill_diag)    
     
     workspace = args.workspace
 
@@ -688,7 +720,7 @@ if __name__ == "__main__":
     main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -706,7 +738,7 @@ if __name__ == "__main__":
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
-    elif(mode == "onyx"):
+    elif(mode == "onyx" or mode == "opal"):
 
         stmt = "    if(curr_subtile_num == 0){"
         stmt += "\n"
@@ -787,7 +819,7 @@ if __name__ == "__main__":
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, mapping_dict)
     main_file.write("\n")
 
     if(workspace):
