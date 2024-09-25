@@ -265,6 +265,32 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
 
         tile_op_crd_list = np.zeros((2, num_values), dtype=int)
         tile_op_val_list = []
+
+        subtile_size = tensor_size[-1]
+        
+        for idx in range(0, num_values):
+            i = tensor.coords[0][idx]
+            j = tensor.coords[1][idx]
+
+            crd_i = i % subtile_size[0]
+            crd_j = j % subtile_size[0]
+
+            ii = i - crd_i + crd_j
+            jj = j - crd_j + crd_i  
+
+            tile_op_crd_list[0][idx] = ii 
+            tile_op_crd_list[1][idx] = jj
+            tile_op_val_list.append(tensor.data[idx])
+        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)    
+    elif gen_tensor == "onyx_matmul_rect": 
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        tensor = shifted.transpose()
+
+        tensor = sparse.COO(tensor)
+        num_values = len(tensor.data)
+
+        tile_op_crd_list = np.zeros((2, num_values), dtype=int)
+        tile_op_val_list = []
         
         for idx in range(0, num_values):
             i = tensor.coords[0][idx]
@@ -279,7 +305,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
             tile_op_crd_list[0][idx] = ii 
             tile_op_crd_list[1][idx] = jj
             tile_op_val_list.append(tensor.data[idx])
-        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)                                   
+        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)                                
     elif gen_tensor == "shift_twice_dim2":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)

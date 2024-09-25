@@ -5,13 +5,14 @@ def main_gen_c_lib_include(file):
     file.write("#include \"diag/trace.h\"\n")
     file.write("\n")
 
-def main_app_header_include(file, app_name):
+def main_app_header_include(file, app_name, gcheck):
 
     file.write("#include \"" + app_name + "_script.h\"\n")
     file.write("#include \"" + app_name + "_input_script.h\"\n")
     file.write("#include \"" + app_name + "_unrolling.h\"\n")
     file.write("#include \"" + app_name + "_reg_write.h\"\n")
-    file.write("#include \"" + app_name + "_gold.h\"\n")
+    if(gcheck):
+        file.write("#include \"" + app_name + "_gold.h\"\n")
     file.write("\n")
 
 def main_gen_soc_lib_include(file):
@@ -142,7 +143,10 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_
     else:
         file.write("    // trace_printf(\"\\nAPP Prep\\n\");\n")
     file.write("\n")
-    file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLB_FLUSH_CROSSBAR_R, 0);\n")
+    if(unroll):
+        file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLB_FLUSH_CROSSBAR_R, 0x88880000);\n")  
+    else:
+        file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLB_FLUSH_CROSSBAR_R, 0);\n")      
     file.write("    HAL_Cgra_Glc_WriteReg(GLC_CGRA_STALL_R, 0x0);\n")
     file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLOBAL_IER_R, 1);\n")
     file.write("    HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_IER_R, 0xffff);\n")

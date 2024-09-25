@@ -1,0 +1,44 @@
+[
+    {
+        "sweep": 1, 
+        "name": "matmul_ijk",
+        "app": ["X(i,j)=B(i,k)*C(k,j)"],
+        "schedule_list": [["ikj", "ikj", "ijk"]],
+        "flags": [[]],
+        "pre_process": [["B:0", "C:shift_transpose_dim2"]],
+        "tile_list": [[30, 30, 30]],
+        "datasets": [
+            ["ss", "bcsstm26"], ["ss", "qiulp"], ["ss", "tols2000"], 
+            ["ss", "west2021"], 
+            ["ss", "bwm2000"], ["ss", "G33"], 
+            ["ss", "football"]
+        ],
+        "bitstreams": [
+            ["matmul_ijk_crddrop_bitstreams/matmul_ijk_crddrop_bal_pipe", 0], 
+            ["matmul_ijk_crddrop_bitstreams/matmul_ijk_crddrop_exh_pipe", 0], 
+            ["matmul_ijk_crddrop_bitstreams/matmul_ijk_crddrop_no_pipe", 0],
+            ["matmul_ijk_crddrop_bitstreams/matmul_ijk_crddrop_bal_pipe", 1]
+        ]
+    }, 
+    {
+        "sweep": 0, 
+        "name": "matmul_ijk", 
+        "app": ["X(i,j)=B(i,k)*C(k,j)"],
+        "schedule_list": [["ikj", "ikj", "ijk"]],
+        "pre_process": [["B:0", "C:shift_transpose_dim2"]],
+        "flags": [[]],
+        "tile_list": [
+            [30, 30, 30], [40, 40, 40], [30, 30, 30], 
+            [60, 60, 60], 
+            [60, 60, 60], [30, 30, 30]
+        ],
+        "datasets": [
+            ["ss", "bcsstm26"], ["ss", "qiulp"], ["ss", "tols2000"], 
+            ["ss", "west2021"], 
+            ["ss", "bwm2000"], ["ss", "G33"]
+        ],
+        "bitstreams": [
+            ["matmul_ijk_crddrop_bitstreams/matmul_ijk_crddrop_bal_pipe", 1]
+        ]
+    }
+]

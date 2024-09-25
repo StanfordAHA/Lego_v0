@@ -373,9 +373,18 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
 
                 tensor_dim = len(value)
 
+                # TODO: Introduce systematic change to replace this hack
+                # this hack is to cope with the old RTL bitstream generation that 
+                # always place the matrix modes in the data flow order 
+                # e.g. for X(i,j) = B(i, k) * C(k, j), C_mode_0 is k and C_mode_1 is j
+                # however, for RTL, C_mode_0 is mapped to j and C_mode_1 is mapped to k
+                cg_source_map_cpy = copy.deepcopy(cg_source_map)
+                for tensor_name, mode_list in cg_source_map_cpy.items():
+                    mode_list.sort()
+
                 for i in range(0, tensor_dim):
-                    main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "_unroll\", cg_subtile_" + key + "2.mode_" + str(i) + ");\n")
-                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map[key][i]) + "_unroll\", cg_extents_" + key + "2.extents_mode_" + str(i) + ");\n")
+                    main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_subtile_" + key + "2.mode_" + str(i) + ");\n")
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "2.extents_mode_" + str(i) + ");\n")
                     main_file.write("\n")
 
                 main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "2.mode_vals, \"" + dtype + "\");\n")
@@ -613,7 +622,7 @@ if __name__ == "__main__":
         mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open(os.path.join(args.output_dir, app_name) + "/main.c", "w+")
         main_gen_c_lib_include(main_file)
-        main_app_header_include(main_file, app_name)
+        main_app_header_include(main_file, app_name, args.gcheck)
         main_gen_soc_lib_include(main_file)
         main_block_1(main_file, args.unroll_cgen, args.debug)
         main_block_2(main_file, mapping_dict, op_list, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug)

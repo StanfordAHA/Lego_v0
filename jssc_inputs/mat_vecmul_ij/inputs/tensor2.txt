@@ -1,2 +1,0 @@
-B:ss:football:s:0:5:int
-c:ss:football:s:gen_colvec_dim1:5:int 
