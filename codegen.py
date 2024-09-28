@@ -635,7 +635,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, gcheck):
     
         stmt = ""
     
@@ -775,10 +775,12 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "output_gold_path = subtile_path + \"/output_gold.h\";"
                     stmt += "\n"   
                          
-                stmt += "    " * (level + 2)
-                stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
-                stmt += "\n"
-                stmt += "    " * (level + 2)
+                if(gcheck): 
+                    stmt += "    " * (level + 2)
+                    stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
+                    stmt += "\n"
+                    stmt += "    " * (level + 2)
+
                 stmt += "float *partial = nullptr;\n"
 
                 if(mode == "rtl"): 
@@ -800,12 +802,13 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "    " * (level + 3)
                     stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
                 elif(mode == "onyx" or mode == "opal"):
-                    stmt += "    " * (level + 2)
-                    stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
-                    for op in op_list[1:]:  
-                        stmt += ", " + "subtile_" + op
-                    stmt += ", curr_subtile_num, output_gold_file);"
-                    stmt += "\n"
+                    if(gcheck): 
+                        stmt += "    " * (level + 2)
+                        stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
+                        for op in op_list[1:]:  
+                            stmt += ", " + "subtile_" + op
+                        stmt += ", curr_subtile_num, output_gold_file);"
+                        stmt += "\n"
 
                 if(workspace):
                     stmt += "    " * (level + 2)
@@ -870,9 +873,11 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "    " * (level + 2)
                     stmt += "curr_subtile_num2 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 1) ?  curr_subtile_num2 + 1 : curr_subtile_num2;\n"      
                 stmt += "    " * (level + 2)
-                stmt += "curr_subtile_num++;\n"                                      
-                stmt += "    " * (level + 2)
-                stmt += "output_gold_file.close();"   
+                stmt += "curr_subtile_num++;\n"    
+
+                if(gcheck):                                  
+                    stmt += "    " * (level + 2)
+                    stmt += "output_gold_file.close();"   
     
         return [stmt]
 
@@ -939,7 +944,8 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, dtype=None):
+    
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
@@ -979,11 +985,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, gcheck))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck,  dtype))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         
