@@ -367,6 +367,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         file.write("    // trace_printf(\"check gold data\\n\");\n") 
     if(gcheck):     
         file.write("    errors = check_gold_data();\n")
+        file.write("    read_base_cyc_count[0] = errors;\n")
     if(debug):
         file.write("    trace_printf(\"total errors: %d\\n\", errors);\n")
     else:
