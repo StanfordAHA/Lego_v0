@@ -21,7 +21,7 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
 
-def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype):
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -141,8 +141,11 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-                f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
-            else:
+                if positive_only:
+                    f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
+                else:
+                    f.write("%s\n" % (int(tiled_COO.data[val])))
+            else:   
                 f.write("%s\n" % (tiled_COO.data[val]))                
     return n_lists, d_list, crd_dict, pos_dict
 
@@ -200,7 +203,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype):
 
     tensor = None
     cwd = os.getcwd()
@@ -368,4 +371,4 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         write_csf(tensor, output_dir_path)
 
     tile_size = tensor_size[1:]
-    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, dtype)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype)
