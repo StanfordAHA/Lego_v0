@@ -22,7 +22,7 @@ from onyx_codegen.generate_reg_write import *
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
 
-from pyparsing import Word, alphas, one_of, alphanums
+from pyparsing import Word, alphas, one_of, alphanums, OneOrMore
 
 def tensor_path_type_dict(tensor_path_input):
 
@@ -91,13 +91,25 @@ def data_parser(data):
         parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    activation_rule = "activation_" + Word(alphas) + ":" + Word(alphas)
+    activation_rule = "activation_" + Word(alphas) + ":" + OneOrMore(Word(alphas) + "+" | Word(alphas))
+    activation = {}
+    activation["ap"] = []
+    activation["cp"] = []
+    activation["cg"] = []
 
-    activation = []
 
-    activation.append(list(activation_rule.parseString(data[4 + num_ids]))[3])
-    activation.append(list(activation_rule.parseString(data[5 + num_ids]))[3])
-    activation.append(list(activation_rule.parseString(data[6 + num_ids]))[3])
+    activation["ap"].extend(list(activation_rule.parseString(data[4 + num_ids]))[3:])
+    activation["cp"].extend(list(activation_rule.parseString(data[5 + num_ids]))[3:])
+    activation["cg"].extend(list(activation_rule.parseString(data[6 + num_ids]))[3:])
+
+    # prune out the + sign from the activation list
+    # TODO: remove this and do the removal of the + sign when parsing the program file
+    avail_activation = ["relu", "leakyrelu", "exp", "none"]
+    for level in ["ap", "cp", "cg"]:
+        for idx, activation_str in enumerate(activation[level]):
+            if activation_str not in avail_activation:
+                assert activation_str == "+", "Unsupported activation function or bad acitvation list format, acitvation functions must be separated by +"
+                activation[level].pop(idx)
 
     return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
 
@@ -112,19 +124,19 @@ def parse(input_file, level):
 
     if(level == "ap"): 
         schedule = schedule_1
-        activation = activation[0]
         for id in split_factor:
             split_factor[id].pop()
     elif(level == "cp"):
         schedule = schedule_2
-        activation = activation[1]
         for id in split_factor:
             split_factor[id].pop(0)
     else:
         schedule = schedule_3
-        activation = activation[2]
         for id in split_factor:
             split_factor[id].pop(0)
+
+    activation = activation[level]
+
     dest_id = {}
     dest_map = {}
 
@@ -511,10 +523,10 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int p" + key + "_output;\n")
 
 def apply_activation(main_file, output_tile_size, activation_function):
-    if activation_function == "none":
-        return
-    
-    main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
+    for activation in activation_function:
+        if activation == "none":
+            continue
+        main_file.write("    apply_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel_name):
