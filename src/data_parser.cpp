@@ -70,7 +70,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	if(dtype == "int"){
 		for(int i = 1; i < mode_0.size(); i++) {
 			header_file << ", ";
-			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[i]));
+			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(mode_0[i]);
 		}
 	} else if (dtype == "bf16"){
 		for (int index = 1; index < mode_0.size();) {
