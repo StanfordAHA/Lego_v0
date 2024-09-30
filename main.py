@@ -22,7 +22,7 @@ from onyx_codegen.generate_reg_write import *
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
 
-from pyparsing import Word, alphas, one_of, alphanums, OneOrMore
+from pyparsing import Word, alphas, one_of, alphanums, OneOrMore, Suppress
 
 def tensor_path_type_dict(tensor_path_input):
 
@@ -91,25 +91,15 @@ def data_parser(data):
         parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    activation_rule = "activation_" + Word(alphas) + ":" + OneOrMore(Word(alphas) + "+" | Word(alphas))
+    activation_rule = "activation_" + Word(alphas) + ":" + OneOrMore(Word(alphas) + Suppress("+") | Word(alphas))
     activation = {}
     activation["ap"] = []
     activation["cp"] = []
     activation["cg"] = []
 
-
     activation["ap"].extend(list(activation_rule.parseString(data[4 + num_ids]))[3:])
     activation["cp"].extend(list(activation_rule.parseString(data[5 + num_ids]))[3:])
     activation["cg"].extend(list(activation_rule.parseString(data[6 + num_ids]))[3:])
-
-    # prune out the + sign from the activation list
-    # TODO: remove this and do the removal of the + sign when parsing the program file
-    avail_activation = ["relu", "leakyrelu", "exp", "none"]
-    for level in ["ap", "cp", "cg"]:
-        for idx, activation_str in enumerate(activation[level]):
-            if activation_str not in avail_activation:
-                assert activation_str == "+", "Unsupported activation function or bad acitvation list format, acitvation functions must be separated by +"
-                activation[level].pop(idx)
 
     return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
 
