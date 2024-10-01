@@ -38,8 +38,8 @@ def mapping_dict_gen(design_file):
     map_dict = {}
     dim_dict = {}
     for input in inputs: 
-        input_name = input[7]
-        input_mode = input[-5]
+        input_name = input.split("_")[1]
+        input_mode = input.split("_")[3].split(".")[0]
         if(input_name not in map_dict.keys()):
             dim_dict[input_name] = 0
             map_dict[input_name] = {}
@@ -49,8 +49,8 @@ def mapping_dict_gen(design_file):
             map_dict[input_name][input_mode] = input_order[inputs.index(input)][0]
 
     for output in outputs:
-        output_name = output[7]
-        output_mode = output[-5]
+        output_name = output.split("_")[1]
+        output_mode = output.split("_")[3].split(".")[0]
         if(output_name not in map_dict.keys()):
             dim_dict[output_name] = 0
             map_dict[output_name] = {}
@@ -60,11 +60,10 @@ def mapping_dict_gen(design_file):
             map_dict[output_name][output_mode] = output_order[outputs.index(output)][0]
 
     mapping_dict = {}
-
     for key in map_dict.keys():
         mapping_dict[key] = []
         for i in range(dim_dict[key]):
             mapping_dict[key].append(map_dict[key][str(i)])
-        mapping_dict[key].append(map_dict[key]["s"])
+        mapping_dict[key].append(map_dict[key]["vals"])
 
     return mapping_dict  
