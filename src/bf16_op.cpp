@@ -59,7 +59,7 @@ float bf16_add(float input1, float input2) {
 }
 
 float bf16_mul(float input1, float input2) {
-    
+
     std::bitset<32> bf16_mask(0x0000FFFF);
     std::bitset<32> input1_bin(*reinterpret_cast<unsigned int*>(&input1));
     std::bitset<32> input2_bin(*reinterpret_cast<unsigned int*>(&input2));
@@ -207,8 +207,7 @@ float bf16_faddiexp(float input1, int input2) {
     return result_bf16;
 }
 
-std::string float2bfbin(float input, bool return_hex) {
-
+std::string float2bfbin(float input, bool return_hex, bool return_bin_string) {
     // convert the input float to binary
     std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
     std::bitset<32> conversion_mask(0xFFFF0000);
@@ -221,11 +220,15 @@ std::string float2bfbin(float input, bool return_hex) {
         ss << std::hex << bfbin.to_ulong();
         return ss.str();
     } else {
-        return std::to_string(bfbin.to_ulong());
+        if (return_bin_string) {
+            return bfbin.to_string();
+        } else {
+            return std::to_string(bfbin.to_ulong());
+        }
     }
 }
 
-float bfbin2float(std::string input) { 
+float bfbin2float(std::string input) {
 
     // convert the input binary string to bitset
     std::bitset<16> bfbin(input);
