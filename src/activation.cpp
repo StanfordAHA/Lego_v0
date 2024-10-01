@@ -14,7 +14,7 @@ void apply_exp(float *input, int size) {
     // this is implemented according to the composition of complex ops in our cgra
     // please refer to the amber paper https://ieeexplore.ieee.org/document/10258121 
     // for more details
-    
+
     // generate the rom content for the exp function
     float exp_rom[256] = {0};
     int index = 0;

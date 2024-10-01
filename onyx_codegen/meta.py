@@ -60,6 +60,7 @@ def mapping_dict_gen(design_file):
             map_dict[output_name][output_mode] = output_order[outputs.index(output)][0]
 
     mapping_dict = {}
+
     for key in map_dict.keys():
         mapping_dict[key] = []
         for i in range(dim_dict[key]):
