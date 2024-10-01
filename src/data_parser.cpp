@@ -99,6 +99,46 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	return 0;
 }
 
+int lut_data_printer(std::ofstream &header_file, std::string lut_name) {
+	// generate lut values based on the specified lut name
+	int lut_content[1024] = {0};
+	if (lut_name == "exp") {
+		int index = 0;
+		for (int i = 0; i < 128; i ++) {
+			lut_content[index] = bfbin2float(float2bfbin((2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = -128; i < 0; i ++) {
+			lut_content[index] = bfbin2float(float2bfbin((2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = 256; i < 1024; i ++) {
+			lut_content[i] = 0;
+		}
+	}
+
+	// print the lut to the input script file
+
+	header_file << "const unsigned int app_tensor_" << lut_name << "_mode_vals_data_size =  " << 1024 << ";";
+	header_file << "\n";
+
+	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensopr_" <<  lut_name << "mode_vals_data\"))) = {";
+	header_file << "\n";
+	
+	for (int i = 0; i < 1024; i ++) {
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << lut_content[i];
+		if (i != 1023 || i != 0) {
+			header_file << ", ";
+		}
+	}
+
+	header_file << "\n";
+	header_file << "};";
+	header_file << std::dec;
+
+	return 0;
+}
+
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0){
     header_file << "const int tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << extents_mode_0.size() << "] = {";
     header_file << extents_mode_0[0];
@@ -109,6 +149,13 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
     header_file << "\n";
 
     return 0;
+}
+
+int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name) {
+	header_file << "const int tensor_" << lut_name << "_mode_vals_extents[2] = {0, 1024};";
+	header_file << "\n";
+
+	return 0;
 }
 
 int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name) {

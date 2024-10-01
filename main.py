@@ -165,6 +165,15 @@ def parse(input_file, level):
     
     return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
 
+def parse_lut_tensor(activation_list):
+
+    lut_tensor = []
+    supported_lut_list = ["exp"]
+    for activation in activation_list:
+        if activation in supported_lut_list:
+            lut_tensor.append(activation)
+    return lut_tensor
+
 def ap_tensor_decleration(main_file, ap_source_id):
 
     for key, value in ap_source_id.items():
@@ -314,7 +323,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, lut_tensor=None, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -386,6 +395,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
 
             main_file.write("        " + "}")
             main_file.write("\n")
+
+        if lut_tensor is not None:
+            for lut in lut_tensor:
+                main_file.write("        " + "lut_data_printer(input_data_file, \"" + lut + "\");\n")
+                main_file.write("        " + "lut_extent_data_printer(input_meta_data_file, \"" + lut + "\");\n")
+                main_file.write("\n")
 
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
 
@@ -576,6 +591,9 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
+
+    # go throug the activation function and return list of lut required
+    lut_tensor = parse_lut_tensor(cg_activation)
 
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
@@ -776,7 +794,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, dtype):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -817,7 +835,7 @@ if __name__ == "__main__":
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, lut_tensor=lut_tensor, mapping_dict=mapping_dict)
     main_file.write("\n")
 
     if(workspace):
@@ -871,7 +889,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
