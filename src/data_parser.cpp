@@ -99,12 +99,16 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	return 0;
 }
 
-int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0){
-    header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << extents_mode_0.size() << "] = {";
-    header_file << extents_mode_0[0];
-    for(int i = 1; i < extents_mode_0.size(); i++){
+int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map){
+    header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 * map.size() << "] = {";
+    header_file << extents_mode_0[2 * map[0]];
+	header_file << ", "; 
+	header_file << extents_mode_0[2 * map[0] + 1];
+    for(int i = 1; i < map.size(); i++){
         header_file << ", "; 
-		header_file << extents_mode_0[i];
+		header_file << extents_mode_0[2 * map[i]];
+		header_file << ", "; 
+		header_file << extents_mode_0[2 * map[i] + 1];
     }
     header_file << "};";
     header_file << "\n";
@@ -269,7 +273,7 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
 	return 0;
 }
 
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset){
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::vector<int> map1){
 	output_gold_file << "\n"; 
 	output_gold_file << "uint16_t check_gold_data(){" << "\n";
 	output_gold_file << "\n"; 
@@ -297,12 +301,13 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "        uint16_t * check_ptr;" << "\n";
 	output_gold_file << "        switch(run){" << "\n";
 
-	for(int i = 0; i < max_run; i++){
+	for(int i = 0; i < map1.size(); i++){
 		output_gold_file << "            case " << i << ":" << "\n";
-		output_gold_file << "                gold_ptr = gold_" << i << "_;" << "\n";
+		output_gold_file << "                gold_ptr = gold_" << map1[i] << "_;" << "\n";
 		output_gold_file << "                check_ptr = check_0_; " << "\n";
 		output_gold_file << "                break;" << "\n";
 	}
+
 	output_gold_file << "            default:" << "\n";
 	output_gold_file << "                break;" << "\n";
 	output_gold_file << "        }\n"; 
@@ -318,11 +323,11 @@ int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select)
 	}
 
 	if(select == 1){
-		output_gold_file << "        if(run % 2 == 0){" << "\n"; 
+		output_gold_file << "        if(run < runs){" << "\n"; 
 	}
 
 	if(select == 2){
-		output_gold_file << "        if(run % 2 == 1){" << "\n"; 
+		output_gold_file << "        else{" << "\n"; 
 	}
 
 	return 0; 
@@ -523,4 +528,36 @@ int codegen_check_gold_ret(ofstream &output_gold_file){
 	output_gold_file << "    return err;\n";
 	output_gold_file << "}\n";
 	return 0;
+}
+
+std::vector<int> generate_range(int n) {
+    std::vector<int> range(n);  // Create a vector of size n
+    std::iota(range.begin(), range.end(), 0); // Fill with values from 0 to n-1
+    return range;
+}
+
+std::pair<std::vector<int>, std::vector<int>> partition_vec(const std::vector<int>& a) {
+    std::vector<int> indices(a.size());
+    std::iota(indices.begin(), indices.end(), 0); // Create vector with indices [0, 1, 2, ..., a.size()-1]
+
+    // Sort indices based on the values in `a`, largest first (greedy approach)
+    std::sort(indices.begin(), indices.end(), [&](int i, int j) {
+        return a[i] > a[j];
+    });
+
+    std::vector<int> b1, b2;
+    int sum_b1 = 0, sum_b2 = 0;
+
+    // Greedily assign elements to b1 or b2 based on the current sums
+    for (int idx : indices) {
+        if (sum_b1 <= sum_b2) {
+            b1.push_back(idx);
+            sum_b1 += a[idx];
+        } else {
+            b2.push_back(idx);
+            sum_b2 += a[idx];
+        }
+    }
+
+    return {b1, b2};
 }
