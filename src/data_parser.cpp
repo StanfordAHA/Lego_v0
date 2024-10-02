@@ -2,6 +2,7 @@
 #include <csignal>
 #include <iomanip>
 #include <bitset>
+#include <cmath>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -105,11 +106,11 @@ int lut_data_printer(std::ofstream &header_file, std::string lut_name) {
 	if (lut_name == "exp") {
 		int index = 0;
 		for (int i = 0; i < 128; i ++) {
-			lut_content[index] = bfbin2float(float2bfbin((2, float(i) / 128.0), false, true));
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
 			index ++;
 		}
 		for (int i = -128; i < 0; i ++) {
-			lut_content[index] = bfbin2float(float2bfbin((2, float(i) / 128.0), false, true));
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
 			index ++;
 		}
 		for (int i = 256; i < 1024; i ++) {
@@ -119,10 +120,10 @@ int lut_data_printer(std::ofstream &header_file, std::string lut_name) {
 
 	// print the lut to the input script file
 
-	header_file << "const unsigned int app_tensor_" << lut_name << "_mode_vals_data_size =  " << 1024 << ";";
+	header_file << "const unsigned int app_tensor_" << lut_name << "_mode_vals_data_size =  " << 1025 << ";";
 	header_file << "\n";
 
-	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensopr_" <<  lut_name << "_mode_vals_data\"))) = {";
+	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensor_" <<  lut_name << "_mode_vals_data\"))) = {";
 	header_file << "\n";
 
 	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << 1024;
@@ -155,7 +156,7 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
 }
 
 int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name) {
-	header_file << "const int tensor_" << lut_name << "_mode_vals_extents[2] = {0, 1024};";
+	header_file << "const int tensor_" << lut_name << "_mode_vals_extents[2] = {0, 1025};";
 	header_file << "\n";
 
 	return 0;

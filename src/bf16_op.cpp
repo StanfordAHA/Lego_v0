@@ -115,7 +115,7 @@ int bf16_f2int(float input) {
     // extract sign, exponent, and fraction
     unsigned long sign = ((input_bin & std::bitset<32>(0x80000000)) >> 31).to_ulong();
     unsigned long exp = ((input_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
-    unsigned long frac = (input_bin & std::bitset<32>(0x007F0000) >> 16).to_ulong();
+    unsigned long frac = ((input_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
     std::bitset<23> frac_bin(frac);
     
     // add back the implicit 1
@@ -152,11 +152,11 @@ int bf16_getfr(float input) {
     // extract sign, exponent, and fraction
     unsigned long sign = ((input_bin & std::bitset<32>(0x80000000)) >> 31).to_ulong();
     unsigned long exp = ((input_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
-    unsigned long frac = (input_bin & std::bitset<32>(0x007F0000) >> 16).to_ulong();
+    unsigned long frac = ((input_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
     
     // extract the fraction and add the implicit 1
     std::bitset<16> frac_bin(frac);
-    
+
     // add back the implicit 1
     frac_bin = frac_bin | std::bitset<16>(0x0080);
 
@@ -231,12 +231,22 @@ std::string float2bfbin(float input, bool return_hex, bool return_bin_string) {
 float bfbin2float(std::string input) {
 
     // convert the input binary string to bitset
-    std::bitset<16> bfbin(input);
-    std::bitset<32> fbin(bfbin.to_string() + "0000000000000000");
+    std::bitset<32> bfbin(input);
+
+    // convert to float
+    bfbin = bfbin << 16;
 
     //convert to float
-    unsigned int tmp_result =static_cast<unsigned int>(fbin.to_ulong());
+    unsigned int tmp_result =static_cast<unsigned int>(bfbin.to_ulong());
     float result = *reinterpret_cast<float *>(&tmp_result);
 
     return result;
+}
+
+unsigned int bfbin2uint(std::string input) {
+
+    // convert the input binary string to bitset
+    std::bitset<32> bfbin(input);
+
+    return bfbin.to_ulong();
 }

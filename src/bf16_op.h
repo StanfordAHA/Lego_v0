@@ -15,5 +15,6 @@ int bf16_getfr(float input);
 float bf16_faddiexp(float input1, int input2);
 std::string float2bfbin(float input, bool return_hex, bool return_bin_string);
 float bfbin2float(std::string input);
+unsigned int bfbin2uint(std::string input);
 
 #endif
