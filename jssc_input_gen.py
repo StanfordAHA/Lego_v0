@@ -159,11 +159,11 @@ def find_file_in_directory(file_name, search_path):
     return None
 
 def check_size(out_dir, modes): 
-    file_path = find_file_in_directory("num_stile_pairs.txt", out_dir)
+    stile_file_path = find_file_in_directory("num_stile_pairs.txt", out_dir)
 
-    with open(file_path, "r") as file:
+    with open(stile_file_path, "r") as file:
         lines = [line.strip().split(" ") for line in file]
-    
+
     in_limit = 1
     for runs in lines: 
         total_runs = 0
@@ -173,6 +173,15 @@ def check_size(out_dir, modes):
         if(size > 120): 
             in_limit = 0
     
+    mode_len_path = find_file_in_directory("mode_data_len.txt", out_dir)
+
+    with open(mode_len_path, "r") as mode_len_file:
+        mode_len_lines = [line for line in mode_len_file]
+
+    for mode_len in mode_len_lines:
+        if(int(mode_len) > (64 * 1024)): 
+            in_limit = 0
+  
     return in_limit
 
 if __name__ == "__main__":
@@ -238,7 +247,7 @@ if __name__ == "__main__":
                 elif(curr_dataset[-1] == "r"):
                     
                     in_limit = 0
-                    
+
                     while(not in_limit): 
                         
                         if(unroll_flag == 1):
@@ -259,7 +268,7 @@ if __name__ == "__main__":
                         in_limit = check_size(out_dir, modes)
 
                         if(not in_limit): 
-                            print(f"{input[-1][-2]}: Flash going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
+                            print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
                             input[-3][-1] = input[-3][-1]//2            
                 else: 
                     try: 

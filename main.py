@@ -307,6 +307,8 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("\n")
         main_file.write("    " + "std::string num_stile_pairs_path = \"" + output_dir + "/" + kernel_name + "/num_stile_pairs.txt\";\n")
         main_file.write("    " + "std::ofstream num_stile_pairs_file;\n")
+        main_file.write("    " + "std::string mode_data_len_path = \"" + output_dir + "/" + kernel_name + "/mode_data_len.txt\";\n")
+        main_file.write("    " + "std::ofstream mode_data_len_file;\n")
     
     if(gcheck):
         main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
@@ -338,6 +340,8 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("        " + "input_meta_data_file.open(input_meta_data_path);\n")
         main_file.write("\n")
         main_file.write("        " + "num_stile_pairs_file.open(num_stile_pairs_path, std::ios::app);\n")
+        main_file.write("\n")
+        main_file.write("        " + "mode_data_len_file.open(mode_data_len_path, std::ios::app);\n")
         main_file.write("\n")
 
         if(unroll):
@@ -381,10 +385,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             for i in range(0, tensor_dim):
                 main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                 main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
+                main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                 main_file.write("\n")
 
             main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
             main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + "1.extents_mode_vals, map1);\n")
+            main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
             main_file.write("\n")
 
         main_file.write("        " + "}")
@@ -414,10 +420,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 for i in range(0, tensor_dim):
                     main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                     main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2);\n")
+                    main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                     main_file.write("\n")
 
                 main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
                 main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2);\n")
+                main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
                 main_file.write("\n")
 
             main_file.write("        " + "}")            
