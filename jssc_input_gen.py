@@ -86,7 +86,7 @@ def generate_program_txt(equation, schedules, tile_splits, tensor_splits, activa
         splits += f"{idx}:split:{tensor_splits[0]}:{tensor_splits[1]}:{split}\n"
 
     program_txt = f"""
-app_name: matmul_ijk
+app_name: app
 stmt: {equation[0]}
 schedule_ap:   [{schedules[0]}]
 schedule_cp:   [{schedules[1]}]
@@ -128,6 +128,7 @@ def process_input_data(data):
     tensor_txt_content = generate_tensor_txt(tensor_data, dataset_names)
 
     print(program_txt_content)
+    print(tensor_txt_content)
     
     # Write the content to program.txt
     with open("input/program.txt", "w+") as program_file:
@@ -237,14 +238,21 @@ if __name__ == "__main__":
                 elif(curr_dataset[-1] == "r"):
                     
                     in_limit = 0
-
+                    
                     while(not in_limit): 
+                        
+                        if(unroll_flag == 1):
+                            args_list = "--mode onyx -u"
+                        else:
+                            args_list = "--mode onyx"
+
                         process_input_data(input)
                         for flag in curr_flags[0]: 
                             if flag != "":
                                 args_list += f" {flag}"
 
                         args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(args)
                         run_codegen(args)
 
                         modes = num_modes(input[0][0])

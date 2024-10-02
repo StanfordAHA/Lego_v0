@@ -256,7 +256,7 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size){
 
 	output_gold_file << "\n"; 
 	
-	output_gold_file << "const uint16_t check_0_[" << output_subtile_size << "] = {0";
+	output_gold_file << "uint16_t check_0_[" << output_subtile_size << "] = {0";
 
 	for(int i = 0; i < output_subtile_size - 1; i++){
 		output_gold_file << ", 0";
