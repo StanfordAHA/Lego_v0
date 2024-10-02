@@ -122,10 +122,11 @@ int lut_data_printer(std::ofstream &header_file, std::string lut_name) {
 	header_file << "const unsigned int app_tensor_" << lut_name << "_mode_vals_data_size =  " << 1024 << ";";
 	header_file << "\n";
 
-	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensopr_" <<  lut_name << "mode_vals_data\"))) = {";
+	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensopr_" <<  lut_name << "_mode_vals_data\"))) = {";
 	header_file << "\n";
 
 	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << 1024;
+	header_file << ", ";
 
 	for (int i = 0; i < 1024; i ++) {
 		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << lut_content[i];
