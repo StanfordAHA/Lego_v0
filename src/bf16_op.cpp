@@ -213,8 +213,30 @@ std::string float2bfbin(float input, bool return_hex, bool return_bin_string) {
     std::bitset<32> conversion_mask(0xFFFF0000);
 
     // convert to bf16 by masking the lower 16 bits and shifting right 
-    std::bitset<32> bfbin = (input_bin & conversion_mask) >> 16;
-    
+    unsigned long exp = ((input_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
+    unsigned long lfrac = ((input_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
+    unsigned long hfrac = (input_bin & std::bitset<32>(0x0000FFFF)).to_ulong();
+    std::bitset<1> sign_bit = std::bitset<1>(input_bin[31]);
+    std::bitset<8> exp_bit(exp);
+    std::bitset<7> lfrac_bit(lfrac);
+    std::bitset<16> hfrac_bit(hfrac);
+
+    // rounding logic (please refer to float2bfbin in lassen)
+    if ((hfrac_bit[15] == 1 && (hfrac_bit[14] == 1 || hfrac_bit[13] == 1))
+            || (lfrac_bit[0] == 1 && hfrac_bit[15] == 1)) {
+        // round up
+        if (lfrac_bit == std::bitset<7>(0x7F)) {
+                // roll over mantissa and increase exponent
+                exp = exp + 1;
+            }
+        lfrac = lfrac + 1;
+    }
+
+    // recombine rounded sign, exponent, and mantissa
+    std::bitset<8> exp_rounded_bit(exp);
+    std::bitset<7> lfrac_rounded_bit(lfrac);
+    std::bitset<16> bfbin(sign_bit.to_string() + exp_rounded_bit.to_string() + lfrac_rounded_bit.to_string());
+
     if (return_hex) {
         std::stringstream ss;
         ss << std::hex << bfbin.to_ulong();
@@ -231,10 +253,7 @@ std::string float2bfbin(float input, bool return_hex, bool return_bin_string) {
 float bfbin2float(std::string input) {
 
     // convert the input binary string to bitset
-    std::bitset<32> bfbin(input);
-
-    // convert to float
-    bfbin = bfbin << 16;
+    std::bitset<32> bfbin(input + "0000000000000000");
 
     //convert to float
     unsigned int tmp_result =static_cast<unsigned int>(bfbin.to_ulong());
