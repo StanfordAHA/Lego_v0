@@ -528,9 +528,12 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int p" + key + "_output;\n")
 
 def apply_activation(main_file, output_tile_size, activation_function):
+    supported_activation = ["relu", "leakyrelu", "exp"]
     for activation in activation_function:
         if activation == "none":
             continue
+        if activation not in supported_activation:
+            raise NotImplementedError(f"Activation function {activation} is not supported")
         main_file.write("    apply_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
