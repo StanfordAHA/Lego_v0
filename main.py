@@ -307,12 +307,17 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("\n")
         main_file.write("    " + "std::string num_stile_pairs_path = \"" + output_dir + "/" + kernel_name + "/num_stile_pairs.txt\";\n")
         main_file.write("    " + "std::ofstream num_stile_pairs_file;\n")
+        main_file.write("\n")
         main_file.write("    " + "std::string mode_data_len_path = \"" + output_dir + "/" + kernel_name + "/mode_data_len.txt\";\n")
         main_file.write("    " + "std::ofstream mode_data_len_file;\n")
-    
-    if(gcheck):
+        main_file.write("\n")
+        main_file.write("    " + "std::string nnz_check_path = \"" + output_dir + "/" + kernel_name + "/nnz_check.txt\";\n")
+        main_file.write("    " + "std::ofstream nnz_check_file;\n")
+        main_file.write("    " + "nnz_check_file.open(nnz_check_path, std::ios::app);\n")
+        main_file.write("\n")
         main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
         main_file.write("    " + "std::ofstream output_gold_file;\n")
+        main_file.write("\n")
 
     if(mode == 'rtl'): 
         main_file.write("    std::string subtile_path;\n")
@@ -470,7 +475,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         
         main_file.write("    " + "}\n")
 
-def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, scalar): 
+def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, scalar, nnz_ctr): 
 
     for key, value in cg_source_id.items():
 
@@ -482,9 +487,16 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
         main_file.write("    " + "float *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
+        if(nnz_ctr): 
+            main_file.write("    nnz_file << subtile_" + key + ".vals.size();\n")
+            main_file.write("    nnz_file << \"\\n\";\n")
+
         main_file.write("\n")
 
     outsize = 1
+
+    if(nnz_ctr): 
+        main_file.write("    std::vector<int> out_nnz_id;\n")
 
     for key, value in cg_dest_id.items():
         if(scalar != 1):
@@ -617,6 +629,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--fill_diag", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--gcheck", action="store_true")
+    parser.add_argument("--nnz_ctr", action="store_true")
 
     args = parser.parse_args()
 
@@ -635,6 +648,7 @@ if __name__ == "__main__":
     unroll      = args.unroll_cgen
     fill_diag   = args.fill_diag
     gcheck      = args.gcheck
+    nnz_ctr     = args.nnz_ctr
 
     if os.path.exists("./lego_scratch"):
         shutil.rmtree("./lego_scratch")
@@ -770,12 +784,16 @@ if __name__ == "__main__":
     for op in op_list[1:]: 
         tensor_dim = str(len(cg_source_id[op]))
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
-    stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
+    
+    if(nnz_ctr):
+        stmt += ", int curr_subtile_num, ofstream &output_gold_file, ofstream &nnz_file)"
+    else: 
+        stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
     main_file.write("float* subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
+    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar, nnz_ctr)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -794,21 +812,27 @@ if __name__ == "__main__":
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
     elif(mode == "onyx" or mode == "opal"):
+        stmt = ""
+        if(nnz_ctr):     
+            stmt += "    nnz_file << out_nnz_id.size();\n"
+            stmt += "    nnz_file << \"\\n\";\n"
+            stmt += "\n"
 
-        stmt = "    if(curr_subtile_num == 0){"
-        stmt += "\n"
-        
-        if(scalar != 1):
-            for key in cg_dest_id.keys():
-                out_id_list = cg_dest_id[key]
-                out_id_map = cg_dest_map[key]
-            for i in range(0, len(out_id_list)):
-                stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
-        stmt += "        header_check_gold(output_gold_file, output_subtile_size);\n"
-        stmt += "    }"
-        stmt += "\n"
-        stmt += "\n"
-        stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\");"
+        if(gcheck):
+            stmt += "    if(curr_subtile_num == 0){"
+            stmt += "\n"
+            
+            if(scalar != 1):
+                for key in cg_dest_id.keys():
+                    out_id_list = cg_dest_id[key]
+                    out_id_map = cg_dest_map[key]
+                for i in range(0, len(out_id_list)):
+                    stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+            stmt += "        header_check_gold(output_gold_file, output_subtile_size);\n"
+            stmt += "    }"
+            stmt += "\n"
+            stmt += "\n"
+            stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\");"
 
     main_file.write(stmt)
     main_file.write("\n")
@@ -833,7 +857,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, 0, dtype):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -869,7 +893,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, dtype):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -928,7 +952,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")

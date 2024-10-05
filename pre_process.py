@@ -311,7 +311,11 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
         tensor = shifted2
     elif gen_tensor == "gen_colvec_dim1":
+<<<<<<< HEAD
         tensorName = args.input_tensor
+=======
+        tensorName = input_path
+>>>>>>> cdf5305b57f3ac5430c4d980b7393a77f2f489a0
         variant = "mode1"
         path = constructOtherVecKey(tensorName,variant)
         tensor_c_from_path = FrosttTensor(path)

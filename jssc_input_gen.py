@@ -4,6 +4,16 @@ import json
 import argparse
 import itertools
 import shutil
+import numpy as np
+
+def generate_rounded_sequence(start, end, num_points):
+    # Generate 10 equally spaced integers between start and end
+    sequence = np.linspace(start, end, num_points).round().astype(int)
+    
+    # Round each number to the nearest 0 or 5
+    rounded_sequence = np.round(sequence / 5) * 5
+    
+    return rounded_sequence.astype(int)
 
 # Function to generate input data
 def generate_input_data(entry):
@@ -184,6 +194,21 @@ def check_size(out_dir, modes):
   
     return in_limit
 
+def check_nnz_max(out_dir): 
+    nnz_path = find_file_in_directory("nnz_check.txt", out_dir)
+
+    with open(nnz_path, "r") as nnz_file:
+        nnz_lines = [line for line in nnz_file]
+
+    not_max = 1
+    for nnz in nnz_lines:
+        if(int(nnz) > 990): 
+            not_max = 0
+            break
+    
+    return not_max 
+
+
 if __name__ == "__main__":
     # Input format
 
@@ -269,7 +294,87 @@ if __name__ == "__main__":
 
                         if(not in_limit): 
                             print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
-                            input[-3][-1] = input[-3][-1]//2            
+                            input[-3][-1] = input[-3][-1]//2        
+                elif(curr_dataset[-1] == "s"):
+
+                    if(unroll_flag == 1):
+                        args_list = "--mode onyx -u"
+                    else:
+                        args_list = "--mode onyx"
+
+                    args_list += " --nnz_ctr"
+
+                    for flag in curr_flags[0]: 
+                        if flag != "":
+                            args_list += f" {flag}"
+
+                    start_stile_size = input[2][0]
+                    input_test = input.copy()
+
+                    not_max = True
+                    run = 0
+
+                    curr_test_tile_size = start_stile_size
+
+                    while(not_max):
+                        
+                        input_test[2] = [curr_test_tile_size] * len(input_test[2])
+                        process_input_data(input_test)
+                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(args)
+                        run_codegen(args)
+                        not_max = check_nnz_max(out_dir)
+                        prev_test_tile_size = curr_test_tile_size
+                        curr_test_tile_size += (5 * (2**(run)))
+                        run += 1
+
+                    not_max = True
+
+                    curr_test_tile_size = prev_test_tile_size
+
+                    while(not_max):
+                        curr_test_tile_size = curr_test_tile_size + 15
+                        input_test[2] = [curr_test_tile_size] * len(input_test[2])
+                        process_input_data(input_test)
+                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(args)
+                        run_codegen(args)
+                        not_max = check_nnz_max(out_dir)
+                
+                    end_stile_size = curr_test_tile_size - 20
+
+                    num_points = 10
+                    stile_list = generate_rounded_sequence(start_stile_size, end_stile_size, num_points)
+
+                    for size in stile_list: 
+                        out_dir = f"./jssc_outputs/{curr_app_name}/{input[1][-1]}_{input[-1][-2]}_{bitstream[0][-8:]}_{bitstream[1]}_{size}/"
+                        input[2] = [size] * len(input[2])
+
+                        in_limit = 0
+
+                        while(not in_limit): 
+                            
+                            if(unroll_flag == 1):
+                                args_list = "--mode onyx -u"
+                            else:
+                                args_list = "--mode onyx"
+
+                            process_input_data(input)
+                            for flag in curr_flags[0]: 
+                                if flag != "":
+                                    args_list += f" {flag}"
+
+                            args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                            print(args)
+                            run_codegen(args)
+
+                            modes = num_modes(input[0][0])
+                            in_limit = check_size(out_dir, modes)
+
+                            if(not in_limit): 
+                                print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
+                                input[-3][-1] = input[-3][-1]//2        
+
                 else: 
                     try: 
                         L1_tile_size = int(curr_dataset[-1])
