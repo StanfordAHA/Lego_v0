@@ -311,8 +311,15 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
         tensor = shifted2
     elif gen_tensor == "gen_colvec_dim1":
-        rows, cols = tensor.shape
-        tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
+        tensorName = input_path
+        variant = "mode1"
+        path = constructOtherVecKey(tensorName,variant)
+        tensor_c_from_path = FrosttTensor(path)
+        tensor_c = tensor_c_from_path.load().todense()
+        # print("TENSOR SHAPE: ", tensor.shape)
+        # print("TENSOR_C SHAPE: ", tensor_c.shape)
+        #rows, cols = tensor.shape
+        #tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
         if other_nonempty: tensor_c[0] = 1
         tensor = tensor_c
     elif gen_tensor == "gen_rowvec_dim1":
@@ -329,8 +336,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         path = constructOtherVecKey(tensorName, variant)
         tensor_c_loader = FrosttTensor(path)
         tensor_c = tensor_c_loader.load().todense()
-        size_i, size_j, size_k = tensor.shape  # i,j,k
-        tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
+        #size_i, size_j, size_k = tensor.shape  # i,j,k
+        #tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
         if other_nonempty:
             tensor_c[0] = 1
         tensor = tensor_c   
