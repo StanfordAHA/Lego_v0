@@ -373,8 +373,46 @@ if __name__ == "__main__":
 
                             if(not in_limit): 
                                 print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
-                                input[-3][-1] = input[-3][-1]//2        
+                                input[-3][-1] = input[-3][-1]//2   
+                                
+                elif(curr_dataset[-1] == "f"):
 
+                    mid_stile_size = input[2][0]
+
+                    start_stile_size = mid_stile_size - 10
+                    stile_list = []
+
+                    for i in range(0,5):
+                        stile_list.append(start_stile_size + 5 * i)
+
+                    for size in stile_list: 
+                        out_dir = f"./jssc_outputs/{curr_app_name}/{input[1][-1]}_{input[-1][-2]}_{bitstream[0][-8:]}_{bitstream[1]}_{size}/"
+                        input[2] = [size] * len(input[2])
+
+                        in_limit = 0
+
+                        while(not in_limit): 
+                            
+                            if(unroll_flag == 1):
+                                args_list = "--mode onyx -u"
+                            else:
+                                args_list = "--mode onyx"
+
+                            process_input_data(input)
+                            for flag in curr_flags[0]: 
+                                if flag != "":
+                                    args_list += f" {flag}"
+
+                            args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                            print(args)
+                            run_codegen(args)
+
+                            modes = num_modes(input[0][0])
+                            in_limit = check_size(out_dir, modes)
+
+                            if(not in_limit): 
+                                print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
+                                input[-3][-1] = input[-3][-1]//2  
                 else: 
                     try: 
                         L1_tile_size = int(curr_dataset[-1])
