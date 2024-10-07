@@ -366,12 +366,14 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("        " + "curr_subtile_num1 = curr_subtile_num;\n")
             main_file.write("        " + "auto map1 = generate_range(curr_subtile_num);\n")
             main_file.write("\n")
+
+        main_file.write("        " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1);\n")
+        main_file.write("\n")
+        main_file.write("        " + "num_stile_pairs_file << curr_subtile_num1;\n")
+        main_file.write("\n")
+
         
         main_file.write("        " + "if(curr_subtile_num1 > 0){")
-        main_file.write("\n")
-        main_file.write("            " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1);\n")
-        main_file.write("\n")
-        main_file.write("            " + "num_stile_pairs_file << curr_subtile_num1;\n")
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
@@ -402,13 +404,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
 
         if(unroll):
+            main_file.write("        " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
+            main_file.write("\n")
+            main_file.write("        " + "num_stile_pairs_file << \" \" << curr_subtile_num2;\n")
+            main_file.write("\n")
             main_file.write("        " + "if(curr_subtile_num2 > 0){")
             main_file.write("\n")
-            main_file.write("            " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
-            main_file.write("\n")
-            main_file.write("            " + "num_stile_pairs_file << \" \" << curr_subtile_num2;\n")
-            main_file.write("\n")
-
             for key, value in cg_source_id.items():
 
                 tensor_dim = len(value)
@@ -433,7 +434,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
                 main_file.write("\n")
 
-            main_file.write("        " + "}")            
+            main_file.write("        " + "}")          
             main_file.write("\n")
 
         main_file.write("        " + "num_stile_pairs_file << \"\\n\";\n")
