@@ -202,7 +202,7 @@ def check_nnz_max(out_dir):
 
     not_max = 1
     for nnz in nnz_lines:
-        if(int(nnz) > 990): 
+        if(int(nnz) > 900): 
             not_max = 0
             break
     
