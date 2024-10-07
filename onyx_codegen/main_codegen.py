@@ -197,10 +197,14 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         file.write("\n")
 
     file.write("    int run1 = 0;\n")
-    file.write("    update_glb_input(run1);\n")
+    file.write("    if(runs > 0){")
+    file.write("        update_glb_input(run1);\n")
+    file.write("    }")
     if(unroll):
         file.write("    int run2 = 0;\n")
-        file.write("    update_glb_input_unroll(run2);\n")
+        file.write("    if(runs_unroll > 0){")
+        file.write("        update_glb_input_unroll(run2);\n")
+        file.write("    }")
     file.write("\n")
     
     file.write("    uint32_t cycles = 0;\n")    
