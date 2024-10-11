@@ -274,6 +274,10 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
 }
 
 int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::vector<int> map1){
+	if(unroll == 2){
+		output_gold_file << "uint8_t map[" << max_run << "];\n";
+		output_gold_file << "\n"; 
+	}
 	output_gold_file << "\n"; 
 	output_gold_file << "uint16_t check_gold_data(){" << "\n";
 	output_gold_file << "\n"; 
@@ -324,6 +328,10 @@ int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select)
 
 	if(select == 1){
 		output_gold_file << "        if(run < runs){" << "\n"; 
+	}
+
+	if(select == 10){
+		output_gold_file << "        if(map[run] == 0){" << "\n"; 
 	}
 
 	if(select == 2){

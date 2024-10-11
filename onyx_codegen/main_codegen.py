@@ -59,7 +59,7 @@ def main_block_1(file, unroll, debug):
     file.write("        HAL_Cgra_Tile_WriteReg(app_addrs_script[config], app_datas_script[config]);\n")
     file.write("    }\n")
 
-    if(unroll): 
+    if(unroll != "0"): 
         file.write("    for (int config = 0; config < app_size; config++){\n")
         file.write("        uint32_t addr = app_addrs_script[config];\n")
         file.write("	    uint32_t addr_shifted = (addr & 0xFFFF00FF) | ((((addr & 0x0000FF00) >> 8) + 16) << 8);\n")
@@ -76,7 +76,7 @@ def main_block_1(file, unroll, debug):
     file.write("        uint32_t read_data = HAL_Cgra_Tile_ReadReg(app_addrs_script[config]);\n")
     file.write("        uint32_t addr = app_addrs_script[config];\n")
 
-    if(unroll):
+    if(unroll != "0"):
         file.write("        uint32_t addr_shifted = (addr & 0xFFFF00FF) | ((((addr & 0x0000FF00) >> 8) + 16) << 8);\n")
         file.write("        uint32_t read_data2 = HAL_Cgra_Tile_ReadReg(addr_shifted);\n")
 
@@ -88,7 +88,7 @@ def main_block_1(file, unroll, debug):
     file.write("            trace_printf(\"read_data %lx \", read_data);\n")
     file.write("            trace_printf(\"gold data %lx\\n\", gold);\n")
     file.write("        }\n")
-    if(unroll): 
+    if(unroll != "0"): 
         file.write("        if ( read_data2 != gold){\n")
         file.write("            trace_printf(\"config error: %d \", config);\n")
         file.write("            trace_printf(\"address: %lx \", addr);\n")
@@ -119,7 +119,7 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_
 
     file.write("\n")
 
-    if(unroll): 
+    if(unroll != "0"): 
         for i in range(num_tiles):
             file.write("    input_read_base = AHASOC_CGRA_DATA_BASE + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(i) + ";\n")
             if(debug):
@@ -134,7 +134,7 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_
         file.write("    // trace_printf(\"\\nCONFIG GLB\\n\");\n") 
     file.write("    app_glb_config(0);\n")
 
-    if(unroll): 
+    if(unroll != "0"): 
         file.write("    app_glb_config(8);\n")
 
     file.write("\n")
@@ -143,7 +143,7 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_
     else:
         file.write("    // trace_printf(\"\\nAPP Prep\\n\");\n")
     file.write("\n")
-    if(unroll):
+    if(unroll != "0"):
         file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLB_FLUSH_CROSSBAR_R, 0x88880000);\n")  
     else:
         file.write("    HAL_Cgra_Glc_WriteReg(GLC_GLB_FLUSH_CROSSBAR_R, 0);\n")      
@@ -179,7 +179,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     file.write("    int " + dest + "_mode_vals_size;\n")
     file.write("\n")
 
-    if(unroll): 
+    if(unroll != "0"): 
         for i in range(out_tensor_dim):
             curr_mapping = mapping_dict[dest][i]    
             file.write("    uint16_t* output_read_base" + str(i) + "_unroll = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(curr_mapping) + ");\n")
@@ -195,16 +195,33 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
             file.write("    int " + dest + "_mode_" + str(i) + "_size_unroll;\n")
         file.write("    int " + dest + "_mode_vals_size_unroll;\n")
         file.write("\n")
-
-    file.write("    int run1 = 0;\n")
-    file.write("    if(runs > 0){")
-    file.write("        update_glb_input(run1);\n")
-    file.write("    }")
-    if(unroll):
+    
+    if(unroll == "2"): 
+        file.write("    int run1 = 0;\n")
+        file.write("    if(runs > 0){\n")
+        file.write("        update_glb_input(run1);\n")
+        if(gcheck): 
+            file.write("        map[run1] = 0;\n")
+        file.write("        run1++;\n")
+        file.write("    }\n")
+        file.write("    if(runs > 0 && run1 < runs){\n")
+        file.write("        update_glb_input_unroll(run1);\n")
+        if(gcheck):
+             file.write("        map[run1] = 1;\n")
+        file.write("        run1++;\n")
+        file.write("    }\n")
+    else: 
+        file.write("    int run1 = 0;\n")
+        file.write("    if(runs > 0){\n")
+        file.write("        update_glb_input(run1);\n")
+        file.write("    }\n")
+    
+    if(unroll == "1"):
         file.write("    int run2 = 0;\n")
         file.write("    if(runs_unroll > 0){")
         file.write("        update_glb_input_unroll(run2);\n")
         file.write("    }")
+        
     file.write("\n")
     
     file.write("    uint32_t cycles = 0;\n")    
@@ -224,46 +241,72 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     file.write("\n")
 
     file.write("    int input_in1 = 0;\n")
-    if(unroll):
+    if(unroll != "0"):
         file.write("    int input_in2 = 0;\n")
     file.write("\n")
+
+    if(unroll == "1"):
+        while_cond_check = "(run1 < runs || run2 < runs_unroll){"
+    elif(unroll == "2"):
+        while_cond_check = "((run1 < runs) || ((run1 == runs) && ((input_in1 != 0) || (input_in2 != 0)))){"
+    else: 
+        while_cond_check = "(run1 < runs){"    
     
 
     file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, output_mask << 16 | input_mask);\n")
-    if(unroll): 
+    if(unroll != "0"): 
         file.write("    HAL_Cgra_Glc_WriteReg(GLC_STREAM_START_PULSE_R, (output_mask << 8) << 16 | (input_mask << 8));\n")
     file.write("\n")
 
-    if(unroll): 
-        file.write("    while(run1 < runs || run2 < runs_unroll){\n")
-    else: 
-        file.write("    while(run1 < runs){\n")
+    file.write(f"    while{while_cond_check}\n")
     file.write("\n")
 
     file.write("        // Wait for inputs to finish sending\n")
     file.write("        if(run1 < runs && (input_in1 == 0) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & input_mask) == input_mask)){\n")
     file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_G2F_ISR_R, input_mask);\n")
-    file.write("            update_glb_input(run1 + 1);\n")
+    if(unroll == "2"):
+        file.write("            update_glb_input(run1);\n")
+        if(gcheck):
+            file.write("            map[run1] = 0;\n")
+        file.write("            run1++;\n")
+    else:
+        file.write("            update_glb_input(run1 + 1);\n")
     file.write("            input_in1 = 1;\n")
     file.write("        }\n")
     file.write("\n")
 
-    if(unroll):
-        file.write("        if(run2 < runs_unroll && (input_in2 == 0) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & (input_mask << 8)) == (input_mask << 8))){\n")
+    if(unroll != "0"):
+        if(unroll == "1"):
+            file.write("        if(run2 < runs_unroll && (input_in2 == 0) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & (input_mask << 8)) == (input_mask << 8))){\n")
+        elif (unroll == "2"):
+            file.write("        if(run1 < runs && (input_in2 == 0) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_G2F_ISR_R) & (input_mask << 8)) == (input_mask << 8))){\n")            
         file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_G2F_ISR_R, input_mask << 8);\n")
-        file.write("            update_glb_input_unroll(run2 + 1);\n")
+        if(unroll == "2"):
+            file.write("            update_glb_input_unroll(run1);\n")
+            if(gcheck):
+                file.write("            map[run1] = 1;\n")
+            file.write("            run1++;\n")
+        else:
+            file.write("            update_glb_input_unroll(run2 + 1);\n")
         file.write("            input_in2 = 1;\n")
         file.write("        }\n")
         file.write("\n")
 
     file.write("        // Wait for outputs to all fill in\n")
-    file.write("        if(run1 < runs && (input_in1 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & output_mask) == output_mask)){\n")
+    if(unroll != "2"):
+        file.write("        if(run1 < runs && (input_in1 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & output_mask) == output_mask)){\n")
+    else:
+        file.write("        if(run1 <= runs && (input_in1 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & output_mask) == output_mask)){\n")
     file.write("\n")
     file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask);\n")
-    file.write("            run1++;\n")
-    file.write("\n")
-    file.write("            if(run1 < runs){\n")
-    file.write("\n")
+    if(unroll != "2"):
+        file.write("            run1++;\n")
+        file.write("\n")
+        file.write("            if(run1 < runs){\n")
+        file.write("\n")
+    else:
+        file.write("            if(run1 <= runs){\n")
+        file.write("\n")
     file.write("            // Updating output pointers\n")
 
     for i in range(out_tensor_dim - 1): 
@@ -291,13 +334,24 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
     file.write("        }\n")
     file.write("\n")
     
-    if(unroll): 
-        file.write("        if(run2 < runs_unroll && (input_in2 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & (output_mask << 8)) == (output_mask << 8))){\n")
+    if(unroll != "0"): 
+        
+        if(unroll != "2"):
+            file.write("        if(run2 < runs_unroll && (input_in2 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & (output_mask << 8)) == (output_mask << 8))){\n")
+            file.write("\n")
+            file.write("            run2++;\n")
+            file.write("\n")
+            file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask << 8);\n")     
+            file.write("\n")
+            file.write("            if(run2 < runs_unroll){\n")
+        else:
+            file.write("        if(run1 <= runs && (input_in2 == 1) && ((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & (output_mask << 8)) == (output_mask << 8))){\n")
+            file.write("\n")
+            file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask << 8);\n")
+            file.write("\n")
+            file.write("            if(run1 <= runs){\n")
+        
         file.write("\n")
-        file.write("            HAL_Cgra_Glc_WriteReg(GLC_STRM_F2G_ISR_R, output_mask << 8);\n")      
-        file.write("            run2++;\n")
-        file.write("\n")
-        file.write("            if(run2 < runs_unroll){\n")
         file.write("            // Updating output pointers\n")
         for i in range(out_tensor_dim - 1): 
             file.write("                size = output_read_base" + str(i) + "_unroll[" + dest + "_mode_" + str(i) + "_idx_unroll];\n")
@@ -325,6 +379,12 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
 
     file.write("    }\n")   
     file.write("\n")
+
+    if(unroll == "2"):  
+        file.write("    while(((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & output_mask) != output_mask)){}\n")
+        file.write("    if(runs > 1)")
+        file.write("        while((HAL_Cgra_Glc_ReadReg(GLC_STRM_F2G_ISR_R) & (output_mask << 8)) != (output_mask << 8)){}")
+            
     file.write("    // 5. Stop cycle counter\n")
     file.write("    cycles = DWT->CYCCNT;\n")
     file.write("\n")
@@ -356,7 +416,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         else:
             file.write("    // trace_printf(\"first location: %lx\\n\", output_read_base" + str(i) + "[0]);\n")            
 
-    if(unroll):
+    if(unroll != "0"):
         for i in range(out_tensor_dim):
             file.write("    output_read_base = AHASOC_CGRA_DATA_BASE + " + glb_tile_offset + " * 8 + " + glb_tile_offset + " * " + str(i) + " + " + glb_bank_offset + ";\n")
             if(debug):

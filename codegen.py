@@ -662,7 +662,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
             if(mode == "onyx" or mode == "opal"):
                 stmt = "    " * (level + 2) + "/* Reserved operation */"
 
-        if(unroll): 
+        if(unroll != "0"): 
             unroll_factor = 2
         else: 
             unroll_factor = 1

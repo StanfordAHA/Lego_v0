@@ -260,7 +260,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + "1;\n") 
 
             """
-            if(unroll): 
+            if(unroll != "0"): 
                 
                 main_file.write("    " + "bool *store_" + key + "2 = (bool *) calloc((store_size_" + key + " + 1), sizeof(bool));\n")
 
@@ -292,7 +292,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
     main_file.write("    " + "int curr_subtile_num1 = 0;\n")  
-    if(unroll):
+    if(unroll != "0"):
         main_file.write("    " + "int curr_subtile_num2 = 0;\n")  
     main_file.write("    " + "std::string out_dir = \"" + output_dir + "/" + kernel_name + "/\" + curr_tile;\n")
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
@@ -349,7 +349,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("        " + "mode_data_len_file.open(mode_data_len_path, std::ios::app);\n")
         main_file.write("\n")
 
-        if(unroll):
+        if(unroll == "1"):
             main_file.write("\n")
             main_file.write("        " + "std::vector<int> nnz_in;\n")
             main_file.write("        " + "for(int i = 0; i < curr_subtile_num; i++){\n")
@@ -361,12 +361,18 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("        " + "curr_subtile_num1 = map1.size();\n")
             main_file.write("        " + "curr_subtile_num2 = map2.size();\n")
             main_file.write("\n")
+        elif(unroll == "2"):
+            main_file.write("\n")
+            main_file.write("        " + "auto map1 = generate_range(curr_subtile_num);\n")
+            main_file.write("        " + "curr_subtile_num1 = curr_subtile_num;\n")
+            main_file.write("        " + "curr_subtile_num2 = curr_subtile_num;\n")
+            main_file.write("\n")
         else:
             main_file.write("\n")
             main_file.write("        " + "curr_subtile_num1 = curr_subtile_num;\n")
             main_file.write("        " + "auto map1 = generate_range(curr_subtile_num);\n")
             main_file.write("\n")
-
+        
         main_file.write("        " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1);\n")
         main_file.write("\n")
         main_file.write("        " + "num_stile_pairs_file << curr_subtile_num1;\n")
@@ -403,11 +409,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("        " + "}")
         main_file.write("\n")
 
-        if(unroll):
-            main_file.write("        " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
-            main_file.write("\n")
-            main_file.write("        " + "num_stile_pairs_file << \" \" << curr_subtile_num2;\n")
-            main_file.write("\n")
+        if(unroll != "0"):
+            if(unroll == "1"):
+                main_file.write("        " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
+                main_file.write("\n")
+                main_file.write("        " + "num_stile_pairs_file << \" \" << curr_subtile_num2;\n")
+                main_file.write("\n")
             main_file.write("        " + "if(curr_subtile_num2 > 0){")
             main_file.write("\n")
             for key, value in cg_source_id.items():
@@ -425,34 +432,61 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
 
                 for i in range(0, tensor_dim):
                     main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
-                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2);\n")
+                    if(unroll == "1"):
+                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2);\n")
                     main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                     main_file.write("\n")
 
                 main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
-                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2);\n")
+                if(unroll == "1"):
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2);\n")
                 main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
                 main_file.write("\n")
 
             main_file.write("        " + "}")          
             main_file.write("\n")
 
+            if(unroll == "1"):
+                main_file.write("        " + "else {")
+                main_file.write("\n")
+
+                for key, value in cg_source_id.items():
+
+                    tensor_dim = len(value)
+
+                    # TODO: Introduce systematic change to replace this hack
+                    # this hack is to cope with the old RTL bitstream generation that 
+                    # always place the matrix modes in the data flow order 
+                    # e.g. for X(i,j) = B(i, k) * C(k, j), C_mode_0 is k and C_mode_1 is j
+                    # however, for RTL, C_mode_0 is mapped to j and C_mode_1 is mapped to k
+                    cg_source_map_cpy = copy.deepcopy(cg_source_map)
+                    for tensor_name, mode_list in cg_source_map_cpy.items():
+                        mode_list.sort()
+
+                    for i in range(0, tensor_dim):
+                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
+                    main_file.write("\n")
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map1);\n")
+                    main_file.write("\n")
+
+                main_file.write("        " + "}")          
+                main_file.write("\n")
+
+
         main_file.write("        " + "num_stile_pairs_file << \"\\n\";\n")
         main_file.write("\n")    
 
         if(gcheck):    
-            if(unroll): 
+            if(unroll == "1"): 
                 main_file.write("        " + "map1.insert(map1.end(), map2.begin(), map2.end());\n")
 
             main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
+            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", map1);\n")
 
-            if(unroll): 
-                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 1, \"" + glb_bank_offset + "\", map1);\n")
-            else: 
-                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", 0, \"" + glb_bank_offset + "\", map1);\n")
-
-            if(unroll):
+            if(unroll == "1"):
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
+            elif(unroll == "2"):    
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 10);\n")
             else: 
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
             for i in range(0, out_tensor_dim + 1):
@@ -460,7 +494,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
             main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\");\n")
             
-            if(unroll): 
+            if(unroll != "0"): 
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2);\n")
                 for i in range(0, out_tensor_dim + 1):
                     curr_mapping = mapping_dict[dest_read][i] 
@@ -626,7 +660,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output_dir", type=str, default="lego_scratch", help="Output directory for the generated tiles")
     parser.add_argument("-n", "--no_preprocess", action="store_true")   
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
-    parser.add_argument("-u", "--unroll_cgen", action="store_true")
+    parser.add_argument("-u", "--unroll_cgen", type=str, default="0")
     parser.add_argument("-f", "--fill_diag", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--gcheck", action="store_true")
@@ -702,7 +736,7 @@ if __name__ == "__main__":
         first_half_of_body(linker_header_file)
         input_list = [input.strip(".raw") for input in inputs]
         linker_header_file.write(generate_data_location_content(input_list, input_order, glb_tile_offset))
-        if(unroll): 
+        if(unroll != "0"): 
             linker_header_file.write(generate_data_location_content_unroll(input_list, glb_tile_offset))
         bottom_half_of_body(linker_header_file)
 

@@ -248,8 +248,8 @@ if __name__ == "__main__":
                 reg_write_file   = f"./jssc_inputs/{bitstream[0]}/reg_write.h"
                 design_meta_file = f"./jssc_inputs/{bitstream[0]}/design_meta.json"
 
-                if(bitstream[1] == 1):
-                    args_list = "--mode onyx -u" 
+                if(bitstream[1] != 0):
+                    args_list = f"--mode onyx -u {bitstream[1]}" 
                 else:
                     args_list = "--mode onyx"
 
@@ -275,8 +275,8 @@ if __name__ == "__main__":
 
                     while(not in_limit): 
                         
-                        if(unroll_flag == 1):
-                            args_list = "--mode onyx -u"
+                        if(unroll_flag != 0):
+                            args_list = f"--mode onyx -u {unroll_flag}"
                         else:
                             args_list = "--mode onyx"
 
@@ -297,8 +297,8 @@ if __name__ == "__main__":
                             input[-3][-1] = input[-3][-1]//2        
                 elif(curr_dataset[-1] == "s"):
 
-                    if(unroll_flag == 1):
-                        args_list = "--mode onyx -u"
+                    if(unroll_flag != 0):
+                        args_list = f"--mode onyx -u {unroll_flag}"
                     else:
                         args_list = "--mode onyx"
 
@@ -354,8 +354,8 @@ if __name__ == "__main__":
 
                         while(not in_limit): 
                             
-                            if(unroll_flag == 1):
-                                args_list = "--mode onyx -u"
+                            if(unroll_flag != 0):
+                                args_list = f"--mode onyx -u {unroll_flag}"
                             else:
                                 args_list = "--mode onyx"
 
@@ -393,8 +393,8 @@ if __name__ == "__main__":
 
                         while(not in_limit): 
                             
-                            if(unroll_flag == 1):
-                                args_list = "--mode onyx -u"
+                            if(unroll_flag != 0):
+                                args_list = f"--mode onyx -u {unroll_flag}"
                             else:
                                 args_list = "--mode onyx"
 
