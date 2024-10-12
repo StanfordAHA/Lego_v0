@@ -375,14 +375,14 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	return 0;
 } 
 
-int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select){
+int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select, int val){
 
 	if(select == 0){
 		output_gold_file << "        if(run % 1 == 0){" << "\n";
 	}
 
 	if(select == 1){
-		output_gold_file << "        if(run < runs){" << "\n"; 
+		output_gold_file << "        if(run < " << val << "){" << "\n"; 
 	}
 
 	if(select == 10){
@@ -401,8 +401,11 @@ int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, s
 	return 0; 
 }
 
-int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset){
-	output_gold_file << "        unsigned int read_base_" << base_id << "_addr = AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << ";" << "\n";
+int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset, bool unroll){
+	if(unroll)
+		output_gold_file << "        unsigned int read_base_" << base_id << "_addr = AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << " + " << glb_tile_offset <<  " * 8;" << "\n";
+	else
+		output_gold_file << "        unsigned int read_base_" << base_id << "_addr = AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << ";" << "\n";
 	output_gold_file << "        std::stringstream ss_read_base_" << base_id << ";\n";
 	output_gold_file << "        ss_read_base_" << base_id << " << std::hex << read_base_" << base_id << "_addr;\n";
 	output_gold_file << "        std::string read_base_" << base_id << "_filename = ss_read_base_" << base_id << ".str() + \".bin\";\n";

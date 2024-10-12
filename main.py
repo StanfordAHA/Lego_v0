@@ -455,16 +455,16 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             for i in range(0, out_tensor_dim + 1):
                 curr_mapping = mapping_dict[dest_read][i]
                 if ap_gcheck:
-                    main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
+                    main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", false);\n")
                 else:
                     main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
 
             if(unroll == "1"):
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1, curr_subtile_num1);\n")
             elif(unroll == "2"):    
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 10);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 10, 0);\n")
             else: 
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0, 0);\n")
 
             if ap_gcheck:
                 main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", true);\n")
@@ -472,11 +472,17 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", false);\n")
 
             if(unroll != "0"): 
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2, 0);\n")
                 for i in range(0, out_tensor_dim + 1):
                     curr_mapping = mapping_dict[dest_read][i] 
-                    main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
-                main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\");\n")
+                    if ap_gcheck:
+                        main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", true);\n")
+                    else:
+                        main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
+                if ap_gcheck:
+                    main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\", true);\n")
+                else:
+                    main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\", false);\n")
 
             if(ap_gcheck):
                 main_file.write("        " + "codegen_check_gold_ret(output_gold_file, true);\n")
