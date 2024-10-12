@@ -33,7 +33,7 @@ int codegen_check_gold_unroll_ifdef_close(ofstream &output_gold_file);
 int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 int codegen_check_gold_unroll_ifdef_open(int select); 
-int codegen_check_gold_ret(ofstream &output_gold_file); 
+int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck); 
 int header_meta_data(ofstream &header_file, std::string label, int max_run);
 int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 std::vector<int> generate_range(int n); 

@@ -358,12 +358,12 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	for(int i = 0; i < map1.size(); i++){
 		output_gold_file << "            case " << i << ":" << "\n";
 		if(ap_gcheck) {
-			output_gold_file << "                " << type_16_bit << " * gold_ptr = gold_" << map1[i] << "_.data();" << "\n";
+			output_gold_file << "                 gold_ptr = gold_" << map1[i] << "_.data();" << "\n";
 		}
 		else{
-			output_gold_file << "                " << type_16_bit << " * gold_ptr = gold_" << map1[i] << "_;" << "\n";
+			output_gold_file << "                 gold_ptr = gold_" << map1[i] << "_;" << "\n";
 		}
-		output_gold_file << "                " << type_16_bit << " * check_ptr = check_0_;" << "\n";
+		output_gold_file << "                check_ptr = check_0_;" << "\n";
 		output_gold_file << "                break;" << "\n";
 	}
 
@@ -616,10 +616,14 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 	return 0;
 }
-
-int codegen_check_gold_ret(ofstream &output_gold_file){
+int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck){
 	output_gold_file << "    }\n";
-	output_gold_file << "    return err;\n";
+	if (ap_gcheck) {
+		output_gold_file << "    std::cout << \"err: \" << err << std::endl;\n";
+		output_gold_file << "    return 0;\n";
+	} else {
+		output_gold_file << "    return err;\n";
+	}
 	output_gold_file << "}\n";
 	return 0;
 }

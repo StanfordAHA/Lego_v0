@@ -478,7 +478,10 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                     main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
                 main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\");\n")
 
-            main_file.write("        " + "codegen_check_gold_ret(output_gold_file);\n")
+            if(ap_gcheck):
+                main_file.write("        " + "codegen_check_gold_ret(output_gold_file, true);\n")
+            else:
+                main_file.write("        " + "codegen_check_gold_ret(output_gold_file, false);\n")
 
             main_file.write("        " + "output_gold_file.close();\n")
 
@@ -694,7 +697,7 @@ if __name__ == "__main__":
         mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open(os.path.join(args.output_dir, app_name) + "/main.c", "w+")
         main_gen_c_lib_include(main_file)
-        main_app_header_include(main_file, app_name, gcheck)
+        main_app_header_include(main_file, app_name, gcheck, ap_gcheck)
         main_gen_soc_lib_include(main_file)
         main_block_1(main_file, args.unroll_cgen, args.debug)
         main_block_2(main_file, mapping_dict, op_list, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug)

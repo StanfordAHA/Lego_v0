@@ -5,13 +5,13 @@ def main_gen_c_lib_include(file):
     file.write("#include \"diag/trace.h\"\n")
     file.write("\n")
 
-def main_app_header_include(file, app_name, gcheck):
+def main_app_header_include(file, app_name, gcheck, ap_gcheck):
 
     file.write("#include \"" + app_name + "_script.h\"\n")
     file.write("#include \"" + app_name + "_input_script.h\"\n")
     file.write("#include \"" + app_name + "_unrolling.h\"\n")
     file.write("#include \"" + app_name + "_reg_write.h\"\n")
-    if(gcheck):
+    if(gcheck and not ap_gcheck):
         file.write("#include \"" + app_name + "_gold.h\"\n")
     file.write("\n")
 
