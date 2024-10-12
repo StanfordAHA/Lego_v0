@@ -384,6 +384,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "    map_base_file.seekg (0, std::ios::beg);\n";
 		output_gold_file << "    std::vector<unsigned short> map(map_base_len);\n";
 		output_gold_file << "    map_base_file.read((char *) &map[0], map_base_len);\n";
+		output_gold_file << "    map_base_file.close();\n";
 		output_gold_file << "\n";
 	}
 
@@ -431,6 +432,7 @@ int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base
 	output_gold_file << "        read_base_" << base_id << "_file.seekg (0, std::ios::beg);\n";
 	output_gold_file << "        std::vector<unsigned short> read_base_" << base_id << "(read_base_" << base_id << "_len);\n";
 	output_gold_file << "        read_base_" << base_id << "_file.read((char *) &read_base_" << base_id << "[0], read_base_" << base_id << "_len);\n";
+	output_gold_file << " 	     read_base_" << base_id << "_file.close();\n";
 	output_gold_file << "\n";
 	return 0; 
 }
