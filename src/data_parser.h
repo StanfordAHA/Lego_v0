@@ -26,7 +26,7 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_dir, const std::string &kernel_name, const int &batch_size);
 int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool ap_gcheck);
 int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size);
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::vector<int> map1, bool ap_gcheck);
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck);
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim, std::string type, bool ap_gcheck);
 int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select, int val);
 int codegen_check_gold_unroll_ifdef_close(ofstream &output_gold_file); 

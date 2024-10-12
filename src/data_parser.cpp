@@ -297,7 +297,7 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
 }
 
 
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::vector<int> map1, bool ap_gcheck){
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck){
 
 	// different data types depending on whether gold check happens on ap or cp
 	std::string type_32_bit;
@@ -313,7 +313,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 		type_8_bit = "uint8_t";
 	}
 
-	if(unroll == 2){
+	if(!ap_gcheck && (unroll == 2)){
 		output_gold_file << type_8_bit << " map[" << max_run << "];\n";
 		output_gold_file << "\n"; 
 	}
@@ -371,6 +371,21 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "                break;" << "\n";
 	output_gold_file << "        }\n"; 
 	output_gold_file << "\n"; 
+
+	if(ap_gcheck && (unroll == 2)){
+		output_gold_file << "    unsigned int map_base_addr = AHASOC_CGRA_DATA_BASE + read_start_addr + " << "6" << " * " << glb_tile_offset << ";" << "\n";
+		output_gold_file << "    std::stringstream ss_map_base;\n";
+		output_gold_file << "    ss_map_base << std::hex << map_base_addr;\n";
+		output_gold_file << "    std::string map_base_filename = ss_map_base.str() + \".bin\";\n";
+		output_gold_file << "    std::ifstream map_base_file(map_base_filename, std::ios::binary);\n";
+		output_gold_file << "    int map_base_len = 0;\n";
+		output_gold_file << "    map_base_file.seekg (0, std::ios::end);\n";
+		output_gold_file << "    map_base_len = map_base_file.tellg();\n";
+		output_gold_file << "    map_base_file.seekg (0, std::ios::beg);\n";
+		output_gold_file << "    std::vector<unsigned short> map(map_base_len);\n";
+		output_gold_file << "    map_base_file.read((char *) &map[0], map_base_len);\n";
+		output_gold_file << "\n";
+	}
 
 	return 0;
 } 

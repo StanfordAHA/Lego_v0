@@ -168,6 +168,10 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         file.write("    uint16_t* output_read_base" + str(i) + " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " + glb_tile_offset + " * " + str(curr_mapping) + ");\n")
     file.write("\n")
 
+    if(ap_gcheck): 
+        if(unroll == "2"): 
+            file.write("    uint16_t* map = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " + glb_tile_offset + " * " + "6" + ");\n")
+
     for i in range(out_tensor_dim - 1):
         file.write("    int " + dest + "_mode_" + str(i) + "_idx = 0;\n")
     file.write("    int " + dest + "_mode_vals_idx = 0;\n")
