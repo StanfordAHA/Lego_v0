@@ -206,7 +206,8 @@ def ap_tensor_decleration(main_file, ap_source_id):
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name, unroll, gcheck):
+
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name, unroll, gcheck, ap_gcheck):
 
     for key, value in cp_source_id.items():
 
@@ -259,35 +260,6 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "cg_subtile" + str(tensor_dim) + " cg_subtile_" + key + "1;\n")
             main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + "1;\n") 
 
-            """
-            if(unroll != "0"): 
-                
-                main_file.write("    " + "bool *store_" + key + "2 = (bool *) calloc((store_size_" + key + " + 1), sizeof(bool));\n")
-
-                for i in range(0, tensor_dim):
-                    main_file.write("    " + "int *" + key + "_mode" + str(i) + "_start2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-                    main_file.write("    " + "int *" + key + "_mode" + str(i) + "_end2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-                
-                main_file.write("    " + "int *" + key + "_mode_vals_start2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-                main_file.write("    " + "int *" + key + "_mode_vals_end2 = (int *)malloc((store_size_" + key + " + 1) * sizeof(int));\n")
-            
-                main_file.write("\n")
-                main_file.write("    " + "int **store_subtile_" + key + "2;\n")
-                main_file.write("    " + "store_subtile_" + key + "2 = (int**)malloc(sizeof(int*) * (" + str(2 * tensor_dim + 2) + "));\n")
-
-                for i in range(0, tensor_dim):
-                    main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * i) + "] = " + key + "_mode" + str(i) + "_start2;\n")
-                    main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * i + 1) + "] = " + key + "_mode" + str(i) + "_end2;\n")
-
-                main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * tensor_dim) + "] = " + key + "_mode_vals_start2;\n")
-                main_file.write("    " + "store_subtile_" + key + "2[" + str(2 * tensor_dim + 1) + "] = " + key + "_mode_vals_end2;\n")
-
-                main_file.write("\n")
-
-                main_file.write("    " + "cg_subtile" + str(tensor_dim) + " cg_subtile_" + key + "2;\n")
-                main_file.write("    " + "cg_extents" + str(tensor_dim) + " cg_extents_" + key + "2;\n") 
-            """
-
     main_file.write("\n")
 
     main_file.write("    " + "int curr_subtile_num = 0;\n")    
@@ -315,16 +287,21 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("    " + "std::ofstream nnz_check_file;\n")
         main_file.write("    " + "nnz_check_file.open(nnz_check_path, std::ios::app);\n")
         main_file.write("\n")
-        main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
+
+        if not ap_gcheck:
+            # if ap_gold_check is not enabled, gold checking is performed on the cp, so the output file is a header
+            main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
+        else:
+            # perform gold check on the ap, output a stand alone cpp file
+            main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.cpp\";\n")
         main_file.write("    " + "std::ofstream output_gold_file;\n")
-        main_file.write("\n")
 
     if(mode == 'rtl'): 
         main_file.write("    std::string subtile_path;\n")
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -383,9 +360,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
 
         for key, value in cg_source_id.items():
-            
             tensor_dim = len(value)
-
             # TODO: Introduce systematic change to replace this hack
             # this hack is to cope with the old RTL bitstream generation that 
             # always place the matrix modes in the data flow order 
@@ -394,7 +369,6 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             cg_source_map_cpy = copy.deepcopy(cg_source_map)
             for tensor_name, mode_list in cg_source_map_cpy.items():
                 mode_list.sort()
-
             for i in range(0, tensor_dim):
                 main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                 main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
@@ -418,9 +392,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("        " + "if(curr_subtile_num2 > 0){")
             main_file.write("\n")
             for key, value in cg_source_id.items():
-
                 tensor_dim = len(value)
-
                 # TODO: Introduce systematic change to replace this hack
                 # this hack is to cope with the old RTL bitstream generation that 
                 # always place the matrix modes in the data flow order 
@@ -429,14 +401,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 cg_source_map_cpy = copy.deepcopy(cg_source_map)
                 for tensor_name, mode_list in cg_source_map_cpy.items():
                     mode_list.sort()
-
                 for i in range(0, tensor_dim):
                     main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                     if(unroll == "1"):
                         main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2);\n")
                     main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                     main_file.write("\n")
-
                 main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
                 if(unroll == "1"):
                     main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2);\n")
@@ -449,11 +419,8 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             if(unroll == "1"):
                 main_file.write("        " + "else {")
                 main_file.write("\n")
-
                 for key, value in cg_source_id.items():
-
                     tensor_dim = len(value)
-
                     # TODO: Introduce systematic change to replace this hack
                     # this hack is to cope with the old RTL bitstream generation that 
                     # always place the matrix modes in the data flow order 
@@ -462,13 +429,11 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                     cg_source_map_cpy = copy.deepcopy(cg_source_map)
                     for tensor_name, mode_list in cg_source_map_cpy.items():
                         mode_list.sort()
-
                     for i in range(0, tensor_dim):
                         main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
                     main_file.write("\n")
                     main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map1);\n")
                     main_file.write("\n")
-
                 main_file.write("        " + "}")          
                 main_file.write("\n")
 
@@ -480,8 +445,19 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             if(unroll == "1"): 
                 main_file.write("        " + "map1.insert(map1.end(), map2.begin(), map2.end());\n")
 
-            main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
-            main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", map1);\n")
+            main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios::app);\n")
+
+            if ap_gcheck:
+                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", map1, true);\n")
+            else:
+                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", map1, false);\n")
+
+            for i in range(0, out_tensor_dim + 1):
+                curr_mapping = mapping_dict[dest_read][i]
+                if ap_gcheck:
+                    main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
+                else:
+                    main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
 
             if(unroll == "1"):
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1);\n")
@@ -489,11 +465,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 10);\n")
             else: 
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0);\n")
-            for i in range(0, out_tensor_dim + 1):
-                curr_mapping = mapping_dict[dest_read][i] 
-                main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
-            main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\");\n")
-            
+
+            if ap_gcheck:
+                main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", true);\n")
+            else:
+                main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", false);\n")
+
             if(unroll != "0"): 
                 main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2);\n")
                 for i in range(0, out_tensor_dim + 1):
@@ -664,6 +641,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--fill_diag", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--gcheck", action="store_true")
+    parser.add_argument("--ap_gcheck", action="store_true")
     parser.add_argument("--nnz_ctr", action="store_true")
 
     args = parser.parse_args()
@@ -679,17 +657,16 @@ if __name__ == "__main__":
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
 
-    process_csf = args.xplicit_zero
-    unroll      = args.unroll_cgen
-    fill_diag   = args.fill_diag
-    gcheck      = args.gcheck
-    nnz_ctr     = args.nnz_ctr
+    process_csf    = args.xplicit_zero
+    unroll         = args.unroll_cgen
+    fill_diag      = args.fill_diag
+    gcheck         = args.gcheck
+    ap_gcheck      = args.ap_gcheck
+    nnz_ctr        = args.nnz_ctr
 
     if os.path.exists("./lego_scratch"):
         shutil.rmtree("./lego_scratch")
     os.mkdir("./lego_scratch")
-
-    
     
     if os.path.exists(os.path.join(args.output_dir, app_name)):
         shutil.rmtree(os.path.join(args.output_dir, app_name))
@@ -717,11 +694,11 @@ if __name__ == "__main__":
         mapping_dict = mapping_dict_gen(args.design_meta)
         main_file = open(os.path.join(args.output_dir, app_name) + "/main.c", "w+")
         main_gen_c_lib_include(main_file)
-        main_app_header_include(main_file, app_name, args.gcheck)
+        main_app_header_include(main_file, app_name, gcheck)
         main_gen_soc_lib_include(main_file)
         main_block_1(main_file, args.unroll_cgen, args.debug)
         main_block_2(main_file, mapping_dict, op_list, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug)
-        main_block_3(main_file, mapping_dict, dest_read, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug, args.gcheck)    
+        main_block_3(main_file, mapping_dict, dest_read, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug, gcheck, ap_gcheck)    
 
         inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(args.design_meta)
 
@@ -863,11 +840,20 @@ if __name__ == "__main__":
                     out_id_map = cg_dest_map[key]
                 for i in range(0, len(out_id_list)):
                     stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
-            stmt += "        header_check_gold(output_gold_file, output_subtile_size);\n"
+            
+            if ap_gcheck:
+                stmt += "        header_check_gold(output_gold_file, output_subtile_size, true);\n"
+            else:
+                stmt += "        header_check_gold(output_gold_file, output_subtile_size, false);\n"
+
             stmt += "    }"
             stmt += "\n"
             stmt += "\n"
-            stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\");"
+
+            if ap_gcheck:
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true);"
+            else:
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", false);"
 
     main_file.write(stmt)
     main_file.write("\n")
@@ -921,7 +907,7 @@ if __name__ == "__main__":
 
     main_file.write("float* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name, unroll, gcheck)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name, unroll, gcheck, ap_gcheck)
     main_file.write("\n")
 
     if(workspace):
@@ -933,7 +919,7 @@ if __name__ == "__main__":
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, mapping_dict)
     main_file.write("\n")
 
     if(workspace):

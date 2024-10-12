@@ -160,7 +160,7 @@ def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_
     file.write("    const uint32_t start_addr = 0x0;\n")
     file.write("    const uint32_t read_start_addr = " + glb_bank_offset + ";\n")
 
-def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_offset, debug, gcheck):
+def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_offset, debug, gcheck, ap_gcheck):
 
     out_tensor_dim = len(mapping_dict[dest])
     for i in range(out_tensor_dim):
@@ -429,7 +429,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         file.write("    trace_printf(\"check gold data\\n\");\n")
     else: 
         file.write("    // trace_printf(\"check gold data\\n\");\n") 
-    if(gcheck):     
+    if(gcheck and not ap_gcheck):     
         file.write("    errors = check_gold_data();\n")
         file.write("    read_base_cyc_count[0] = errors;\n")
     if(debug):
