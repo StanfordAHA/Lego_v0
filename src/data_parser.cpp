@@ -426,6 +426,9 @@ int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base
 	output_gold_file << "        ss_read_base_" << base_id << " << std::hex << read_base_" << base_id << "_addr;\n";
 	output_gold_file << "        std::string read_base_" << base_id << "_filename = ss_read_base_" << base_id << ".str() + \".bin\";\n";
 	output_gold_file << "        std::ifstream read_base_" << base_id << "_file(read_base_" << base_id << "_filename, std::ios::binary);\n";
+	output_gold_file << "        if (!read_base_" << base_id << "_file) {\n";
+	output gold_file << "            assert(false && \"Error: Cannot read binary file read_base_" << base_id << "filename \");\n";
+	output_gold_file << "        }\n";
 	output_gold_file << "        int read_base_" << base_id << "_len = 0;\n";
 	output_gold_file << "        read_base_" << base_id << "_file.seekg (0, std::ios::end);\n";
 	output_gold_file << "        read_base_" << base_id << "_len = read_base_" << base_id << "_file.tellg();\n";
