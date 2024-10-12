@@ -276,6 +276,7 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 		output_gold_file << "#include <iostream>" << "\n";
 		output_gold_file << "#include <fstream>" << "\n";
 		output_gold_file << "#include <vector>" << "\n";
+		output_gold_file << "#include <cassert>" << "\n";
 		output_gold_file << "unsigned short check_0_[" << output_subtile_size << "] = {0";
 	} else {
 		output_gold_file << "uint16_t check_0_[" << output_subtile_size << "] = {0";
@@ -427,7 +428,7 @@ int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base
 	output_gold_file << "        std::string read_base_" << base_id << "_filename = ss_read_base_" << base_id << ".str() + \".bin\";\n";
 	output_gold_file << "        std::ifstream read_base_" << base_id << "_file(read_base_" << base_id << "_filename, std::ios::binary);\n";
 	output_gold_file << "        if (!read_base_" << base_id << "_file) {\n";
-	output_gold_file << "            assert(false && \"Error: Cannot read binary file read_base_" << base_id << "filename \");\n";
+	output_gold_file << "            assert(false && \"Error: Cannot read binary file\");\n";
 	output_gold_file << "        }\n";
 	output_gold_file << "        int read_base_" << base_id << "_len = 0;\n";
 	output_gold_file << "        read_base_" << base_id << "_file.seekg (0, std::ios::end);\n";
@@ -643,10 +644,10 @@ int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck){
 	output_gold_file << "    }\n";
 	if (ap_gcheck) {
 		output_gold_file << "    std::cout << \"err: \" << err << std::endl;\n";
-		output_gold_file << "    return 0;\n";
-	} else {
-		output_gold_file << "    return err;\n";
 	}
+
+	output_gold_file << "    return err;\n";
+	
 	output_gold_file << "}\n";
 	return 0;
 }
