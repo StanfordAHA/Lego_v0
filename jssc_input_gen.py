@@ -324,7 +324,7 @@ if __name__ == "__main__":
                         print(args)
                         run_codegen(args)
                         not_max = check_nnz_max(out_dir)
-                        prev_test_tile_size = curr_test_tile_size
+                        prev_test_tile_size = curr_test_tile_size - (5 * (2**(run - 1)))
                         curr_test_tile_size += (5 * (2**(run)))
                         run += 1
 
