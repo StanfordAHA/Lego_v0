@@ -594,7 +594,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 			for (int i = 0; i < tensor_dim; i++) {
 				output_gold_file << "i" << i << ": \" << i" << i << " << \" ";
 			}
-			output_gold_file << "gold_ptr:\" << gold_ptr[" << id << "] << \" check_ptr:\" << check_ptr[" << id << "] << std::endl;";
+			output_gold_file << "gold_ptr:\" << gold_ptr[" << id << "] << \" check_ptr:\" << check_ptr[" << id << "] << std::endl;\n";
 		} else {
 			output_gold_file << "                trace_printf(\"error! tile: %d, "; 
 			for(int i = 0; i < tensor_dim; i++){
