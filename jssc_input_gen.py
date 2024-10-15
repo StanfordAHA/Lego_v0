@@ -5,6 +5,7 @@ import argparse
 import itertools
 import shutil
 import numpy as np
+import math
 
 def generate_rounded_sequence(start, end, num_points):
     # Generate 10 equally spaced integers between start and end
@@ -216,7 +217,8 @@ if __name__ == "__main__":
                     prog="JSSC Lego Wrapper",
                     description="Generates the input and outputs for JSSC testing")
 
-    parser.add_argument("--json", type=str, default="jssc_inputs/jssc_matmul_input.json")           
+    parser.add_argument("--json", type=str, default="jssc_inputs/jssc_matmul_input.json")     
+    parser.add_argument("--mode", type=str, default="onyx")      
     args = parser.parse_args()
 
     with open(args.json) as f:
@@ -248,10 +250,10 @@ if __name__ == "__main__":
                 reg_write_file   = f"./jssc_inputs/{bitstream[0]}/reg_write.h"
                 design_meta_file = f"./jssc_inputs/{bitstream[0]}/design_meta.json"
 
-                if(bitstream[1] != 0):
-                    args_list = f"--mode onyx -u {bitstream[1]}" 
+                if(bitstream[1] == 1):
+                    args_list = f"--mode {args.mode}  -u" 
                 else:
-                    args_list = "--mode onyx"
+                    args_list = f"--mode {args.mode}"
 
                 unroll_flag = bitstream[1] 
 
@@ -263,9 +265,9 @@ if __name__ == "__main__":
                         if flag != "":
                             args_list += f" {flag}"
 
-                    args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                    python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
 
-                    run_codegen(args)
+                    run_codegen(python_args)
                     modes = num_modes(input[0][0])
                     check_size(out_dir, modes)
         
@@ -275,19 +277,19 @@ if __name__ == "__main__":
 
                     while(not in_limit): 
                         
-                        if(unroll_flag != 0):
-                            args_list = f"--mode onyx -u {unroll_flag}"
+                        if(unroll_flag == 1):
+                            args_list = f"--mode {args.mode} -u"
                         else:
-                            args_list = "--mode onyx"
+                            args_list = f"--mode {args.mode}"
 
                         process_input_data(input)
                         for flag in curr_flags[0]: 
                             if flag != "":
                                 args_list += f" {flag}"
 
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
                         print(args)
-                        run_codegen(args)
+                        run_codegen(python_args)
 
                         modes = num_modes(input[0][0])
                         in_limit = check_size(out_dir, modes)
@@ -297,16 +299,18 @@ if __name__ == "__main__":
                             input[-3][-1] = input[-3][-1]//2        
                 elif(curr_dataset[-1] == "s"):
 
-                    if(unroll_flag != 0):
-                        args_list = f"--mode onyx -u {unroll_flag}"
+                    if(unroll_flag == 1):
+                        args_list = f"--mode {args.mode} -u"
                     else:
-                        args_list = "--mode onyx"
+                        args_list = f"--mode {args.mode}"
 
                     args_list += " --nnz_ctr"
 
                     for flag in curr_flags[0]: 
                         if flag != "":
                             args_list += f" {flag}"
+
+                    tile_size =  input[-3][-1]
 
                     start_stile_size = input[2][0]
                     input_test = input.copy()
@@ -320,12 +324,14 @@ if __name__ == "__main__":
                         
                         input_test[2] = [curr_test_tile_size] * len(input_test[2])
                         process_input_data(input_test)
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                        print(args)
-                        run_codegen(args)
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(python_args)
+                        run_codegen(python_args)
                         not_max = check_nnz_max(out_dir)
-                        prev_test_tile_size = curr_test_tile_size
+                        prev_test_tile_size = curr_test_tile_size - (5 * (2**(run - 1)))
                         curr_test_tile_size += (5 * (2**(run)))
+                        if(curr_test_tile_size >= tile_size):
+                            break
                         run += 1
 
                     not_max = True
@@ -334,16 +340,18 @@ if __name__ == "__main__":
 
                     while(not_max):
                         curr_test_tile_size = curr_test_tile_size + 15
+                        if(curr_test_tile_size >= tile_size):
+                            break
                         input_test[2] = [curr_test_tile_size] * len(input_test[2])
                         process_input_data(input_test)
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                        print(args)
-                        run_codegen(args)
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(python_args)
+                        run_codegen(python_args)
                         not_max = check_nnz_max(out_dir)
                 
                     end_stile_size = curr_test_tile_size - 20
 
-                    num_points = 10
+                    num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
                     stile_list = generate_rounded_sequence(start_stile_size, end_stile_size, num_points)
 
                     for size in stile_list: 
@@ -354,19 +362,19 @@ if __name__ == "__main__":
 
                         while(not in_limit): 
                             
-                            if(unroll_flag != 0):
-                                args_list = f"--mode onyx -u {unroll_flag}"
+                            if(unroll_flag == 1):
+                                args_list = f"--mode {args.mode} -u"
                             else:
-                                args_list = "--mode onyx"
+                                args_list = f"--mode {args.mode}"
 
                             process_input_data(input)
                             for flag in curr_flags[0]: 
                                 if flag != "":
                                     args_list += f" {flag}"
 
-                            args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                            print(args)
-                            run_codegen(args)
+                            python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                            print(python_args)
+                            run_codegen(python_args)
 
                             modes = num_modes(input[0][0])
                             in_limit = check_size(out_dir, modes)
@@ -426,6 +434,6 @@ if __name__ == "__main__":
                         if flag != "":
                             args_list += f" {flag}"
 
-                    args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                    run_codegen(args)
+                    python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                    run_codegen(python_args)
                                 
