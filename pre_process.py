@@ -141,7 +141,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-                f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
+                f.write("%s\n" % (abs(int(1)))) # tiled_COO.data[val]
             else:
                 f.write("%s\n" % (tiled_COO.data[val]))         
     return n_lists, d_list, crd_dict, pos_dict

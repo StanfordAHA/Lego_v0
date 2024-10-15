@@ -293,15 +293,22 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
         else:
             # perform gold check on the ap, output a stand alone cpp file
-            main_file.write("    " + "std::string output_gold_path = out_dir + \"/" + app_name + "_gold.cpp\";\n")
+            main_file.write("    " + "std::string output_gold_path = out_dir;\n")
         main_file.write("    " + "std::ofstream output_gold_file;\n")
+        
+        if(ap_gcheck): 
+            main_file.write("    " + "std::string gcheck_cpp_path = out_dir + \"/" + app_name + "_gold.cpp\";\n")
+            main_file.write("    " + "std::ofstream gcheck_cpp_file;\n")
+            main_file.write("\n")
 
     if(mode == 'rtl'): 
+        main_file.write("    std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
+        main_file.write("    std::ofstream output_gold_file;\n")
         main_file.write("    std::string subtile_path;\n")
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -325,6 +332,23 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")
         main_file.write("        " + "mode_data_len_file.open(mode_data_len_path, std::ios::app);\n")
         main_file.write("\n")
+
+        if(ap_gcheck):
+
+            main_file.write("        " + "gcheck_cpp_file.open(gcheck_cpp_path, std::ios::app);\n")
+            main_file.write("        " + "int output_subtile_size = " + str(stile_outsize) + ";\n")
+
+            stmt = ""
+            if(scalar != 1):
+                for key in cg_dest_id.keys():
+                    out_id_list = cg_dest_id[key]
+                    out_id_map = cg_dest_map[key]
+                for i in range(0, len(out_id_list)):
+                    stmt += "        header_subtile_dim_decl(gcheck_cpp_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+                
+            stmt += "        header_check_gold(gcheck_cpp_file, output_subtile_size, true);\n"
+            stmt += "\n"
+            main_file.write(stmt)
 
         if(unroll == "1"):
             main_file.write("\n")
@@ -442,54 +466,62 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         main_file.write("\n")    
 
         if(gcheck):    
+            if(ap_gcheck):
+                out_file = "gcheck_cpp_file"
+            else:
+                out_file = "output_gold_file"
+
             if(unroll == "1"): 
                 main_file.write("        " + "map1.insert(map1.end(), map2.begin(), map2.end());\n")
 
-            main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios::app);\n")
+            if(not ap_gcheck):
+                main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios::app);\n")
 
             if ap_gcheck:
-                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
+                main_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
             else:
                 main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, false);\n")
 
             for i in range(0, out_tensor_dim + 1):
                 curr_mapping = mapping_dict[dest_read][i]
                 if ap_gcheck:
-                    main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", false);\n")
+                    main_file.write("        " + "codegen_check_gold_read_gdb_bin(gcheck_cpp_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", false);\n")
                 else:
                     main_file.write("        " + "codegen_check_gold_outmap(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
 
             if(unroll == "1"):
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 1, curr_subtile_num1);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(" + out_file + ", 1, curr_subtile_num1);\n")
             elif(unroll == "2"):    
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 10, 0);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(" + out_file + ", 10, 0);\n")
             else: 
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 0, 0);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(" + out_file + ", 0, 0);\n")
 
             if ap_gcheck:
-                main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", true);\n")
+                main_file.write("        " + "codegen_check_gold_tail(gcheck_cpp_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", true);\n")
             else:
                 main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"\", false);\n")
 
             if(unroll != "0"): 
-                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(output_gold_file, 2, 0);\n")
+                main_file.write("        " + "codegen_check_gold_unroll_ifdef_open(" + out_file + ", 2, 0);\n")
                 for i in range(0, out_tensor_dim + 1):
                     curr_mapping = mapping_dict[dest_read][i] 
                     if ap_gcheck:
-                        main_file.write("        " + "codegen_check_gold_read_gdb_bin(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", true);\n")
+                        main_file.write("        " + "codegen_check_gold_read_gdb_bin(gcheck_cpp_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", true);\n")
                     else:
                         main_file.write("        " + "codegen_check_gold_outmap_unroll(output_gold_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\");\n")
                 if ap_gcheck:
-                    main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\", true);\n")
+                    main_file.write("        " + "codegen_check_gold_tail(gcheck_cpp_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\", true);\n")
                 else:
                     main_file.write("        " + "codegen_check_gold_tail(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", \"_unroll\", false);\n")
 
             if(ap_gcheck):
-                main_file.write("        " + "codegen_check_gold_ret(output_gold_file, true);\n")
+                main_file.write("        " + "codegen_check_gold_ret(gcheck_cpp_file, true);\n")
+                main_file.write("        " + "gcheck_cpp_file.close();\n")
             else:
                 main_file.write("        " + "codegen_check_gold_ret(output_gold_file, false);\n")
+                main_file.write("        " + "output_gold_file.close();\n")
 
-            main_file.write("        " + "output_gold_file.close();\n")
+
 
         main_file.write("        " + "input_data_file.close();\n")
         main_file.write("        " + "input_meta_data_file.close();\n")
@@ -538,6 +570,8 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
 
         main_file.write("\n")
         main_file.write("    " + "int p" + key + ";\n")
+
+    return outsize
 
 def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
     for name, id in dest_id.items():
@@ -812,9 +846,9 @@ if __name__ == "__main__":
         stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
     main_file.write("float* subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar, nnz_ctr)
+    stile_outsize = cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar, nnz_ctr)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -840,24 +874,23 @@ if __name__ == "__main__":
             stmt += "\n"
 
         if(gcheck):
-            stmt += "    if(curr_subtile_num == 0){"
-            stmt += "\n"
-            
-            if(scalar != 1):
-                for key in cg_dest_id.keys():
-                    out_id_list = cg_dest_id[key]
-                    out_id_map = cg_dest_map[key]
-                for i in range(0, len(out_id_list)):
-                    stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
-            
-            if ap_gcheck:
-                stmt += "        header_check_gold(output_gold_file, output_subtile_size, true);\n"
-            else:
+
+            if(not ap_gcheck):
+                stmt += "    if(curr_subtile_num == 0){"
+                stmt += "\n"
+                
+                if(scalar != 1):
+                    for key in cg_dest_id.keys():
+                        out_id_list = cg_dest_id[key]
+                        out_id_map = cg_dest_map[key]
+                    for i in range(0, len(out_id_list)):
+                        stmt += "        header_subtile_dim_decl(output_gold_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+                
                 stmt += "        header_check_gold(output_gold_file, output_subtile_size, false);\n"
 
-            stmt += "    }"
-            stmt += "\n"
-            stmt += "\n"
+                stmt += "    }"
+                stmt += "\n"
+                stmt += "\n"
 
             if ap_gcheck:
                 stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true);"
@@ -887,7 +920,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, 0, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, 0, dtype):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -923,12 +956,12 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict)
     main_file.write("\n")
 
     if(workspace):
@@ -982,7 +1015,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
