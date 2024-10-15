@@ -8,6 +8,7 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
 
     ifstream input_file(file_path);   
 	if (input_file.good()) {
+		vec.clear();
 		while(input_file >> val){
 			vec.push_back(val);
 		}	
@@ -183,29 +184,33 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype, bool ap_gcheck) {
 
 	std::string type_16_bit;
-	if (ap_gcheck) {
-		type_16_bit = "unsigned short";
-	} else {
+	if(!ap_gcheck){
 		type_16_bit = "uint16_t";
 	}
 
-	if(ap_gcheck){
-		output_gold_file << "std::vector<" << type_16_bit << "> gold_" << curr_subtile_num << "_ = {";
-	}
-	else{
+	if(!ap_gcheck){
 		output_gold_file << "const " << type_16_bit << " gold_" << curr_subtile_num << "_[" << output_subtile_size << "] = {";
 	}
+
 
     if(dtype == "int"){
     	for (int pA = 0; pA < output_subtile_size; pA++) {
         	output_gold_file << int(op_vals[pA]);
         	if(pA != output_subtile_size - 1){
-            	output_gold_file << ", ";
+				if(ap_gcheck){
+					output_gold_file << "\n"; 
+				}
+				else{
+            		output_gold_file << ", ";
+				}
         	}
     	} 
-    	output_gold_file << "};\n";
+		if(!ap_gcheck){
+    		output_gold_file << "};\n";
+		}
 	} 
     
+	// TODO: Add support for ap_gcheck
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
             // output_gold_file << float2bfbin(op_vals[pA], false);
@@ -277,7 +282,7 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 		output_gold_file << "#include <fstream>" << "\n";
 		output_gold_file << "#include <vector>" << "\n";
 		output_gold_file << "#include <cassert>" << "\n";
-		output_gold_file << "unsigned short check_0_[" << output_subtile_size << "] = {0";
+		output_gold_file << "std::vector<unsigned short> check_0_ = {0";
 	} else {
 		output_gold_file << "uint16_t check_0_[" << output_subtile_size << "] = {0";
 	}
@@ -352,19 +357,27 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "\n";
 	output_gold_file << "    for(" << type_16_bit << " run = 0; run < " << max_run << "; run++){" << "\n";
 	output_gold_file << "\n"; 
-	output_gold_file << "        " << type_16_bit << "* gold_ptr;" << "\n";
+	if(ap_gcheck){
+		output_gold_file << "        " << type_16_bit << " gold_num;" << "\n";
+	}
+	else{
+		output_gold_file << "        " << type_16_bit << " *gold_ptr;" << "\n";
+	}
+	
 	output_gold_file << "        " << type_16_bit << "* check_ptr;" << "\n";
 	output_gold_file << "        switch(run){" << "\n";
 
 	for(int i = 0; i < map1.size(); i++){
 		output_gold_file << "            case " << i << ":" << "\n";
 		if(ap_gcheck) {
-			output_gold_file << "                 gold_ptr = gold_" << map1[i] << "_.data();" << "\n";
+			output_gold_file << "                gold_num = " << map1[i] << ";" << "\n";
+			output_gold_file << "                check_ptr = check_0_.data();" << "\n";
 		}
 		else{
-			output_gold_file << "                 gold_ptr = gold_" << map1[i] << "_;" << "\n";
+			output_gold_file << "                gold_ptr = gold_" << map1[i] << "_;" << "\n";
+			output_gold_file << "                check_ptr = check_0_;" << "\n";
 		}
-		output_gold_file << "                check_ptr = check_0_;" << "\n";
+		
 		output_gold_file << "                break;" << "\n";
 	}
 
@@ -372,6 +385,22 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 	output_gold_file << "                break;" << "\n";
 	output_gold_file << "        }\n"; 
 	output_gold_file << "\n"; 
+
+	if(ap_gcheck){
+		output_gold_file << "        std::vector<unsigned short> gold_ptr;\n"; 
+		output_gold_file << "        std::string file_path = std::to_string(gold_num) + \".txt\";\n";
+		output_gold_file << "        int val;\n";
+		output_gold_file << "        std::ifstream input_file(file_path);\n";
+		output_gold_file << "        if (input_file.good()) {\n";
+		output_gold_file << "            gold_ptr.clear();\n";
+		output_gold_file << "            while(input_file >> val){\n";
+		output_gold_file << "                gold_ptr.push_back(val);\n";
+		output_gold_file << "            }\n";
+		output_gold_file << "        } else {\n";
+		output_gold_file << "            throw std::runtime_error(\"Error: File not found: \" + file_path);\n";
+		output_gold_file << "        }\n";
+	}
+
 
 	if(ap_gcheck && (unroll == 2)){
 		output_gold_file << "    unsigned int map_base_addr = AHASOC_CGRA_DATA_BASE + read_start_addr + " << "6" << " * " << glb_tile_offset << ";" << "\n";
