@@ -632,7 +632,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "            if(read_base_0[vals_idx" << type <<" + 1] != gold_ptr[0]){" << "\n"; 
 		if (ap_gcheck) {
 			output_gold_file << "                std::cout << \"error! tile: \" << run << \", ";
-			output_gold_file << "gold_ptr:\" << gold_ptr[0] << \" check_ptr:\" << check_ptr[0] << std::endl;\n";
+			output_gold_file << "gold_ptr:\" << gold_ptr[0] << \" check_ptr:\" << read_base_0[vals_idx" << type << " + 1] << std::endl;\n";
         }
         else {
 		    output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
