@@ -77,7 +77,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 		for (int index = 1; index < mode_0.size();) {
 			for (int i = 0; i < run_length; i++) {
 				header_file << ", ";
-				// header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
 				index++;
 			}
 			if (index < mode_0.size()) {
@@ -210,15 +210,21 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 		}
 	} 
     
-	// TODO: Add support for ap_gcheck
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
-            // output_gold_file << float2bfbin(op_vals[pA], false);
+            output_gold_file << float2bfbin(op_vals[pA], false);
             if (pA != output_subtile_size - 1){
-                output_gold_file << ", ";
+				if (ap_gcheck) {
+					output_gold_file << "\n";
+				}
+				else {
+					output_gold_file << ", ";
+				}
             }
         }
-        output_gold_file << "};\n";
+		if (!ap_gcheck) {
+        	output_gold_file << "};\n";
+		}
     }
 
     return 0;
