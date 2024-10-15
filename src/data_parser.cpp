@@ -630,7 +630,13 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	else{
 		output_gold_file << "            " << type_16_bit << " vals_size = read_base_0[vals_idx" << type <<"] + 1;" << "\n";
 		output_gold_file << "            if(read_base_0[vals_idx" << type <<" + 1] != gold_ptr[0]){" << "\n"; 
-		output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
+		if (ap_gcheck) {
+			output_gold_file << "                std::cout << \"error! tile: \" << run << \", ";
+			output_gold_file << "gold_ptr:\" << gold_ptr[0] << \" check_ptr:\" << check_ptr[0] << std::endl;\n";
+        }
+        else {
+		    output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
+        }
 		output_gold_file << "                err++;" << "\n";
 		output_gold_file << "            }" << "\n";
 		output_gold_file << "            vals_idx" << type <<" += vals_size;" << "\n";
