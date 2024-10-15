@@ -5,6 +5,7 @@ import argparse
 import itertools
 import shutil
 import numpy as np
+import math
 
 def generate_rounded_sequence(start, end, num_points):
     # Generate 10 equally spaced integers between start and end
@@ -308,6 +309,8 @@ if __name__ == "__main__":
                         if flag != "":
                             args_list += f" {flag}"
 
+                    tile_size =  input[-3][-1]
+
                     start_stile_size = input[2][0]
                     input_test = input.copy()
 
@@ -326,6 +329,8 @@ if __name__ == "__main__":
                         not_max = check_nnz_max(out_dir)
                         prev_test_tile_size = curr_test_tile_size - (5 * (2**(run - 1)))
                         curr_test_tile_size += (5 * (2**(run)))
+                        if(curr_test_tile_size >= tile_size):
+                            break
                         run += 1
 
                     not_max = True
@@ -334,6 +339,8 @@ if __name__ == "__main__":
 
                     while(not_max):
                         curr_test_tile_size = curr_test_tile_size + 15
+                        if(curr_test_tile_size >= tile_size):
+                            break
                         input_test[2] = [curr_test_tile_size] * len(input_test[2])
                         process_input_data(input_test)
                         args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
@@ -343,7 +350,7 @@ if __name__ == "__main__":
                 
                     end_stile_size = curr_test_tile_size - 20
 
-                    num_points = 10
+                    num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
                     stile_list = generate_rounded_sequence(start_stile_size, end_stile_size, num_points)
 
                     for size in stile_list: 
