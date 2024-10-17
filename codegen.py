@@ -178,25 +178,27 @@ def get_stmt(stmt, id_dict, dtype):
     lower_stmts = []
 
     if not isinstance(stmt.left, str) and not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
-        left = get_stmt(stmt.left, id_dict, dtype)
-        right = get_stmt(stmt.right, id_dict, dtype)
+        left, left_op_cnt = get_stmt(stmt.left, id_dict, dtype)
+        right, right_op_cnt = get_stmt(stmt.right, id_dict, dtype)
+        op_cnt = left_op_cnt + right_op_cnt + 1
         if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
         else:
             if(stmt.op == '+'):
                 lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
   
     elif not isinstance(stmt.left, str) and stmt.left is not None and stmt.right is not None:
-        left = get_stmt(stmt.left, id_dict, dtype)
+        left, left_op_cnt = get_stmt(stmt.left, id_dict, dtype)
+        op_cnt = left_op_cnt + 1
         if(id_dict[stmt.right] == ['-']):
             right = "0"
         else:
@@ -204,21 +206,22 @@ def get_stmt(stmt, id_dict, dtype):
         if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
         else:
             if(stmt.op == '+'):
                 lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
         
 
     elif not isinstance(stmt.right, str) and stmt.left is not None and stmt.right is not None:
-        right = get_stmt(stmt.right, id_dict, dtype)
+        right, right_op_cnt = get_stmt(stmt.right, id_dict, dtype)
+        op_cnt = right_op_cnt + 1
         if(id_dict[stmt.left] == ['-']):
             left = "0"
         else:
@@ -226,17 +229,17 @@ def get_stmt(stmt, id_dict, dtype):
         if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
         else:
             if(stmt.op == '+'):
                 lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             if(stmt.op == '*'):
                 lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
+                return lower_stmts, op_cnt
             
 
     else:
@@ -252,22 +255,22 @@ def get_stmt(stmt, id_dict, dtype):
         if(dtype == "bf16"):
             if(stmt.op == '+'):
                 lower_stmts = "bf16_add(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, 1
             if(stmt.op == '*'):
                 lower_stmts = "bf16_mul(" + left + ", " + right + ")"
-                return lower_stmts
+                return lower_stmts, 1
         else:
             if(stmt.op == '+'):
                 lower_stmts = "(" + left + "+" + right + ")"
-                return lower_stmts
+                return lower_stmts, 1
             if(stmt.op == '*'):
                 lower_stmts = "(" + left + "*" + right + ")"
-                return lower_stmts
+                return lower_stmts, 1
 
         if stmt.op is None:
             assert stmt.right is not None
             assert stmt.left is None
-            return "(" + right + ")"
+            return "(" + right + ")", 0
 
 def pos_read(curr_id, op_list, id_dict, level):
     
@@ -927,7 +930,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
             if op not in valid_op_list: 
                 temp_id_dict[op] = ['-']
 
-        op_stmt = get_stmt(expr_to_stmt(expr), temp_id_dict, dtype)
+        op_stmt, op_cnt = get_stmt(expr_to_stmt(expr), temp_id_dict, dtype)
 
         for keys in dest.keys():
             dest_read = keys
@@ -964,6 +967,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
             else: 
                 stmt += "    " * (level + 2) + dest_read + "_vals[0] += " + op_stmt + ";"   
         stmt += "\n"
+        stmt += "    " * (level + 2) + "op_cnt += " + str(op_cnt + 1) + ";\n"
   
         return [stmt]
 

@@ -181,7 +181,7 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	return 0;
 }
 
-int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype, bool ap_gcheck) {
+int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype, bool ap_gcheck, int op_cnt) {
 
 	std::string type_16_bit;
 	if(!ap_gcheck){
@@ -226,6 +226,11 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
         	output_gold_file << "};\n";
 		}
     }
+
+	// write the total number of ops required to compute this tile
+	if (ap_gcheck) {
+		output_gold_file << "\n" << op_cnt << "\n";
+	}
 
     return 0;
 }
@@ -300,6 +305,10 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 	output_gold_file << "};" << "\n";
 	output_gold_file << "\n"; 
 
+	if (ap_gcheck) {
+		output_gold_file << "int total_op_cnt = 0;\n";
+	}
+
 	return 0;
 }
 
@@ -309,7 +318,7 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
 }
 
 
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck){
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_subtile_size, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck){
 
 	// different data types depending on whether gold check happens on ap or cp
 	std::string type_32_bit;
@@ -399,9 +408,13 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "        std::ifstream input_file(file_path);\n";
 		output_gold_file << "        if (input_file.good()) {\n";
 		output_gold_file << "            gold_ptr.clear();\n";
-		output_gold_file << "            while(input_file >> val){\n";
+		output_gold_file << "            for (int i = 0; i < " << output_subtile_size << "; i++) {\n";
+		output_gold_file << "                input_file >> val;\n";
 		output_gold_file << "                gold_ptr.push_back(val);\n";
 		output_gold_file << "            }\n";
+		output_gold_file << "            int op_cnt = 0;";
+		output_gold_file << "            input_file >> op_cnt;\n";
+		output_gold_file << "            total_op_cnt += op_cnt;\n";
 		output_gold_file << "        } else {\n";
 		output_gold_file << "            throw std::runtime_error(\"Error: File not found: \" + file_path);\n";
 		output_gold_file << "        }\n";
@@ -685,6 +698,7 @@ int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck){
 	output_gold_file << "    }\n";
 	if (ap_gcheck) {
 		output_gold_file << "    std::cout << \"err: \" << err << std::endl;\n";
+		output_gold_file << "    std::cout << \"total_op_cnt: \" << total_op_cnt << std::endl;\n";
 	}
 
 	output_gold_file << "    return err;\n";

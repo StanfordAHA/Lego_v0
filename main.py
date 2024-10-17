@@ -478,9 +478,9 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios::app);\n")
 
             if ap_gcheck:
-                main_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
+                main_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, curr_subtile_num, output_subtile_size, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
             else:
-                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, false);\n")
+                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, output_subtile_size, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, false);\n")
 
             for i in range(0, out_tensor_dim + 1):
                 curr_mapping = mapping_dict[dest_read][i]
@@ -559,6 +559,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
+        main_file.write("    " + "int op_cnt = 0;\n")
         main_file.write("\n")
 
         main_file.write("    " + "float *" + key + "_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
@@ -610,6 +611,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
             outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
+        main_file.write("    " + "int op_cnt = 0;\n")
         main_file.write("\n")
 
         main_file.write("    " + "float *" + key + "_output_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
@@ -893,9 +895,9 @@ if __name__ == "__main__":
                 stmt += "\n"
 
             if ap_gcheck:
-                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true);"
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true, op_cnt);"
             else:
-                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", false);"
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", false, op_cnt);"
 
     main_file.write(stmt)
     main_file.write("\n")
