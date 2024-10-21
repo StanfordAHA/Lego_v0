@@ -350,7 +350,10 @@ if __name__ == "__main__":
                 
                     end_stile_size = curr_test_tile_size - 20
 
-                    num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
+                    if(end_stile_size >= start_stile_size + 5):
+                        num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
+                    else:
+                        num_points = 1  
                     stile_list = generate_rounded_sequence(start_stile_size, end_stile_size, num_points)
 
                     for size in stile_list: 
