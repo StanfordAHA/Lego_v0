@@ -286,6 +286,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("    " + "std::string nnz_check_path = \"" + output_dir + "/" + kernel_name + "/nnz_check.txt\";\n")
         main_file.write("    " + "std::ofstream nnz_check_file;\n")
         main_file.write("    " + "nnz_check_file.open(nnz_check_path, std::ios::app);\n")
+        main_file.write("    " + "nnz_check_file << out_dir << \"\\n\";\n")
         main_file.write("\n")
 
         if not ap_gcheck:
