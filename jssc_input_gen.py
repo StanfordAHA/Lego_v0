@@ -199,7 +199,15 @@ def check_nnz_max(out_dir):
     nnz_path = find_file_in_directory("nnz_check.txt", out_dir)
 
     with open(nnz_path, "r") as nnz_file:
-        nnz_lines = [line for line in nnz_file]
+        lines = [line for line in nnz_file]
+
+    nnz_lines = []
+    i = 0
+
+    while i < len(lines):
+        if(lines[i].strip().isdigit()):
+            nnz_lines.append(int(lines[i].strip()))
+        i += 1
 
     not_max = 1
     for nnz in nnz_lines:
@@ -209,6 +217,59 @@ def check_nnz_max(out_dir):
     
     return not_max 
 
+def check_size_adapt(out_dir, modes, prev_result_dict_keys):
+    nnz_path = find_file_in_directory("nnz_check.txt", out_dir)
+
+    with open(nnz_path, "r") as nnz_file:
+        lines = nnz_file.readlines()
+
+    # Process the lines to create the dictionary
+    result_dict = {}
+    i = 0
+
+    while i < len(lines):
+        key = lines[i].strip()
+        value_list = []
+        i += 1
+        # Collect all numeric values until the next path or end of lines
+        while i < len(lines) and lines[i].strip().isdigit():
+            value_list.append(int(lines[i].strip()))
+            i += 1
+        result_dict[key] = value_list
+
+    del_key_list = []
+
+    for key, value_list in result_dict.items():
+        for val in value_list:
+            if val > 900:
+                # Remove the directory 
+                shutil.rmtree(key)
+                # Remove the key from the dictionary
+                del_key_list.append(key)
+                break
+
+    for key in del_key_list:
+        del result_dict[key]
+
+    not_empty = 0
+
+    for key, value_list in result_dict.items():
+        for prev_key in prev_result_dict_keys:
+            if key.split("//")[-1] == prev_key.split("//")[-1]:
+                prev_dir = prev_key.split("//")[0]
+                not_empty += 1
+                shutil.rmtree(prev_key)
+    
+    if((not_empty == len(prev_result_dict_keys)) and not_empty != 0):
+        shutil.rmtree(prev_dir)
+
+    result_dict_keys = list(result_dict.keys())
+    
+
+    if len(result_dict) == 0:
+        return 0, result_dict_keys
+    else:
+        return 1, result_dict_keys
 
 if __name__ == "__main__":
     # Input format
@@ -351,7 +412,10 @@ if __name__ == "__main__":
                 
                     end_stile_size = curr_test_tile_size - 20
 
-                    num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
+                    if(end_stile_size >= start_stile_size + 5):
+                        num_points = math.floor(1 + 2.5 * math.log10(end_stile_size - start_stile_size))
+                    else:
+                        num_points = 1  
                     stile_list = generate_rounded_sequence(start_stile_size, end_stile_size, num_points)
 
                     for size in stile_list: 
@@ -421,6 +485,51 @@ if __name__ == "__main__":
                             if(not in_limit): 
                                 print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
                                 input[-3][-1] = input[-3][-1]//2  
+
+                elif(curr_dataset[-1] == "a"):
+
+                    global_tile_size = input[-3][-1] 
+                    global_tile_size_list = [global_tile_size, global_tile_size//2, global_tile_size//4]
+
+
+                    for L1_tile_size in global_tile_size_list:
+
+                        curr_stile_size = input[2][0]   
+
+                        # Generate a list from curr_stile_size to L1_tile_size in steps of 5
+                        stile_sweep_list = list(range(curr_stile_size, L1_tile_size, 5))
+
+                        atleast_one_in_limit = 1
+                        prev_result_dict = []
+
+                        for size in stile_sweep_list:
+
+                            out_dir = f"./jssc_outputs/{curr_app_name}/{input[1][-1]}_{input[-1][-2]}_{bitstream[0][-8:]}_{bitstream[1]}_{L1_tile_size}_{size}/"
+
+                            input[-3][-1] = L1_tile_size
+                            input[2] = [size] * len(input[2])
+
+                            if(atleast_one_in_limit != 0):
+    
+                                if(unroll_flag != 0):
+                                    args_list = f"--mode onyx -u {unroll_flag}"
+                                else:
+                                    args_list = "--mode onyx"
+
+                                args_list += " --nnz_ctr"
+
+                                process_input_data(input)
+                                for flag in curr_flags[0]: 
+                                    if flag != "":
+                                        args_list += f" {flag}"
+
+                                args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                                run_codegen(args)
+
+                                modes = num_modes(input[0][0])  
+
+                                atleast_one_in_limit, prev_result_dict = check_size_adapt(out_dir, modes, prev_result_dict)
+
                 else: 
                     try: 
                         L1_tile_size = int(curr_dataset[-1])

@@ -552,12 +552,8 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
 
                             cprod = 1
                             for id1 in id_dict[arr_read][::-1]:
-                                if(cprod == 1):
-                                    stmt += id1
-                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
-                                else:
-                                    stmt += " + " + id1 + " * " + str(cprod)
-                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
+                                stmt += " + " + id1 + " * " + str(cprod)
+                                cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
                             
                             stmt += ";"
                             stmt += "\n"                            
@@ -940,13 +936,9 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
             stmt += "p" + dest_read + " = "
             cprod = 1
             for id in dest[dest_read][::-1]:
-                if(cprod == 1):
-                    stmt += id
-                    cprod *= split_dict[id][1]
-                else:
-                    stmt += " + " + id + " * " + str(cprod)
-                    cprod *= split_dict[id][1]
-    
+                stmt += " + " + id + " * " + str(cprod)
+                cprod *= split_dict[id][1]
+
         stmt += ";"
         stmt += "\n"
         if(nnz_ctr):
@@ -1119,7 +1111,7 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
         partial_index_str += " + " + id
     # For ap, the tile size may not perfectly align with the actual output tensor size
     # Need to put guard here so padded values in the tiles are not written to the output matrix
-    if target == "ap":
+    if target == "ap" or "cp":
         stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
         level = level + 1
     stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")

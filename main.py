@@ -286,6 +286,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("    " + "std::string nnz_check_path = \"" + output_dir + "/" + kernel_name + "/nnz_check.txt\";\n")
         main_file.write("    " + "std::ofstream nnz_check_file;\n")
         main_file.write("    " + "nnz_check_file.open(nnz_check_path, std::ios::app);\n")
+        main_file.write("    " + "nnz_check_file << out_dir << \"\\n\";\n")
         main_file.write("\n")
 
         if not ap_gcheck:
@@ -675,6 +676,7 @@ if __name__ == "__main__":
     parser.add_argument("--bitstream", type=str, default="./input/bitstream.bs")
     parser.add_argument("--design_meta", type=str, default="./input/design_meta.json")
     parser.add_argument("--reg_write", type=str, default="./input/reg_write.h")
+    parser.add_argument("--positive_only", action="store_true", help="Option that force all input data to be positive (used in onyx results)")
     parser.add_argument("-m", "--mode", type=str, default="rtl")
     parser.add_argument("-b", "--comal_batch_size", type=int, default=100000)
     parser.add_argument("-g", "--gold_check", choices=["s", "d", "none"], default = "none")
@@ -796,7 +798,7 @@ if __name__ == "__main__":
         dtype          = tensor_dtype_dict[key]
 
         if(not args.no_preprocess): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, dtype, fill_diag)    
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, args.positive_only, dtype, fill_diag)    
     
     workspace = args.workspace
 
