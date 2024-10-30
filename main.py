@@ -761,7 +761,7 @@ if __name__ == "__main__":
         input_list = [input.strip(".raw") for input in inputs]
         linker_header_file.write(generate_data_location_content(input_list, input_order, glb_tile_offset))
         if(unroll != "0"): 
-            linker_header_file.write(generate_data_location_content_unroll(input_list, glb_tile_offset))
+            linker_header_file.write(generate_data_location_content_unroll(input_list, input_order, glb_tile_offset))
         bottom_half_of_body(linker_header_file)
 
         reg_write_file = args.reg_write
