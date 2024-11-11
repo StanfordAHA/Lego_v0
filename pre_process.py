@@ -401,7 +401,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         if other_nonempty:
             matrix_d[0] = 1
         tensor = matrix_d
-    elif gen_tensor != "0":
+    elif gen_tensor != "0" and gen_tensor != "relu":
         raise NotImplementedError
 
     tensor = sparse.COO(tensor)
