@@ -51,3 +51,33 @@ void apply_leakyrelu(float *input, int size) {
         }
     }
 }
+
+void apply_elu(float *input, int size) {
+
+    // this is the same implementation as the exp activation, TODO: move this to bf16_op.h
+    float exp_rom[256] = {0};
+    int index = 0;
+    for (int i = -128; i < 0; i ++) {
+        exp_rom[index] = bfbin2float(float2bfbin(pow(2, float(i) / 128.0), false, true));
+        index ++;
+    }
+    for (int i = 0; i < 128; i ++) {
+        exp_rom[index] = bfbin2float(float2bfbin(pow(2, float(i) / 128.0), false, true));
+        index ++;
+    }
+
+    for (int i = 0; i < size; i ++) {
+        if (input[i] < 0) {
+            float _1_div_ln2_mul = 0;
+            int frac = 0;
+            int integer = 0;
+            float exp_res = 0;
+            _1_div_ln2_mul = bf16_mul(input[i], bfbin2float(float2bfbin(1.442695, false, true)));
+            frac= bf16_getfr(_1_div_ln2_mul);
+            integer = bf16_f2int(_1_div_ln2_mul);
+            float rom_out = exp_rom[frac + 128];
+            exp_res = bf16_faddiexp(rom_out, integer);
+            input[i] = bf16_add(exp_res, bfbin2float(float2bfbin(-1.0, false, true)));
+        }
+    }
+}

@@ -528,7 +528,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int p" + key + "_output;\n")
 
 def apply_activation(main_file, output_tile_size, activation_function):
-    supported_activation = ["relu", "leakyrelu", "exp"]
+    supported_activation = ["relu", "leakyrelu", "exp", "elu"]
     for activation in activation_function:
         if activation == "none":
             continue
