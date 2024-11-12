@@ -168,10 +168,13 @@ def parse(input_file, level):
 def parse_lut_tensor(activation_list):
 
     lut_tensor = []
-    supported_lut_list = ["exp"]
+    lut_mapping = {
+        "exp": "exp",
+        "elu": "exp"
+    }
     for activation in activation_list:
-        if activation in supported_lut_list:
-            lut_tensor.append(activation)
+        if activation in lut_mapping:
+            lut_tensor.append(lut_mapping[activation])
     return lut_tensor
 
 def ap_tensor_decleration(main_file, ap_source_id):

@@ -218,7 +218,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         # TODO: Parameterize this
         np.random.seed(0)
         if dtype == "int":
-            value_cap = mat.pow(2, 8) - 1
+            value_cap = 10
             tensor = np.random.randint(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
         else:
             value_cap = 10
