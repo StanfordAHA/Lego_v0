@@ -549,12 +549,8 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
 
                             cprod = 1
                             for id1 in id_dict[arr_read][::-1]:
-                                if(cprod == 1):
-                                    stmt += id1
-                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
-                                else:
-                                    stmt += " + " + id1 + " * " + str(cprod)
-                                    cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
+                                stmt += " + " + id1 + " * " + str(cprod)
+                                cprod *= int(math.ceil(split_dict[id1][0]/split_dict[id1][1]))
                             
                             stmt += ";"
                             stmt += "\n"                            
@@ -937,13 +933,9 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
             stmt += "p" + dest_read + " = "
             cprod = 1
             for id in dest[dest_read][::-1]:
-                if(cprod == 1):
-                    stmt += id
-                    cprod *= split_dict[id][1]
-                else:
-                    stmt += " + " + id + " * " + str(cprod)
-                    cprod *= split_dict[id][1]
-    
+                stmt += " + " + id + " * " + str(cprod)
+                cprod *= split_dict[id][1]
+
         stmt += ";"
         stmt += "\n"
         if(nnz_ctr):
