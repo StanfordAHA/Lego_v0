@@ -12,6 +12,7 @@ import random
 import sparse
 import sys
 import math
+from scipy.io import mmwrite
 
 from pathlib import Path
 
@@ -141,7 +142,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-                f.write("%s\n" % (abs(int(1)))) # tiled_COO.data[val]
+                f.write("%s\n" %  1)
             else:
                 f.write("%s\n" % (tiled_COO.data[val]))         
     return n_lists, d_list, crd_dict, pos_dict
@@ -195,7 +196,43 @@ def write_csf(COO, output_dir_path):
     d_list_path = output_dir_path + "/csf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % (COO.data[val]))
+            f.write("%s\n" % 1)
+
+
+
+def write_to_tns(tensor, filename, one_based_indexing=False):
+    """
+    Writes a sparse.COO tensor to a .tns file.
+
+    Parameters:
+    - tensor: sparse.COO tensor to write.
+    - filename: Name of the output .tns file.
+    - one_based_indexing: If True, indices are incremented by 1 (MATLAB style).
+    """
+    coords = tensor.coords  # shape: (ndim, nnz)
+    data = tensor.data      # shape: (nnz,)
+
+    with open(filename, 'w') as f:
+        for i in range(tensor.nnz):
+            # Extract indices for the i-th non-zero element
+            indices = coords[:, i]
+            if one_based_indexing:
+                indices += 1  # Convert to 1-based indexing if necessary
+            # Prepare the line to write
+            line = ' '.join(map(str, indices)) + ' ' + str(data[i])
+            f.write(line + '\n')
+
+def write_to_mtx_scipy(tensor, filename):
+    """
+    Writes a 2D sparse.COO tensor to a Matrix Market .mtx file using scipy.
+    """
+    if tensor.ndim != 2:
+        raise ValueError("Tensor must be 2-dimensional to write to Matrix Market format.")
+
+    # Convert sparse.COO to scipy.sparse.coo_matrix
+    scipy_tensor = scipy.sparse.coo_matrix((tensor.data, tensor.coords), shape=tensor.shape)
+    mmwrite(filename, scipy_tensor)
+
 
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
@@ -214,7 +251,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor = None
         value_cap = int(math.pow(2, 8)) - 1
         if dtype == "int":
-            tensor = np.random.randint(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+            tensor = np.random.randint(1, 3, size=size)
         else:
             tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
             if dtype == "bf16":
@@ -225,6 +262,17 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
         # tensor = scipy.sparse.coo_array(tensor)
         # tensor = sparse.COO(tensor)
+    elif tensor_type == "gen_sparse":
+        # Generating a random sparse tensor for testing purposes of pre-processing kernel
+        size = tuple(tensor_size[0])
+        nnz = int(np.prod(size) * density / 100)
+        if(dtype == "int"):
+            # Generate integer values
+            temp_tensor = sparse.COO(sparse.random(size, nnz=nnz))
+            coords = temp_tensor.coords
+            data = np.random.randint(1, 3, size=nnz)
+            tensor = sparse.COO(coords, data)
+            
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
@@ -232,6 +280,12 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         # Reading a SuiteSparse tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheSuiteSparse
         tensor_path = os.path.join(SUITESPARSE_PATH, input_path + ".mtx")
+        ss_tensor = SuiteSparseTensor(tensor_path)
+        tensor = inputCache.load(ss_tensor, False)
+    elif tensor_type == "fusion":
+        # Reading a SuiteSparse tensor for testing purposes of pre-processing kernel
+        inputCache = inputCacheSuiteSparse
+        tensor_path = os.path.join("./exp_30_tensors/", input_path + ".mtx")
         ss_tensor = SuiteSparseTensor(tensor_path)
         tensor = inputCache.load(ss_tensor, False)
     elif tensor_type == "frostt":
@@ -441,6 +495,11 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif(gold_check == "s"):
         size = tensor_size[0]
         write_csf(tensor, output_dir_path)
+        
+        if(input_path == "mtx"):
+            write_to_mtx_scipy(tensor, output_dir_path + "/tensor.mtx")
+        elif(input_path == "tns"):
+            write_to_tns(tensor, output_dir_path + "/tensor.tns", True)        
 
     tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, dtype)

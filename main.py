@@ -51,7 +51,7 @@ def tensor_path_type_dict(tensor_path_input):
         tensor_path_dict[parsed_data[0]] = parsed_data[2]   
         tensor_format_dict[parsed_data[0]] = parsed_data[3]
         tensor_transpose_dict[parsed_data[0]] = parsed_data[4]
-        tensor_density_dict[parsed_data[0]] = int(parsed_data[5])
+        tensor_density_dict[parsed_data[0]] = float(parsed_data[5])
         tensor_dtype_dict[parsed_data[0]] = parsed_data[6]
 
     return tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_density_dict, tensor_dtype_dict
