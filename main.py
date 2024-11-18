@@ -22,7 +22,7 @@ from onyx_codegen.generate_reg_write import *
 sys.path.insert(0, './')
 sys.path.insert(0, './sam')
 
-from pyparsing import Word, alphas, one_of, alphanums
+from pyparsing import Word, alphas, one_of, alphanums, OneOrMore, Suppress
 
 def tensor_path_type_dict(tensor_path_input):
 
@@ -91,13 +91,15 @@ def data_parser(data):
         parsed_split = split_factor_rule.parseString(data[4 + i])
         split_factor[parsed_split[0]] = [int(parsed_split[2]), int(parsed_split[4]), int(parsed_split[6])]
 
-    activation_rule = "activation_" + Word(alphas) + ":" + Word(alphas)
+    activation_rule = "activation_" + Word(alphas) + ":" + OneOrMore(Word(alphas) + Suppress("+") | Word(alphas))
+    activation = {}
+    activation["ap"] = []
+    activation["cp"] = []
+    activation["cg"] = []
 
-    activation = []
-
-    activation.append(list(activation_rule.parseString(data[4 + num_ids]))[3])
-    activation.append(list(activation_rule.parseString(data[5 + num_ids]))[3])
-    activation.append(list(activation_rule.parseString(data[6 + num_ids]))[3])
+    activation["ap"].extend(list(activation_rule.parseString(data[4 + num_ids]))[3:])
+    activation["cp"].extend(list(activation_rule.parseString(data[5 + num_ids]))[3:])
+    activation["cg"].extend(list(activation_rule.parseString(data[6 + num_ids]))[3:])
 
     return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
 
@@ -112,19 +114,19 @@ def parse(input_file, level):
 
     if(level == "ap"): 
         schedule = schedule_1
-        activation = activation[0]
         for id in split_factor:
             split_factor[id].pop()
     elif(level == "cp"):
         schedule = schedule_2
-        activation = activation[1]
         for id in split_factor:
             split_factor[id].pop(0)
     else:
         schedule = schedule_3
-        activation = activation[2]
         for id in split_factor:
             split_factor[id].pop(0)
+
+    activation = activation[level]
+
     dest_id = {}
     dest_map = {}
 
@@ -162,6 +164,18 @@ def parse(input_file, level):
         dest_id = dest
     
     return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
+
+def parse_lut_tensor(activation_list):
+
+    lut_tensor = []
+    lut_mapping = {
+        "exp": "exp",
+        "elu": "exp"
+    }
+    for activation in activation_list:
+        if activation in lut_mapping:
+            lut_tensor.append(lut_mapping[activation])
+    return lut_tensor
 
 def ap_tensor_decleration(main_file, ap_source_id):
 
@@ -312,7 +326,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, mapping_dict=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, lut_tensor=None, mapping_dict=None):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -384,6 +398,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
 
             main_file.write("        " + "}")
             main_file.write("\n")
+
+        if lut_tensor is not None:
+            for lut in lut_tensor:
+                main_file.write("        " + "lut_data_printer(input_data_file, \"" + lut + "\");\n")
+                main_file.write("        " + "lut_extent_data_printer(input_meta_data_file, \"" + lut + "\");\n")
+                main_file.write("\n")
 
         main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
 
@@ -511,10 +531,13 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("    " + "int p" + key + "_output;\n")
 
 def apply_activation(main_file, output_tile_size, activation_function):
-    if activation_function == "none":
-        return
-    
-    main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
+    supported_activation = ["relu", "leakyrelu", "exp", "elu"]
+    for activation in activation_function:
+        if activation == "none":
+            continue
+        if activation not in supported_activation:
+            raise NotImplementedError(f"Activation function {activation} is not supported")
+        main_file.write("    apply_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel_name):
@@ -574,6 +597,9 @@ if __name__ == "__main__":
 
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
+
+    # go throug the activation function and return list of lut required
+    lut_tensor = parse_lut_tensor(cg_activation)
 
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
@@ -774,7 +800,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, dtype):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -815,7 +841,7 @@ if __name__ == "__main__":
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, mapping_dict)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, lut_tensor=lut_tensor, mapping_dict=mapping_dict)
     main_file.write("\n")
 
     if(workspace):
@@ -869,7 +895,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
