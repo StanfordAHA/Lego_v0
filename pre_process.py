@@ -142,11 +142,6 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-<<<<<<< HEAD
-                f.write("%s\n" % abs((tiled_COO.data[val])))
-            else:
-                f.write("%s\n" % (tiled_COO.data[val]))         
-=======
                 if positive_only:
                     # caution: could lead to overflow
                     f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
@@ -154,7 +149,6 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
                     f.write("%s\n" % (int(tiled_COO.data[val])))
             else:   
                 f.write("%s\n" % (tiled_COO.data[val]))                
->>>>>>> fd250a60b3a418896ac37ea658e26901af2c6037
     return n_lists, d_list, crd_dict, pos_dict
 
 def write_csf(COO, output_dir_path): 
