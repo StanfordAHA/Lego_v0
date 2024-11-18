@@ -142,7 +142,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, dtype
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
             if(dtype == "int"):
-                f.write("%s\n" %  1)
+                f.write("%s\n" % abs((tiled_COO.data[val])))
             else:
                 f.write("%s\n" % (tiled_COO.data[val]))         
     return n_lists, d_list, crd_dict, pos_dict
@@ -196,9 +196,7 @@ def write_csf(COO, output_dir_path):
     d_list_path = output_dir_path + "/csf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % 1)
-
-
+            f.write("%s\n" % abs((COO.data[val])))
 
 def write_to_tns(tensor, filename, one_based_indexing=False):
     """
@@ -233,7 +231,6 @@ def write_to_mtx_scipy(tensor, filename):
     scipy_tensor = scipy.sparse.coo_matrix((tensor.data, tensor.coords), shape=tensor.shape)
     mmwrite(filename, scipy_tensor)
 
-
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
@@ -262,17 +259,6 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
         # tensor = scipy.sparse.coo_array(tensor)
         # tensor = sparse.COO(tensor)
-    elif tensor_type == "gen_sparse":
-        # Generating a random sparse tensor for testing purposes of pre-processing kernel
-        size = tuple(tensor_size[0])
-        nnz = int(np.prod(size) * density / 100)
-        if(dtype == "int"):
-            # Generate integer values
-            temp_tensor = sparse.COO(sparse.random(size, nnz=nnz))
-            coords = temp_tensor.coords
-            data = np.random.randint(1, 3, size=nnz)
-            tensor = sparse.COO(coords, data)
-            
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)
@@ -495,7 +481,6 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif(gold_check == "s"):
         size = tensor_size[0]
         write_csf(tensor, output_dir_path)
-        
         if(input_path == "mtx"):
             write_to_mtx_scipy(tensor, output_dir_path + "/tensor.mtx")
         elif(input_path == "tns"):
