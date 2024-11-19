@@ -101,13 +101,29 @@ def data_parser(data):
     activation["cp"].extend(list(activation_rule.parseString(data[5 + num_ids]))[3:])
     activation["cg"].extend(list(activation_rule.parseString(data[6 + num_ids]))[3:])
 
-    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
+    
+    data_format_rule = Word(alphas) + ":" + Word(alphas) + ":" + Word(alphas) + ":" + Word(alphas)
+
+    data_format_dict = {}
+    num_ops = len(op_list)
+
+    for i in range(num_ops): 
+        data_format_splits = data_format_rule.parseString(data[7 + num_ids + i])
+        curr_op            = data_format_splits[0]
+        for level in range(0, 3): 
+            for j in range(len(op[curr_op])):
+                split = list(data_format_splits[2 * level + 2])
+                if level == 0:
+                    data_format_dict[curr_op] = []
+                data_format_dict[curr_op].append(dict(zip(op[curr_op],split)))
+
+    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation, data_format_dict
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation = data_parser(data)
+    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation, data_format_dict = data_parser(data)
 
     expr = expr.split("=")
     expr = expr[1]
@@ -163,7 +179,7 @@ def parse(input_file, level):
     else: 
         dest_id = dest
     
-    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
+    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation, data_format_dict
 
 def parse_lut_tensor(activation_list):
 
@@ -590,19 +606,21 @@ if __name__ == "__main__":
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_density_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation = parse(args.program, level)
+    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation, data_format_dict = parse(args.program, level)
 
     level = "cp"
-    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation = parse(args.program, level)
+    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation, _ = parse(args.program, level)
 
     level = "cg"
-    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
+    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation, _ = parse(args.program, level)
 
     # go throug the activation function and return list of lut required
     lut_tensor = parse_lut_tensor(cg_activation)
 
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
+
+    print(data_format_dict)
 
     # create the required directories
     # if os.path.exists("./lego_scratch"):
