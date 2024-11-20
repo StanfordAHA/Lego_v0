@@ -269,7 +269,7 @@ def get_stmt(stmt, id_dict, dtype):
             assert stmt.left is None
             return "(" + right + ")"
 
-def pos_read(curr_id, op_list, id_dict, level):
+def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
     
     stmt = ""
     loop_counter = 0 
@@ -283,40 +283,57 @@ def pos_read(curr_id, op_list, id_dict, level):
             else: 
                 prev_id = id_dict[op][curr_id_pos - 2] + op
                 next_id = prev_id + " + 1"
-            if loop_counter != 0:
+            
+            if(data_format_dict[op][curr_id] == "s"):
+                if loop_counter != 0:
+                    stmt = stmt + "\n"
+                stmt = stmt + "    " * level
+                stmt = stmt + "int " + curr_id + op
+                stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + prev_id + "];"
                 stmt = stmt + "\n"
-            stmt = stmt + "    " * level
-            stmt = stmt + "int " + curr_id + op
-            stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + prev_id + "];"
-            stmt = stmt + "\n"
-            stmt = stmt + "    " * level
-            stmt = stmt + "int p" + op + str(curr_id_pos) + "_end" 
-            stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + next_id + "];"
-            loop_counter += 1
+                stmt = stmt + "    " * level
+                stmt = stmt + "int p" + op + str(curr_id_pos) + "_end" 
+                stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + next_id + "];"
+                loop_counter += 1
 
     return [stmt]
 
-def while_stmt_open(point, id_dict, level):
+def while_stmt_open(point, id_dict, level, data_format_dict):
+
+    sparse_point = []
+
+    for sub_point in point: 
+        arr_read = sub_point[1]
+        arr_idx  = sub_point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_point.append(sub_point)
 
     stmt = "    " * level
     stmt += "while("
-
-    if len(point) != 0:
-        arr_read = point[0][1]
-        arr_idx  = point[0][0] 
-        arr_idx_pos = id_dict[arr_read].index(arr_idx)
-        stmt = stmt + point[0]
-        stmt = stmt + (" < p") + arr_read + str(arr_idx_pos + 1) + ("_end") 
-        point = point[1:]
+        
+    if len(sparse_point) == 0:
+        if len(point) != 0:
+            arr_read = point[0][1]
+            arr_idx  = point[0][0]
+            stmt = stmt + arr_idx + " < " + arr_idx + "_end" 
     
-        for id in point:
-            arr_read = id[1]
-            arr_idx  = id[0] 
+    else:
+        if len(sparse_point) != 0:
+            arr_read = sparse_point[0][1]
+            arr_idx  = sparse_point[0][0] 
             arr_idx_pos = id_dict[arr_read].index(arr_idx)
-            stmt = stmt + " && "
-            stmt = stmt + id
+            stmt = stmt + sparse_point[0]
             stmt = stmt + (" < p") + arr_read + str(arr_idx_pos + 1) + ("_end") 
-
+            sparse_point = sparse_point[1:]
+        
+            for id in sparse_point:
+                arr_read = id[1]
+                arr_idx  = id[0] 
+                arr_idx_pos = id_dict[arr_read].index(arr_idx)
+                stmt = stmt + " && "
+                stmt = stmt + id
+                stmt = stmt + (" < p") + arr_read + str(arr_idx_pos + 1) + ("_end") 
 
     stmt = stmt + "){" 
 
@@ -325,18 +342,30 @@ def while_stmt_open(point, id_dict, level):
 def while_stmt_close(point, id_dict, level):
     return ["    " * level + "}"]
 
-def id_init(point, id_dict, level):
+def id_init(point, id_dict, level, data_format_dict):
 
-    stmt = "    " * (level + 1)   
-    if(len(point) != 0):
-        arr_idx = point[0][0]
-        arr_read = point[0][1]
+    sparse_point = []
+
+    for sub_point in point:
+        arr_read = sub_point[1]
+        arr_idx  = sub_point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_point.append(sub_point)
+
+      
+    stmt = ""
+
+    if(len(sparse_point) != 0):
+        stmt = "    " * (level + 1) 
+        arr_idx = sparse_point[0][0]
+        arr_read = sparse_point[0][1]
         arr_idx_pos = id_dict[arr_read].index(arr_idx) + 1
-        stmt = stmt + "int " + point[0] + "0 = " 
-        stmt = stmt + arr_read +  str(arr_idx_pos) + "_crd[" + point[0] + "];"
-        point = point[1:] 
+        stmt = stmt + "int " + sparse_point[0] + "0 = " 
+        stmt = stmt + arr_read +  str(arr_idx_pos) + "_crd[" + sparse_point[0] + "];"
+        sparse_point = sparse_point[1:] 
 
-        for id in point:
+        for id in sparse_point:
             stmt = stmt + "\n"
             stmt += "    " * (level + 1)
             arr_idx = id[0]
@@ -347,26 +376,73 @@ def id_init(point, id_dict, level):
 
     return [stmt]
 
-def id_merge(point, id_dict, level):
+def id_init_dense(point, id_dict, level, data_format_dict):
+
+    dense_point = []
+
+    for sub_point in point:
+        arr_read = sub_point[1]
+        arr_idx  = sub_point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "d":
+            dense_point.append(sub_point)
 
     stmt = ""
-    if(len(point) != 0):
-        if(len(point) == 1):
-            arr_idx = point[0][0]
-            stmt = stmt + "int " + arr_idx + " = " + point[0] + "0;"
+    if(len(dense_point) != 0):
+        stmt = "    " * (level + 1)   
+        arr_idx = dense_point[0][0]
+        arr_read = dense_point[0][1]
+        arr_idx_pos = id_dict[arr_read].index(arr_idx) - 1
+        stmt = stmt + "int " + dense_point[0] + " = "
+        if(arr_idx_pos >= 0):
+            stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_idx + "_dim" + " + " + arr_idx + ";"
+        else: 
+            stmt = stmt + arr_idx + ";"
+        dense_point = dense_point[1:] 
+
+        for id in dense_point:
+            stmt = stmt + "\n"
+            stmt += "    " * (level + 1)
+            arr_idx = id[0]
+            arr_read = id[1]
+            arr_idx_pos = id_dict[arr_read].index(arr_idx) - 1
+            stmt = stmt + "int " + id + " = "
+            if(arr_idx_pos >= 0):
+                stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_idx + "_dim" + " + " + arr_idx + ";"
+            else:
+                stmt = stmt + arr_idx + ";"
+    
+    return [stmt]
+
+def id_merge(point, id_dict, level, data_format_dict):
+    
+    sparse_point = []
+
+    for sub_point in point:
+        arr_read = sub_point[1]
+        arr_idx  = sub_point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_point.append(sub_point)
+
+    stmt = ""
+    if(len(sparse_point) != 0):
+        if(len(sparse_point) == 1):
+            arr_idx = sparse_point[0][0]
+            stmt = stmt + "int " + arr_idx + " = " + sparse_point[0] + "0;"
         else:
-            arr_idx = point[0][0]
+            arr_idx = sparse_point[0][0]
             stmt = stmt + "int " + arr_idx + " = " 
-            stmt = stmt + "min(" + point[0] + "0"
-            num_point = len(point)
-            point = point[1:]
-            while(len(point) != 0):
-                id = point[0]
-                if(len(point) != 1):
+            stmt = stmt + "min(" + sparse_point[0] + "0"
+            num_point = len(sparse_point)
+            sparse_point = sparse_point[1:]
+            while(len(sparse_point) != 0):
+                id = sparse_point[0]
+                if(len(sparse_point) != 1):
                     stmt += ", min(" + id + "0"
                 else:           
                     stmt = stmt + ", " + id + "0"
-                point = point[1:]
+                sparse_point = sparse_point[1:]
 
             for i in range(num_point - 1):
                 stmt = stmt + ")"   
@@ -375,17 +451,26 @@ def id_merge(point, id_dict, level):
 
     return ["    " * (level + 1) + stmt]
 
-def if_stmt_open(sub_point, id_dict, level):
+def if_stmt_open(sub_point, id_dict, level, data_format_dict):
 
-    if(sub_point != []):
+    sparse_sub_point = []
+
+    for point in sub_point:
+        arr_read = point[1]
+        arr_idx  = point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_sub_point.append(point)
+
+    if(sparse_sub_point != []):
         stmt = "if("
 
-        stmt = stmt + sub_point[0] + "0"
+        stmt = stmt + sparse_sub_point[0] + "0"
         stmt = stmt + (" == ")
-        stmt = stmt + sub_point[0][0]
-        sub_point = sub_point[1:]
+        stmt = stmt + sparse_sub_point[0][0]
+        sparse_sub_point = sparse_sub_point[1:]
 
-        for id in sub_point:
+        for id in sparse_sub_point:
             stmt = stmt + " && "
             stmt = stmt + id + "0"
             stmt = stmt + (" == ")
@@ -393,19 +478,30 @@ def if_stmt_open(sub_point, id_dict, level):
 
         stmt = stmt + "){"
 
-    return ["    " * (level + 1) + stmt]
+        return ["    " * (level + 1) + stmt]
+    else:
+        return [""]
 
-def elif_stmt_open(sub_point, id_dict, level):
+def elif_stmt_open(sub_point, id_dict, level, data_format_dict):
 
-    if(sub_point != []):
+    sparse_sub_point = []
+
+    for point in sub_point:
+        arr_read = point[1]
+        arr_idx  = point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_sub_point.append(point)
+
+    if(sparse_sub_point != []):
         stmt = "else if("
 
-        stmt = stmt + sub_point[0] + "0"
+        stmt = stmt + sparse_sub_point[0] + "0"
         stmt = stmt + (" == ")
-        stmt = stmt + sub_point[0][0]
-        sub_point = sub_point[1:]
+        stmt = stmt + sparse_sub_point[0][0]
+        sparse_sub_point = sparse_sub_point[1:]
 
-        for id in sub_point:
+        for id in sparse_sub_point:
             stmt = stmt + " && "
             stmt = stmt + id + "0"
             stmt = stmt + (" == ")
@@ -931,24 +1027,30 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None, data_format_dict=None):
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
 
     # initialize sparse pos variables
-    stmt_list.append(pos_read(curr_id, op_list, id_dict, level))
+    stmt_list.append(pos_read(curr_id, op_list, id_dict, level, data_format_dict))
 
     for point in lattice:
 
         # while all merged dimensions have more values
-        stmt_list.append(while_stmt_open(point, id_dict, level))
+        stmt_list.append(while_stmt_open(point, id_dict, level, data_format_dict))
 
         # initialize sparse idx variables
-        stmt_list.append(id_init(point, id_dict, level))
+        stmt_list.append(id_init(point, id_dict, level, data_format_dict))
+        # print(id_init(point, id_dict, level))
 
         # merge sparse idx variables
-        stmt_list.append(id_merge(point, id_dict, level))
+        stmt_list.append(id_merge(point, id_dict, level, data_format_dict)) 
+
+        # initialize dense idx variables
+        stmt_list.append(id_init_dense(point, id_dict, level, data_format_dict))
+
+        #print(id_merge(point, id_dict, level))
         
         # one case per sub-lattice point
         sub_points = get_sub_lattice(point, lattice) 
@@ -956,9 +1058,9 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
         loop_counter = 0
         for sub_point in sub_points:
             if(loop_counter == 0):    
-                stmt_list.append(if_stmt_open(sub_point, id_dict, level))
+                stmt_list.append(if_stmt_open(sub_point, id_dict, level, data_format_dict))
             else:
-                stmt_list.append(elif_stmt_open(sub_point, id_dict, level))
+                stmt_list.append(elif_stmt_open(sub_point, id_dict, level, data_format_dict))
             sub_point_id_dict = get_sub_point_dict(sub_point, id_dict, op_list)
             sub_point_schedule = get_sub_point_schedule(sub_point, schedule)     
  
@@ -975,7 +1077,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         

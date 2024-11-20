@@ -104,18 +104,17 @@ def data_parser(data):
     
     data_format_rule = Word(alphas) + ":" + Word(alphas) + ":" + Word(alphas) + ":" + Word(alphas)
 
-    data_format_dict = {}
+    data_format_dict = []
     num_ops = len(op_list)
 
-    for i in range(num_ops): 
-        data_format_splits = data_format_rule.parseString(data[7 + num_ids + i])
-        curr_op            = data_format_splits[0]
-        for level in range(0, 3): 
+    for level in range(0, 3): 
+        data_format_dict.append({})
+        for i in range(num_ops): 
+            data_format_splits = data_format_rule.parseString(data[7 + num_ids + i])
+            curr_op            = data_format_splits[0]
             for j in range(len(op[curr_op])):
                 split = list(data_format_splits[2 * level + 2])
-                if level == 0:
-                    data_format_dict[curr_op] = []
-                data_format_dict[curr_op].append(dict(zip(op[curr_op],split)))
+                data_format_dict[level][curr_op] = dict(zip(op[curr_op],split))    
 
     return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation, data_format_dict
 
@@ -760,7 +759,7 @@ if __name__ == "__main__":
     main_file.write("float* subtile_gold" + stmt + " {\n")
     cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-1]):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -805,6 +804,8 @@ if __name__ == "__main__":
     main_file.write("}\n")
     main_file.write("\n")
 
+    """
+
     main_file.write("float* read_subtile_output(std::string subtile_path) {\n")
     subtile_output_decleration(main_file, cg_dest_id, cg_split_factor, scalar)
     rtl_output_dest_id = {}
@@ -818,7 +819,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-1]):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -829,6 +830,7 @@ if __name__ == "__main__":
     main_file.write("    return " + dest_name + "_output_vals;\n")
     main_file.write("}\n")
     main_file.write("\n")
+    """
 
     # Sub-tile pairing code
     tensor_dim = str(len(cp_source_id[op_list[0]]))
@@ -854,7 +856,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-2]):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -913,7 +915,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-3]):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
