@@ -190,6 +190,40 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 	// TODO: Store integer values to file if dtype is integer 
 	// Propogate data type 
 
+	return 0;
+}
+
+int rtl_lut_data_printer(std::string output_path, std::string lut_name) {
+	// generate lut values based on the specified lut name
+	int lut_content[1024] = {0};
+	if (lut_name == "exp") {
+		int index = 0;
+		for (int i = 0; i < 128; i ++) {
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = -128; i < 0; i ++) {
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = 256; i < 1024; i ++) {
+			lut_content[i] = 0;
+		}
+	}
+
+	// the metamapper mapped lut will be looking for a file with the name "fp_<operation>"
+	std::string output_file_name = output_path + "/tensor_fp_" + lut_name + "_mode_vals";
+	ofstream output_file(output_file_name.c_str());
+
+	for (int i = 0; i < 1024; i ++) {
+		// FIXME: Temporary fix to avoid precision loss
+		// TODO: Find a better way to set the digit precision
+		output_file << std::fixed << setprecision(30) << lut_content[i];
+		output_file << "\n";
+	}
+
+	// TODO: Store integer values to file if dtype is integer 
+	// Propogate data type 
 
 	return 0;
 }
