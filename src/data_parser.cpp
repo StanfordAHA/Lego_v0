@@ -261,6 +261,15 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	return 0;
 }
 
+int rtl_dump_dtype(std::string output_path, std::string dtype) {
+	std::string output_file_name = output_path + "/dtype";
+	ofstream output_file(output_file_name.c_str());
+
+	output_file << dtype << "\n";
+
+	return 0;
+}
+
 int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype) {
 
     output_gold_file << "const uint16_t gold_" << curr_subtile_num << "_[" << output_subtile_size << "] = {";

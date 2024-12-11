@@ -631,7 +631,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, lut_tensor):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, lut_tensor, dtype):
         stmt = ""
     
         valid_op_list = [] 
@@ -856,7 +856,9 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         if lut_tensor is not None:
                             for lut in lut_tensor:
                                 stmt += "        " + "rtl_lut_data_printer(subtile_path, \"" + lut + "\");\n"
-                            stmt += "\n"    
+                        
+                        stmt += "         " + "rtl_dump_dtype(subtile_path, \"" + dtype + "\");\n"
+                        stmt += "\n"
 
                     stmt += "    " * (level + 2) + "}\n"
 
@@ -975,7 +977,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, lut_tensor))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, lut_tensor, dtype))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     

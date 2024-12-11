@@ -22,6 +22,7 @@ int rtl_lut_data_printer(std::string output_path, std::string lut_name);
 int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, int dim1);
 int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, int dim1, int dim2);
 int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, int dim1, int dim2, int dim3);
+int rtl_dump_dtype(std::string output_path, std::string dtype);
 int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype);
 int subtile_paths_printer(const std::vector<std::string> &subtile_paths, const std::string &output_dir, const std::string &kernel_name, const int &batch_size);
 int header_check_gold(ofstream &output_gold_file, int output_subtile_size);
