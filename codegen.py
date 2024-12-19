@@ -1189,11 +1189,11 @@ def workspace_reduction(split_factor, target, dest_id, scalar):
         partial_index_str += " + " + id
     # For ap, the tile size may not perfectly align with the actual output tensor size
     # Need to put guard here so padded values in the tiles are not written to the output matrix
-    if target == "ap":
+    if target == "ap" or target == "cp":
         stmt.append("    " * level + "if (" + output_index_str + " < " + str(output_tile_size) + ")\n")
         level = level + 1
     stmt.append(("    " * level) + dest_name + "_vals[" + output_index_str + "] += (*it)[" + partial_index_str + "];\n")
-    if target == "ap":
+    if target == "ap" or target == "cp":
         level = level - 1
     # close the subtile partial product loop
     for id in dest_id[dest_name]:

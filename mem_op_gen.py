@@ -59,21 +59,23 @@ def mem_op_gen(format_str, file) :
         if(out_format[i] == "d"):
             file.write(f"for(int i{i} = i{prev_i} * i{i}_dim; i{i} < (i{prev_i} + 1) * i{i}_dim; i{i}++)")
             file.write("{\n")
-            file.write(f"if(i{i} == (i{prev_i} + 1) * i{i}_dim - 1) i{i}_end = 1;\n")
+            file.write(f"i{i}_end = 0;\n")
+            file.write(f"if(i{i} == ((i{prev_i} + 1) * i{i}_dim - 1)) i{i}_end = 1;\n")
         elif(out_format[i] == "s"):
             if i == 0: 
                 file.write(f"tile_op.pos{i+1}.push_back(pos{i+1}[index]);\n")
                 file.write(f"tile_op.pos{i+1}.push_back(pos{i+1}[index + 1]);\n")
             else: 
-                file.write(f"tile_op.pos{i+1}.push_back(pos{i+1}[i{prev_i} + 1]);\n")
+                file.write(f"tile_op.pos{i+1}.push_back(pos{i+1}[i{prev_i}]);\n")
                 file.write("if(i0_end")
                 for j in range(1, i):
                     file.write(f" && i{j}_end")
                 file.write(") ")
-                file.write(f"tile_op.pos{i+1}.push_back(i{i-1}_end + 1);\n")
+                file.write(f"tile_op.pos{i+1}.push_back(pos{i+1}[i{i-1} + 1]);\n")
             file.write(f"for(int i{i} = pos{i+1}[i{prev_i}]; i{i} < pos{i+1}[i{prev_i} + 1]; i{i}++)")
             file.write("{\n")
-            file.write(f"if(i{i} == pos{i+1}[i{prev_i} + 1] - 1) i{i}_end = 1;")
+            file.write(f"i{i}_end = 0;\n")
+            file.write(f"if(i{i} == (pos{i+1}[i{prev_i} + 1] - 1)) i{i}_end = 1;")
             file.write(f"tile_op.crd{i+1}.push_back(crd{i+1}[i{i}]);\n")
 
         if(i == len_out - 1):
@@ -83,7 +85,7 @@ def mem_op_gen(format_str, file) :
 
     for i in range(len_out):
         if(out_format[i] == "s"):
-            file.write(f"int pos{i+1}_start = pos{i+1}[0];\n")
+            file.write(f"int pos{i+1}_start = tile_op.pos{i+1}[0];\n")
             file.write(f"std::transform(tile_op.pos{i+1}.begin(), tile_op.pos{i+1}.end(), tile_op.pos{i+1}.begin(), [pos{i+1}_start](int elem)" + "{return elem - pos" +  str(i+1) + "_start; });\n")
             
 

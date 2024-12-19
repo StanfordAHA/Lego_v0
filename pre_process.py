@@ -174,10 +174,9 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
                 else:
                     n_lists[idx1][i] = n_lists[idx1][i] // tile_dims[level][crd_dim]
                     n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
+
     
     tiled_COO = sparse.COO(n_lists, d_list)
-
-    """
 
     # Write the tiled COO as .tns file
     dumper = PydataSparseTensorDumper()
@@ -274,6 +273,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
             else:   
                 f.write("%s\n" % (tiled_COO.data[val]))                
     return n_lists, d_list, crd_dict, pos_dict
+    """
     
 
 def write_csf(COO, output_dir_path): 
@@ -325,7 +325,7 @@ def write_csf(COO, output_dir_path):
     d_list_path = output_dir_path + "/csf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % (COO.data[val]))
+            f.write("%s\n" % int(abs(COO.data[val])))
 
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
