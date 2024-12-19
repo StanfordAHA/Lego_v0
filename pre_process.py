@@ -12,6 +12,10 @@ import random
 import sparse
 import sys
 import math
+import pytaco as pt
+from pytaco import dense, compressed
+import re
+from typing import Dict, List
 
 from pathlib import Path
 
@@ -21,7 +25,91 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
 
-def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype):
+class PydataSparseTensorDumper:
+    def dump(self, coo_tensor, output_path):
+        """Write a COO tensor to a .tns file in coordinate format."""
+        
+        if not isinstance(coo_tensor, sparse.COO):
+            raise TypeError("Input tensor must be a pydata/sparse COO tensor")
+        
+        indices = coo_tensor.coords  # shape (ndim, nnz)
+        data = coo_tensor.data  # shape (nnz,)
+        
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            for i in range(data.shape[0]):
+                index_list = ' '.join(str(indices[dim, i] + 1) for dim in range(indices.shape[0]))  # 1-based index
+                f.write(f"{index_list} {data[i]}\n")
+        
+        print(f"Tensor successfully dumped to {output_path}")
+
+def parse_tiled_tensor(tiled_tensor_str: str) -> Dict[str, List]:
+    """
+    Parses the tiled_tensor string and extracts compressed sections into pos_i, crd_i lists,
+    and extracts the vals list.
+
+    Args:
+        tiled_tensor_str (str): The string representation of the tiled tensor.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - 'compressed': A dictionary where each key is the compressed index (i),
+                           and the value is another dictionary with 'pos_i' and 'crd_i' lists.
+            - 'vals': The vals list extracted from the string.
+    """
+    compressed_pattern = r'compressed\s*\((\d+)\):\s*\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]'
+    compressed_matches = re.findall(compressed_pattern, tiled_tensor_str, re.DOTALL | re.IGNORECASE)
+
+    compressed_data = {}
+
+    for match in compressed_matches:
+        index = int(match[0])
+
+        pos_i_str = match[1]
+        pos_i = [int(num.strip()) for num in pos_i_str.replace('\n', '').split(',') if num.strip()]
+
+        crd_i_str = match[2]
+        crd_i = [int(num.strip()) for num in crd_i_str.replace('\n', '').split(',') if num.strip()]
+
+        compressed_data[index] = {
+            'pos': pos_i,
+            'crd': crd_i
+        }
+
+    # Now, extract the 'vals' list.
+    # Assume 'vals' is the last list in the string not associated with any compressed(i)
+    # First, find all lists in the string
+    list_pattern = r'\[\s*([\d,\s]+?)\s*\]'
+    all_lists = re.findall(list_pattern, tiled_tensor_str, re.DOTALL)
+
+    # Extract lists associated with compressed(i)
+    associated_lists = []
+    for match in compressed_matches:
+        associated_lists.append(match[1])  # pos_i
+        associated_lists.append(match[2])  # crd_i
+
+    # Find lists that are not associated with compressed(i)
+    vals_candidates = []
+    for lst in all_lists:
+        if lst not in associated_lists:
+            # To ensure it's not part of other sections like 'dense', you might need additional checks
+            # For simplicity, we'll assume the last unmatched list is 'vals'
+            vals_candidates.append(lst)
+
+    if vals_candidates:
+        vals_str = vals_candidates[-1]  # Assuming the last unmatched list is 'vals'
+        vals = [int(num.strip()) for num in vals_str.replace('\n', '').split(',') if num.strip()]
+    else:
+        vals = []
+
+    return {
+        'compressed': compressed_data,
+        'vals': vals
+    }
+
+
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype, data_format):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -70,7 +158,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
 
     # Creating the COO representation for the tiled tensor at each level
     for i in range(num_values):
-        d_list[i] = data[i] 
+        d_list[i] = abs(data[i])
         for level in range(n_levels):
             for dim in range(n_dim):
 
@@ -86,12 +174,50 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
                 else:
                     n_lists[idx1][i] = n_lists[idx1][i] // tile_dims[level][crd_dim]
                     n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
-
-
+    
     tiled_COO = sparse.COO(n_lists, d_list)
+
+    """
+
+    # Write the tiled COO as .tns file
+    dumper = PydataSparseTensorDumper()
+    dumper.dump(tiled_COO, output_dir_path + "/tiled_tensor.tns")
+
+    # Create the custom tiled tensor
+
+    for i in range(len(data_format)):
+        if data_format[i] == "s":
+            data_format[i] = compressed
+        else:
+            data_format[i] = dense
+
+    taco_tensor = pt.read(output_dir_path + "/tiled_tensor.tns", pt.format(data_format))
+    internal_tensor = taco_tensor._tensor
+    tiled_dict = parse_tiled_tensor(str(internal_tensor))
+
+    for keys in tiled_dict['compressed'].keys():
+        if keys != None:
+            pos_path = output_dir_path + "/tcsf_pos" + str(keys + 1) + ".txt"
+            with open(pos_path, 'w+') as f:
+                for item in tiled_dict['compressed'][keys]['pos']:
+                    f.write("%s\n" % item)
+            crd_path = output_dir_path + "/tcsf_crd" + str(keys + 1) + ".txt"
+            with open(crd_path, 'w+') as f:
+                for item in tiled_dict['compressed'][keys]['crd']:
+                    f.write("%s\n" % item)
+    
+    # print(output_dir_path)
+    # if output_dir_path == "./lego_scratch/tensor_B":
+    #    print(tiled_dict['vals'])
+    d_list_path = output_dir_path + "/tcsf_vals" + ".txt"
+    with open(d_list_path, 'w+') as f:
+        for item in tiled_dict['vals']:
+            f.write("%s\n" % item)
 
     # tiled_coo.coords holds the COO coordinates for each level
     # tiled_coo.data holds the data for each level
+
+    """
 
     # Create the CSF representation for the tensor at each level
     crd_dict = {} 
@@ -148,6 +274,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
             else:   
                 f.write("%s\n" % (tiled_COO.data[val]))                
     return n_lists, d_list, crd_dict, pos_dict
+    
 
 def write_csf(COO, output_dir_path): 
 
@@ -203,7 +330,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype, data_format):
 
     tensor = None
     cwd = os.getcwd()
@@ -374,4 +501,4 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         write_csf(tensor, output_dir_path)
 
     tile_size = tensor_size[1:]
-    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype, data_format)

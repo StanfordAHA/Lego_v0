@@ -579,7 +579,7 @@ def get_sub_point_dict(sub_point, id_dict, op_list):
 def get_sub_point_schedule(sub_point, schedule):
     return schedule[1:]
 
-def ap_mem_stmt(sub_point, id_dict, level, curr_id):
+def ap_mem_stmt(sub_point, id_dict, level, curr_id, data_format):
 
     stmt = ""
     loop_counter = 0
@@ -591,12 +591,15 @@ def ap_mem_stmt(sub_point, id_dict, level, curr_id):
                 if(loop_counter != 0):  
                     stmt = stmt + "\n"  
                 stmt = stmt + "    " * (level + 2)
-                stmt = stmt + "tile_" + arr_read + " = " + "tensor_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tensor_" + arr_read + ", " + id + ");"
+                tensor_dim = len(id_dict[arr_read])
+                in_fmt = "".join(data_format[arr_read])
+                out_fmt = "".join(data_format[arr_read][tensor_dim:])
+                stmt = stmt + "tile_" + arr_read + " = " + "mem_op_" + in_fmt + "_" + out_fmt + "(" + "tensor_" + arr_read + ", " + id + ");"
                 loop_counter += 1
 
     return [stmt]
 
-def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf):
+def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf, data_format):
 
 
         valid_op_list = [] 
@@ -628,8 +631,12 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
 
                     if((mode == "rtl") or (len(sub_point) != 1) or (len(valid_op_list) != 1)):
                         stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
-                        stmt = stmt + "\n"
+                        tensor_dim = len(id_dict[arr_read])
+                        in_fmt = "".join(data_format[arr_read][tensor_dim:])
+                        out_fmt = "".join(data_format[arr_read][2 * tensor_dim:])
+                        stmt = stmt + "subtile_" + arr_read + " = " + "mem_op_" + in_fmt + "_" + out_fmt + "(" + "tile_" + arr_read + ", " + id + ");"
+                        # stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
+                        # stmt = stmt + "\n"
                         if(process_csf):
                             stmt = stmt + "    " * (level + 2)
                             stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
@@ -727,7 +734,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, data_format):
     
         stmt = ""
     
@@ -874,6 +881,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                 stmt += "float *partial = nullptr;\n"
 
                 if(mode == "rtl"): 
+                    stmt += "    " * (level + 2)
                     stmt += "if (mode == \"tiling\")\n"
                     stmt += "    " * (level + 3)
                     stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
@@ -883,10 +891,10 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
 
                     stmt += ", curr_subtile_num, output_gold_file);"    
                     stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "else if (mode == \"reduce\")\n"
-                    stmt += "    " * (level + 3)
-                    stmt += "partial = read_subtile_output(subtile_path);\n"
+                    # stmt += "    " * (level + 2)
+                    # stmt += "else if (mode == \"reduce\")\n"
+                    # stmt += "    " * (level + 3)
+                    # stmt += "partial = read_subtile_output(subtile_path);\n"
                     stmt += "    " * (level + 2)
                     stmt += "else\n"
                     stmt += "    " * (level + 3)
@@ -918,14 +926,15 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         tensor_dim = len(id_dict_true[op])
 
                         for i in range(tensor_dim):
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
-                            stmt += "\n"    
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
-                            stmt += "\n"
+                            if(data_format[op][2 * tensor_dim + i] == "s"):
+                                stmt += "    " * (level + 3)
+                                stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
+                                stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                                stmt += "\n"    
+                                stmt += "    " * (level + 3)
+                                stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
+                                stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                                stmt += "\n"
                         
                         stmt += "    " * (level + 3)
                         stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
@@ -1027,7 +1036,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None, data_format_dict=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype=None, data_format_dict=None, data_format=None):
     curr_id = schedule[0]
     stmt_list = []
     lattice = expr_to_lattice(stmt, id_dict, curr_id)
@@ -1065,19 +1074,19 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
             sub_point_schedule = get_sub_point_schedule(sub_point, schedule)     
  
             if(target == "ap"):
-                stmt_list.append(ap_mem_stmt(sub_point, id_dict, level, curr_id))
+                stmt_list.append(ap_mem_stmt(sub_point, id_dict, level, curr_id, data_format))
             elif(target == "cp"):
-                stmt_list.append(cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf))
+                stmt_list.append(cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, process_csf, data_format))
 
             if(len(schedule) == 1):
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, data_format))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict, data_format))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         

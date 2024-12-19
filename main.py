@@ -8,6 +8,7 @@ import shutil
 import os
 import copy
 import math
+import mem_op_gen
 
 from onyx_codegen.meta import *
 from onyx_codegen.main_codegen import *
@@ -192,7 +193,7 @@ def parse_lut_tensor(activation_list):
             lut_tensor.append(lut_mapping[activation])
     return lut_tensor
 
-def ap_tensor_decleration(main_file, ap_source_id):
+def ap_tensor_decleration(main_file, ap_source_id, data_format):
 
     for key, value in ap_source_id.items():
 
@@ -200,56 +201,83 @@ def ap_tensor_decleration(main_file, ap_source_id):
 
         main_file.write("\n")
 
-        for i in range(0, 3 * tensor_dim):
-            main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
-            main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
+        data_format_list = data_format[key]
 
-        main_file.write("    " + "std::vector<float> " + key + "_vals;\n")
+        # for i in range(0, 3 * tensor_dim):
+        #    if data_format_list[i] == "s":
+        #        main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_pos"  + ";\n")
+        #        main_file.write("    " + "std::vector<int> " + key + str(i + 1) + "_crd"  + ";\n")
 
+        # main_file.write("    " + "std::vector<float> " + key + "_vals;\n")
+
+        # main_file.write("\n")
+
+        tensor_fmt_encoding = "".join(data_format_list)
+        main_file.write("    " + "tile_" + tensor_fmt_encoding + " tensor_" + key + ";\n")   
         main_file.write("\n")
 
         for i in range(0, 3 * tensor_dim):
-            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_pos, " + "\"lego_scratch/tensor_" + key + "/tcsf_pos" + str(i + 1) + ".txt\");\n")
-            main_file.write("    " + "build_vec(" + key + str(i + 1) +  "_crd, " + "\"lego_scratch/tensor_" + key + "/tcsf_crd" + str(i + 1) + ".txt\");\n")
+            if data_format_list[i] == "s":
+                main_file.write("    " + "build_vec(tensor_" + key + ".pos" + str(i + 1) +  ", " + "\"lego_scratch/tensor_" + key + "/tcsf_pos" + str(i + 1) + ".txt\");\n")
+                main_file.write("    " + "build_vec(tensor_" + key + ".crd" + str(i + 1) +  ", " + "\"lego_scratch/tensor_" + key + "/tcsf_crd" + str(i + 1) + ".txt\");\n")
 
-        main_file.write("    " + "build_vec_val(" + key + "_vals, " + "\"lego_scratch/tensor_" + key + "/tcsf_vals.txt\");\n")
+        main_file.write("    " + "build_vec_val(tensor_" + key + ".vals, " + "\"lego_scratch/tensor_" + key + "/tcsf_vals.txt\");\n")
         
         main_file.write("\n")
 
-        main_file.write("    " + "int **tensor_" + key + ";\n")
-        main_file.write("    " + "tensor_" + key + " = (int**)malloc(sizeof(int*) * (" + str(6 * tensor_dim + 1) + "));\n")
-
-        main_file.write("\n")
-
         for i in range(0, 3 * tensor_dim):
-            main_file.write("    " + "tensor_" + key + "[" + str(2 * i) + "] = " + key + str(i + 1) + "_pos.data();\n")
-            main_file.write("    " + "tensor_" + key + "[" + str(2 * i + 1) + "] = " + key + str(i + 1) + "_crd.data();\n")
+            if data_format_list[i] == "s":
+                main_file.write("    " + "int *" + key + str(i + 1) + "_pos"  + " = tensor_" + key + ".pos" + str(i + 1) + ".data();\n")
+                main_file.write("    " + "int *" + key + str(i + 1) + "_crd"  + " = tensor_" + key + ".crd" + str(i + 1) + ".data();\n")
 
-        main_file.write("    " + "tensor_" + key + "[" + str(6 * tensor_dim) + "] = (int *)" + key + "_vals.data();\n")
+        main_file.write("    " + "float *" + key + "_vals = tensor_" + key + ".vals.data();\n")
+
+
+        # tensor_fmt_encoding = "".join(data_format_list)
+        # main_file.write("    " + "tile_" + tensor_fmt_encoding + " tensor_" + key + ";\n")   
+
+
+        # main_file.write("    " + "int **tensor_" + key + ";\n")
+        # main_file.write("    " + "tensor_" + key + " = (int**)malloc(sizeof(int*) * (" + str(6 * tensor_dim + 1) + "));\n")
+
+        
+
+        # for i in range(0, 3 * tensor_dim):
+        #    if(data_format_list[i] == "s"):
+        #        main_file.write("    " + "tensor_" + key + ".pos" + str(i + 1) + ".data() = " + key + str(i + 1) + "_pos.data();\n")
+        #        main_file.write("    " + "tensor_" + key + ".crd" + str(i + 1) + ".data() = " + key + str(i + 1) + "_crd.data();\n")
+
+        # main_file.write("    " + "tensor_" + key + ".vals.data() = " + key + "_vals.data();\n")
     
-        main_file.write("\n")
+        # main_file.write("\n")
 
-        main_file.write("    " + "tile" + str(tensor_dim) + " tile_" + key + ";\n"); 
+        tile_format_encoding = "".join(data_format_list[tensor_dim:])
+
+        main_file.write("    " + "tile_" + tile_format_encoding + " tile_" + key + ";\n"); 
 
     main_file.write("\n")  
     main_file.write("    " + "std::string tile_name;")
     main_file.write("\n")
 
-def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name, unroll):
+def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir, kernel_name, unroll, data_format):
 
     for key, value in cp_source_id.items():
 
         tensor_dim = len(value)
         main_file.write("\n")
 
+        data_format_list = data_format[key][tensor_dim:]
+
         for i in range(0, 2 * tensor_dim):
-            main_file.write("    " + "int *" + key + str(i + 1) + "_pos = tile_" + key + ".pos" + str(i + 1) + ".data();\n")
-            main_file.write("    " + "int *" + key + str(i + 1) + "_crd = tile_" + key + ".crd" + str(i + 1) + ".data();\n")
+            if data_format_list[i] == "s":
+                main_file.write("    " + "int *" + key + str(i + 1) + "_pos = tile_" + key + ".pos" + str(i + 1) + ".data();\n")
+                main_file.write("    " + "int *" + key + str(i + 1) + "_crd = tile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
         main_file.write("    " + "float *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
 
-        main_file.write("    " + "subtile" + str(tensor_dim) + " subtile_" + key + ";\n")
+        tile_format_encoding = "".join(data_format_list[tensor_dim:])
+        main_file.write("    " + "tile_" + tile_format_encoding + " subtile_" + key + ";\n")
 
         main_file.write("\n")
 
@@ -451,16 +479,20 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
         
         main_file.write("    " + "}\n")
 
-def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, scalar): 
+def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, scalar, data_format): 
+
 
     for key, value in cg_source_id.items():
 
         tensor_dim = len(value)
         main_file.write("\n")
+
+        data_format_list = data_format[key][2 * tensor_dim:]
         
         for i in range(0, tensor_dim):
-            main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
-            main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
+            if(data_format_list[i] == "s"):
+                main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
+                main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
 
         main_file.write("    " + "float *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
@@ -619,8 +651,6 @@ if __name__ == "__main__":
     process_csf = args.xplicit_zero
     unroll      = args.unroll_cgen
 
-    print(data_format_dict)
-
     # create the required directories
     # if os.path.exists("./lego_scratch"):
     #    shutil.rmtree("./lego_scratch")
@@ -681,6 +711,8 @@ if __name__ == "__main__":
 
         with open('lego_scratch/' + app_name + '_reg_write.h', 'w+') as file:
             file.write(reg_write_content)
+
+    data_format = {}
     
     for key, value in tensor_path_dict.items():
         output_dir_path = "./lego_scratch/" + "tensor_" + key 
@@ -688,6 +720,20 @@ if __name__ == "__main__":
         tensor_schedule.append(ap_source_map[key])
         tensor_schedule.append(cp_source_map[key])
         tensor_schedule.append(cg_source_map[key])
+
+        data_format_list = [] 
+
+        for ii in ap_source_id[key]:
+            data_format_list.append(data_format_dict[0][key][ii])
+        
+        for ii in cp_source_id[key]:
+            data_format_list.append(data_format_dict[1][key][ii])
+        
+        for ii in cg_source_id[key]:
+            data_format_list.append(data_format_dict[2][key][ii])
+
+        data_format[key] = data_format_list
+
         tensor_size = []
         id_list = op[key]
 
@@ -709,7 +755,7 @@ if __name__ == "__main__":
         dtype          = tensor_dtype_dict[key]
 
         if(not args.no_preprocess): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, args.positive_only, dtype)    
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, args.positive_only, dtype, data_format_list.copy())    
     
     workspace = args.workspace
 
@@ -732,6 +778,7 @@ if __name__ == "__main__":
     main_file.write("#include <vector>\n")
     main_file.write("#include <string>\n")
     main_file.write("#include <cassert>\n")
+    main_file.write("#include <algorithm>\n")
     main_file.write("#include <sys/types.h>\n")
     main_file.write("#include <sys/stat.h>\n")
     main_file.write("using namespace std;\n")
@@ -742,24 +789,49 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write("#include \"src/activation.h\"")
     main_file.write("\n")
-    main_file.write("#include \"src/bf16_op.h\"")
+    # main_file.write("#include \"src/bf16_op.h\"")
     main_file.write("\n")
     main_file.write("\n")
+
+
+    # Dump the required memory_op functions and required data structures
+
+    tile_set = set()
+    mem_op_set = set()
+
+    for key in data_format.keys():
+        curr_tensor_len = len(data_format[key]) // 3
+        tile_set.add(":".join(data_format[key]))
+        tile_set.add(":".join(data_format[key][curr_tensor_len:]))
+        tile_set.add(":".join(data_format[key][2 * curr_tensor_len:]))
+        mem_op_set.add("->".join([(":".join(data_format[key])), ":".join(data_format[key][curr_tensor_len:])]))
+        mem_op_set.add("->".join([(":".join(data_format[key][curr_tensor_len:])), ":".join(data_format[key][2 * curr_tensor_len:])]))
+
+    tile_list = sorted(list(tile_set))
+    mem_op_list = sorted(list(mem_op_set))
+
+    for tile in tile_list:
+        mem_op_gen.struct_gen(tile, main_file)
+
+    for mem_op in mem_op_list:
+        mem_op_gen.mem_op_gen(mem_op, main_file)
 
     # CGRA gold code
-    tensor_dim = str(len(cg_source_id[op_list[0]]))
+    tensor_dim = len(cg_source_id[op_list[0]])
+    out_fmt = "".join(data_format[op_list[0]][2 * tensor_dim:])
     stmt = ""
-    stmt = stmt + "(" + "subtile" + tensor_dim + " subtile_" + op_list[0]  
-
+    stmt = stmt + "(" + "tile_" + out_fmt + " subtile_" + op_list[0]  
+    
     for op in op_list[1:]: 
-        tensor_dim = str(len(cg_source_id[op]))
-        stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
+        tensor_dim = len(cg_source_id[op])
+        out_fmt = "".join(data_format[op][2 * tensor_dim:])
+        stmt = stmt + ", " + "tile_" + out_fmt + " subtile_" + op
     stmt += ", int curr_subtile_num, ofstream &output_gold_file)"
 
     main_file.write("float* subtile_gold" + stmt + " {\n")
-    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar)
+    cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar, data_format)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-1]):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-1], data_format):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -833,13 +905,17 @@ if __name__ == "__main__":
     """
 
     # Sub-tile pairing code
-    tensor_dim = str(len(cp_source_id[op_list[0]]))
+    tensor_dim = len(cp_source_id[op_list[0]])
     stmt = ""
-    stmt = stmt + "(" + "tile" + tensor_dim + " tile_" + op_list[0]  
+
+    out_fmt = "".join(data_format[op_list[0]][tensor_dim:])
+    
+    stmt = stmt + "(" + "tile_" + out_fmt + " tile_" + op_list[0]  
     
     for op in op_list[1:]: 
-        tensor_dim = str(len(cp_source_id[op]))
-        stmt = stmt + ", " + "tile" + tensor_dim + " tile_" + op
+        tensor_dim = len(cp_source_id[op])
+        out_fmt = "".join(data_format[op][tensor_dim:])
+        stmt = stmt + ", " + "tile_" + out_fmt + " tile_" + op
     stmt += ", std::string curr_tile"
     
     if mode == 'rtl':
@@ -849,14 +925,14 @@ if __name__ == "__main__":
 
     main_file.write("float* tile_operate" + stmt + " {\n")
 
-    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name, unroll)
+    cp_tensor_decleration(main_file, cp_source_id, cp_split_factor, mode, args.output_dir, app_name, unroll, data_format)
     main_file.write("\n")
 
     if(workspace):
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-2]):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-2], data_format):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -901,7 +977,7 @@ if __name__ == "__main__":
         main_file.write("    assert(argc == 2);\n")
         main_file.write("    std::string mode = argv[1];\n")
 
-    ap_tensor_decleration(main_file, ap_source_id)
+    ap_tensor_decleration(main_file, ap_source_id, data_format)
 
     # vector for storing the list of all the subtile path 
     # this is for comal
@@ -915,7 +991,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-3]):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict[-3], data_format):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -949,4 +1025,6 @@ if __name__ == "__main__":
     main_file.write("    return 0;\n")
     main_file.write("}\n")
     main_file.close()
+
+    os.system(f"clang-format -i main.cpp")
     

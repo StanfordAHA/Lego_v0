@@ -1,37 +1,33 @@
 
 import os
 
-def mem_op_gen(in_format, out_format, file_name) :
+def struct_gen(format_str, file):
 
-    file = open(file_name, "w")
+    format = format_str.split(":")
 
-    # Defining the vector lib files 
-    file.write("#include <vector>\n\n")
+    # Defining the required structs
+    encoding = "".join(format)
+    file.write(f"struct tile_{encoding}")
+    file.write("{\n")
+    for i in range(len(format)):
+        if(format[i] == "s"):
+            file.write(f"std::vector<int> pos{i + 1};\n")
+            file.write(f"std::vector<int> crd{i + 1};\n")
+    file.write("std::vector<float> vals;\n")
+    file.write("};\n\n")
 
-    # Defining the required structs 
+def mem_op_gen(format_str, file) :
+
+    in_format_str, out_format_str = format_str.split("->")
+    in_format = in_format_str.split(":")
+    out_format = out_format_str.split(":")
+    
+    # Defining the required encodings
     in_encoding = "".join(in_format)
-    file.write(f"struct tile_{in_encoding}")
-    file.write("{\n")
-    for i in range(len(in_format)):
-        if(in_format[i] == "s"):
-            file.write(f"std::vector<int> pos{i + 1};\n")
-            file.write(f"std::vector<int> crd{i + 1};\n")
-    file.write("std::vector<float> vals;\n")
-    file.write("};\n\n")
-
     out_encoding = "".join(out_format)
-    file.write(f"struct tile_{out_encoding}")
-    file.write("{\n")
-    for i in range(len(out_format)):
-        if(out_format[i] == "s"):
-            file.write(f"std::vector<int> pos{i + 1};\n")
-            file.write(f"std::vector<int> crd{i + 1};\n")
-   
-    file.write("std::vector<float> vals;\n")
-    file.write("};\n\n")
 
     # Defining the function to generate the memory operation
-    file.write(f"tile_{out_encoding} tensor_mem_op(tile_{in_encoding} tensor_op, int index)")
+    file.write(f"tile_{out_encoding} mem_op_{in_encoding}_{out_encoding}(tile_{in_encoding} tensor_op, int index)")
     file.write("{\n")
 
     len_in = len(in_format)
@@ -87,20 +83,17 @@ def mem_op_gen(in_format, out_format, file_name) :
 
     for i in range(len_out):
         if(out_format[i] == "s"):
-            file.write(f"std::transform(tile_op.pos{i+1}.begin(), tile_op.pos{i+1}.end(), tile_op.pos{i+1}.begin(), [pos{i+1}[0]](int elem)" + "{return elem - pos" +  str(i+1) + "[0]; });\n")
+            file.write(f"int pos{i+1}_start = pos{i+1}[0];\n")
+            file.write(f"std::transform(tile_op.pos{i+1}.begin(), tile_op.pos{i+1}.end(), tile_op.pos{i+1}.begin(), [pos{i+1}_start](int elem)" + "{return elem - pos" +  str(i+1) + "_start; });\n")
             
 
-
+    file.write("return tile_op;\n")
     file.write("}\n\n")
-
-
-
-
 
 if __name__ == "__main__":
 
-    in_format = ["s", "s", "s", "s", "s", "s"]
-    out_format = ["s", "s", "s"]
+    in_format = ["s", "s", "s", "s", "d", "s"]
+    out_format = ["s", "s", "d", "s"]
     file_name = "mem_op.cpp"
     mem_op_gen(in_format, out_format, file_name)
     os.system(f"clang-format -i {file_name}")
