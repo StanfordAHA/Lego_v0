@@ -220,6 +220,8 @@ def ap_tensor_decleration(main_file, ap_source_id, data_format):
             if data_format_list[i] == "s":
                 main_file.write("    " + "build_vec(tensor_" + key + ".pos" + str(i + 1) +  ", " + "\"lego_scratch/tensor_" + key + "/tcsf_pos" + str(i + 1) + ".txt\");\n")
                 main_file.write("    " + "build_vec(tensor_" + key + ".crd" + str(i + 1) +  ", " + "\"lego_scratch/tensor_" + key + "/tcsf_crd" + str(i + 1) + ".txt\");\n")
+            elif data_format_list[i] == "d":
+                main_file.write("    " + "build_vec(tensor_" + key + ".dim" + str(i + 1) +  ", " + "\"lego_scratch/tensor_" + key + "/tcsf_dim" + str(i + 1) + ".txt\");\n")
 
         main_file.write("    " + "build_vec_val(tensor_" + key + ".vals, " + "\"lego_scratch/tensor_" + key + "/tcsf_vals.txt\");\n")
         
@@ -229,6 +231,8 @@ def ap_tensor_decleration(main_file, ap_source_id, data_format):
             if data_format_list[i] == "s":
                 main_file.write("    " + "int *" + key + str(i + 1) + "_pos"  + " = tensor_" + key + ".pos" + str(i + 1) + ".data();\n")
                 main_file.write("    " + "int *" + key + str(i + 1) + "_crd"  + " = tensor_" + key + ".crd" + str(i + 1) + ".data();\n")
+            elif data_format_list[i] == "d":
+                main_file.write("    " + "int " + key + str(i + 1) + "_dim"  + " = tensor_" + key + ".dim" + str(i + 1) + "[0];\n")
 
         main_file.write("    " + "float *" + key + "_vals = tensor_" + key + ".vals.data();\n")
 
@@ -272,6 +276,8 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             if data_format_list[i] == "s":
                 main_file.write("    " + "int *" + key + str(i + 1) + "_pos = tile_" + key + ".pos" + str(i + 1) + ".data();\n")
                 main_file.write("    " + "int *" + key + str(i + 1) + "_crd = tile_" + key + ".crd" + str(i + 1) + ".data();\n")
+            elif data_format_list[i] == "d":
+                main_file.write("    " + "int " + key + str(i + 1) + "_dim = tile_" + key + ".dim" + str(i + 1) + "[0];\n")
 
         main_file.write("    " + "float *" + key + "_vals = tile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")
@@ -493,6 +499,8 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             if(data_format_list[i] == "s"):
                 main_file.write("    " + "int *" + key + str(i + 1) + "_pos = subtile_" + key + ".pos" + str(i + 1) + ".data();\n")
                 main_file.write("    " + "int *" + key + str(i + 1) + "_crd = subtile_" + key + ".crd" + str(i + 1) + ".data();\n")
+            elif(data_format_list[i] == "d"):
+                main_file.write("    " + "int " + key + str(i + 1) + "_dim = subtile_" + key + ".dim" + str(i + 1) + "[0];\n")
 
         main_file.write("    " + "float *" + key + "_vals = subtile_" + key + ".vals.data();" + "\n")
         main_file.write("\n")

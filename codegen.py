@@ -272,7 +272,8 @@ def get_stmt(stmt, id_dict, dtype):
 def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
     
     stmt = ""
-    loop_counter = 0 
+    loop_counter = 0
+    all_dense = True 
 
     for op in op_list:
         if curr_id in id_dict[op]:
@@ -285,6 +286,7 @@ def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
                 next_id = prev_id + " + 1"
             
             if(data_format_dict[op][curr_id] == "s"):
+                all_dense = False
                 if loop_counter != 0:
                     stmt = stmt + "\n"
                 stmt = stmt + "    " * level
@@ -295,6 +297,10 @@ def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
                 stmt = stmt + "int p" + op + str(curr_id_pos) + "_end" 
                 stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + next_id + "];"
                 loop_counter += 1
+    
+    if all_dense:
+        stmt = "    " * level
+        stmt = stmt + "int " + curr_id + " = 0;"
 
     return [stmt]
 
@@ -316,8 +322,8 @@ def while_stmt_open(point, id_dict, level, data_format_dict):
         if len(point) != 0:
             arr_read = point[0][1]
             arr_idx  = point[0][0]
-            stmt = stmt + arr_idx + " < " + arr_idx + "_end" 
-    
+            arr_idx_pos = id_dict[arr_read].index(arr_idx)
+            stmt = stmt + arr_idx + " < " + arr_read + str(arr_idx_pos + 1) + "_dim"     
     else:
         if len(sparse_point) != 0:
             arr_read = sparse_point[0][1]
@@ -395,7 +401,7 @@ def id_init_dense(point, id_dict, level, data_format_dict):
         arr_idx_pos = id_dict[arr_read].index(arr_idx) - 1
         stmt = stmt + "int " + dense_point[0] + " = "
         if(arr_idx_pos >= 0):
-            stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_idx + "_dim" + " + " + arr_idx + ";"
+            stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_read + str(arr_idx_pos + 2) + "_dim" + " + " + arr_idx + ";"
         else: 
             stmt = stmt + arr_idx + ";"
         dense_point = dense_point[1:] 
@@ -408,7 +414,7 @@ def id_init_dense(point, id_dict, level, data_format_dict):
             arr_idx_pos = id_dict[arr_read].index(arr_idx) - 1
             stmt = stmt + "int " + id + " = "
             if(arr_idx_pos >= 0):
-                stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_idx + "_dim" + " + " + arr_idx + ";"
+                stmt = stmt + id_dict[arr_read][arr_idx_pos] + arr_read + " * " + arr_read + str(arr_idx_pos + 2) + "_dim" + " + " + arr_idx + ";"
             else:
                 stmt = stmt + arr_idx + ";"
     
@@ -511,23 +517,47 @@ def elif_stmt_open(sub_point, id_dict, level, data_format_dict):
 
     return ["    " * (level + 1) + stmt]
 
-def if_stmt_close(sub_point, id_dict, level):
-    return ["    " * (level + 1) + "}"]
+def if_stmt_close(sub_point, id_dict, level, data_format_dict):
 
-def id_increment(point, id_dict, level):
+    sparse_sub_point = []
+
+    for point in sub_point:
+        arr_read = point[1]
+        arr_idx  = point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_sub_point.append(point)
+
+    if(sparse_sub_point != []):
+        return ["    " * (level + 1) + "}"]
+    else:
+        return [""]
+
+def id_increment(point, id_dict, level, data_format_dict):
     stmt = ""
     stmt = "    " * (level + 1)
+
+    sparse_point = []
+    for sub_point in point:
+        arr_read = sub_point[1]
+        arr_idx  = sub_point[0]
+
+        if data_format_dict[arr_read][arr_idx] == "s":
+            sparse_point.append(sub_point)
     
-    if(len(point) != 0):
-        arr_idx = point[0][0]
-        stmt = stmt + point[0] + " += (int)"
-        stmt = stmt + "(" + point[0] + "0 == " + arr_idx  + ");" 
-        point = point[1:]
-        for id in point:
+    if(len(sparse_point) != 0):
+        arr_idx = sparse_point[0][0]
+        stmt = stmt + sparse_point[0] + " += (int)"
+        stmt = stmt + "(" + sparse_point[0] + "0 == " + arr_idx  + ");" 
+        sparse_point = sparse_point[1:]
+        for id in sparse_point:
             stmt = stmt + "\n"
             stmt += "    " * (level + 1)
             stmt = stmt + id + " += (int)"
             stmt = stmt + "(" + id + "0 == " + id[0] + ");"
+    elif len(point) != 0:
+        arr_idx = point[0][0]
+        stmt = stmt + arr_idx + " += 1;"
 
     return [stmt]
 
@@ -1087,11 +1117,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype))
             else:     
                 stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, dtype, data_format_dict, data_format))
-            stmt_list.append(if_stmt_close(sub_point, id_dict, level))
+            stmt_list.append(if_stmt_close(sub_point, id_dict, level, data_format_dict))
             loop_counter += 1
         
         # increment sparse idx variables
-        stmt_list.append(id_increment(point, id_dict, level))
+        stmt_list.append(id_increment(point, id_dict, level, data_format_dict))
         
         stmt_list.append(while_stmt_close(point, id_dict, level))   
 

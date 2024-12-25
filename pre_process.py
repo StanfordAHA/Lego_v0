@@ -109,7 +109,7 @@ def parse_tiled_tensor(tiled_tensor_str: str) -> Dict[str, List]:
     }
 
 
-def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype, data_format):
+def process_coo(tensor, tensor_dims, output_dir_path, format, schedule_dict, positive_only, dtype, data_format):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -123,6 +123,8 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
 
     coords = []
     data = []
+
+    tile_dims = tensor_dims[1:]
 
     if format == "s": 
         coords = tensor.coords
@@ -183,7 +185,6 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
     dumper.dump(tiled_COO, output_dir_path + "/tiled_tensor.tns")
 
     # Create the custom tiled tensor
-
     for i in range(len(data_format)):
         if data_format[i] == "s":
             data_format[i] = compressed
@@ -193,6 +194,22 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
     taco_tensor = pt.read(output_dir_path + "/tiled_tensor.tns", pt.format(data_format))
     internal_tensor = taco_tensor._tensor
     tiled_dict = parse_tiled_tensor(str(internal_tensor))
+
+    tiled_dict['dense'] = {}
+
+    for i in range(len(data_format)):
+        if data_format[i] == dense: 
+            # tiled_dict['dense'][i] = schedule_dict
+            level = i // 2
+            dim = i % 2
+
+            if level == 2: 
+                crd_dim = schedule_dict[level][dim]
+                tiled_dict['dense'][i] = tensor_dims[level][crd_dim]
+            else:
+                crd_dim = schedule_dict[level][dim]
+                nxt_dim = schedule_dict[level + 1].index(crd_dim)
+                tiled_dict['dense'][i] = math.ceil(tensor_dims[level][crd_dim] / tensor_dims[level + 1][nxt_dim])
 
     for keys in tiled_dict['compressed'].keys():
         if keys != None:
@@ -204,6 +221,12 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
             with open(crd_path, 'w+') as f:
                 for item in tiled_dict['compressed'][keys]['crd']:
                     f.write("%s\n" % item)
+    
+    for keys in tiled_dict['dense'].keys():
+        if keys != None:
+            dense_path = output_dir_path + "/tcsf_dim" + str(keys + 1) + ".txt"
+            with open(dense_path, 'w+') as f:
+                f.write("%s\n" % tiled_dict['dense'][keys])
     
     # print(output_dir_path)
     # if output_dir_path == "./lego_scratch/tensor_B":
@@ -500,5 +523,5 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         size = tensor_size[0]
         write_csf(tensor, output_dir_path)
 
-    tile_size = tensor_size[1:]
-    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype, data_format)
+    # tile_size = tensor_size[1:]
+    process_coo(tensor, tensor_size, output_dir_path, format, schedule_dict, positive_only, dtype, data_format)
