@@ -160,7 +160,7 @@ def run_codegen(args):
     os.system("mkdir lego_scratch/")
     os.system("rm -rf main.cpp")
     os.system("python3 main.py " + args)
-    os.system("g++ -o main main.cpp src/data_parser.cpp src/mem_op.cpp")
+    os.system("g++ -o main main.cpp src/data_parser.cpp src/mem_op.cpp src/bf16_op.cpp")
     os.system("./main")
 
 def find_file_in_directory(file_name, search_path):
@@ -278,7 +278,8 @@ if __name__ == "__main__":
                     prog="JSSC Lego Wrapper",
                     description="Generates the input and outputs for JSSC testing")
 
-    parser.add_argument("--json", type=str, default="jssc_inputs/jssc_matmul_input.json")           
+    parser.add_argument("--json", type=str, default="jssc_inputs/jssc_matmul_input.json")     
+    parser.add_argument("--mode", type=str, default="onyx")      
     args = parser.parse_args()
 
     with open(args.json) as f:
@@ -310,12 +311,8 @@ if __name__ == "__main__":
                 reg_write_file   = f"./jssc_inputs/{bitstream[0]}/reg_write.h"
                 design_meta_file = f"./jssc_inputs/{bitstream[0]}/design_meta.json"
 
-                if(bitstream[1] != 0):
-                    args_list = f"--mode onyx -u {bitstream[1]}" 
-                else:
-                    args_list = "--mode onyx"
-
-                unroll_flag = bitstream[1] 
+                unroll_flag = bitstream[1]
+                args_list = f"--mode {args.mode} -u {unroll_flag}"
 
                 curr_dataset = input[-1] 
 
@@ -325,9 +322,9 @@ if __name__ == "__main__":
                         if flag != "":
                             args_list += f" {flag}"
 
-                    args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                    python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
 
-                    run_codegen(args)
+                    run_codegen(python_args)
                     modes = num_modes(input[0][0])
                     check_size(out_dir, modes)
         
@@ -337,19 +334,15 @@ if __name__ == "__main__":
 
                     while(not in_limit): 
                         
-                        if(unroll_flag != 0):
-                            args_list = f"--mode onyx -u {unroll_flag}"
-                        else:
-                            args_list = "--mode onyx"
+                        args_list = f"--mode {args.mode} -u {unroll_flag}"
 
                         process_input_data(input)
                         for flag in curr_flags[0]: 
                             if flag != "":
                                 args_list += f" {flag}"
 
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                        print(args)
-                        run_codegen(args)
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        run_codegen(python_args)
 
                         modes = num_modes(input[0][0])
                         in_limit = check_size(out_dir, modes)
@@ -358,11 +351,8 @@ if __name__ == "__main__":
                             print(f"{input[-1][-2]}: Mem. going out-of-bounds for tile_dim: {input[-3][-1]}, trying with tile_dim: {input[-3][-1]//2}")
                             input[-3][-1] = input[-3][-1]//2        
                 elif(curr_dataset[-1] == "s"):
-
-                    if(unroll_flag != 0):
-                        args_list = f"--mode onyx -u {unroll_flag}"
-                    else:
-                        args_list = "--mode onyx"
+                    
+                    args_list = f"--mode {args.mode} -u {unroll_flag}"
 
                     args_list += " --nnz_ctr"
 
@@ -384,9 +374,9 @@ if __name__ == "__main__":
                         
                         input_test[2] = [curr_test_tile_size] * len(input_test[2])
                         process_input_data(input_test)
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                        print(args)
-                        run_codegen(args)
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(python_args)
+                        run_codegen(python_args)
                         not_max = check_nnz_max(out_dir)
                         prev_test_tile_size = curr_test_tile_size - (5 * (2**(run - 1)))
                         curr_test_tile_size += (5 * (2**(run)))
@@ -404,9 +394,9 @@ if __name__ == "__main__":
                             break
                         input_test[2] = [curr_test_tile_size] * len(input_test[2])
                         process_input_data(input_test)
-                        args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                        print(args)
-                        run_codegen(args)
+                        python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                        print(python_args)
+                        run_codegen(python_args)
                         not_max = check_nnz_max(out_dir)
                 
                     end_stile_size = curr_test_tile_size - 20
@@ -424,20 +414,16 @@ if __name__ == "__main__":
                         in_limit = 0
 
                         while(not in_limit): 
-                            
-                            if(unroll_flag != 0):
-                                args_list = f"--mode onyx -u {unroll_flag}"
-                            else:
-                                args_list = "--mode onyx"
+                            args_list = f"--mode {args.mode} -u {unroll_flag}"
 
                             process_input_data(input)
                             for flag in curr_flags[0]: 
                                 if flag != "":
                                     args_list += f" {flag}"
 
-                            args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                            print(args)
-                            run_codegen(args)
+                            python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                            print(python_args)
+                            run_codegen(python_args)
 
                             modes = num_modes(input[0][0])
                             in_limit = check_size(out_dir, modes)
@@ -465,18 +451,17 @@ if __name__ == "__main__":
                         while(not in_limit): 
                             
                             if(unroll_flag != 0):
-                                args_list = f"--mode onyx -u {unroll_flag}"
+                                args_list = f"--mode {args.mode} -u {unroll_flag}"
                             else:
-                                args_list = "--mode onyx"
+                                args_list = f"--mode {args.mode}"
 
                             process_input_data(input)
                             for flag in curr_flags[0]: 
                                 if flag != "":
                                     args_list += f" {flag}"
 
-                            args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                            print(args)
-                            run_codegen(args)
+                            python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                            run_codegen(python_args)
 
                             modes = num_modes(input[0][0])
                             in_limit = check_size(out_dir, modes)
@@ -511,9 +496,9 @@ if __name__ == "__main__":
                             if(atleast_one_in_limit != 0):
     
                                 if(unroll_flag != 0):
-                                    args_list = f"--mode onyx -u {unroll_flag}"
+                                    args_list = f"--mode {args.mode} -u {unroll_flag}"
                                 else:
-                                    args_list = "--mode onyx"
+                                    args_list = f"--mode {args.mode}"
 
                                 args_list += " --nnz_ctr"
 
@@ -522,8 +507,8 @@ if __name__ == "__main__":
                                     if flag != "":
                                         args_list += f" {flag}"
 
-                                args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                                run_codegen(args)
+                                python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                                run_codegen(python_args)
 
                                 modes = num_modes(input[0][0])  
 
@@ -542,7 +527,6 @@ if __name__ == "__main__":
                         if flag != "":
                             args_list += f" {flag}"
 
-                    args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
-                    run_codegen(args)
-
-                    
+                    python_args = f"{args_list} --bitstream {bitstream_file} --design_meta {design_meta_file} --reg_write {reg_write_file} --output_dir {out_dir}"
+                    run_codegen(python_args)
+                                

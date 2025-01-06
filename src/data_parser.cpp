@@ -77,7 +77,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 		for (int index = 1; index < mode_0.size();) {
 			for (int i = 0; i < run_length; i++) {
 				header_file << ", ";
-				// header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
 				index++;
 			}
 			if (index < mode_0.size()) {
@@ -181,7 +181,7 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	return 0;
 }
 
-int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype, bool ap_gcheck) {
+int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, std::string dtype, bool ap_gcheck, int op_cnt) {
 
 	std::string type_16_bit;
 	if(!ap_gcheck){
@@ -210,16 +210,27 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 		}
 	} 
     
-	// TODO: Add support for ap_gcheck
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
-            // output_gold_file << float2bfbin(op_vals[pA], false);
+            output_gold_file << float2bfbin(op_vals[pA], false);
             if (pA != output_subtile_size - 1){
-                output_gold_file << ", ";
+				if (ap_gcheck) {
+					output_gold_file << "\n";
+				}
+				else {
+					output_gold_file << ", ";
+				}
             }
         }
-        output_gold_file << "};\n";
+		if (!ap_gcheck) {
+        	output_gold_file << "};\n";
+		}
     }
+
+	// write the total number of ops required to compute this tile
+	if (ap_gcheck) {
+		output_gold_file << "\n" << op_cnt << "\n";
+	}
 
     return 0;
 }
@@ -281,6 +292,7 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 		output_gold_file << "#include <iostream>" << "\n";
 		output_gold_file << "#include <fstream>" << "\n";
 		output_gold_file << "#include <vector>" << "\n";
+		output_gold_file << "#include <cassert>" << "\n";
 		output_gold_file << "std::vector<unsigned short> check_0_ = {0";
 	} else {
 		output_gold_file << "uint16_t check_0_[" << output_subtile_size << "] = {0";
@@ -293,6 +305,10 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 	output_gold_file << "};" << "\n";
 	output_gold_file << "\n"; 
 
+	if (ap_gcheck) {
+		output_gold_file << "int total_op_cnt = 0;\n";
+	}
+
 	return 0;
 }
 
@@ -302,7 +318,7 @@ int header_subtile_dim_decl(ofstream &header_file, int dim_id, int dim_size){
 }
 
 
-int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck){
+int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_subtile_size, int tensor_dim, int unroll, std::string glb_bank_offset, std::string glb_tile_offset, std::vector<int> map1, bool ap_gcheck){
 
 	// different data types depending on whether gold check happens on ap or cp
 	std::string type_32_bit;
@@ -392,9 +408,13 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "        std::ifstream input_file(file_path);\n";
 		output_gold_file << "        if (input_file.good()) {\n";
 		output_gold_file << "            gold_ptr.clear();\n";
-		output_gold_file << "            while(input_file >> val){\n";
+		output_gold_file << "            for (int i = 0; i < " << output_subtile_size << "; i++) {\n";
+		output_gold_file << "                input_file >> val;\n";
 		output_gold_file << "                gold_ptr.push_back(val);\n";
 		output_gold_file << "            }\n";
+		output_gold_file << "            int op_cnt = 0;";
+		output_gold_file << "            input_file >> op_cnt;\n";
+		output_gold_file << "            total_op_cnt += op_cnt;\n";
 		output_gold_file << "        } else {\n";
 		output_gold_file << "            throw std::runtime_error(\"Error: File not found: \" + file_path);\n";
 		output_gold_file << "        }\n";
@@ -413,6 +433,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int tensor_
 		output_gold_file << "    map_base_file.seekg (0, std::ios::beg);\n";
 		output_gold_file << "    std::vector<unsigned short> map(map_base_len);\n";
 		output_gold_file << "    map_base_file.read((char *) &map[0], map_base_len);\n";
+		output_gold_file << "    map_base_file.close();\n";
 		output_gold_file << "\n";
 	}
 
@@ -454,12 +475,16 @@ int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base
 	output_gold_file << "        ss_read_base_" << base_id << " << std::hex << read_base_" << base_id << "_addr;\n";
 	output_gold_file << "        std::string read_base_" << base_id << "_filename = ss_read_base_" << base_id << ".str() + \".bin\";\n";
 	output_gold_file << "        std::ifstream read_base_" << base_id << "_file(read_base_" << base_id << "_filename, std::ios::binary);\n";
+	output_gold_file << "        if (!read_base_" << base_id << "_file) {\n";
+	output_gold_file << "            assert(false && \"Error: Cannot read binary file\");\n";
+	output_gold_file << "        }\n";
 	output_gold_file << "        int read_base_" << base_id << "_len = 0;\n";
 	output_gold_file << "        read_base_" << base_id << "_file.seekg (0, std::ios::end);\n";
 	output_gold_file << "        read_base_" << base_id << "_len = read_base_" << base_id << "_file.tellg();\n";
 	output_gold_file << "        read_base_" << base_id << "_file.seekg (0, std::ios::beg);\n";
 	output_gold_file << "        std::vector<unsigned short> read_base_" << base_id << "(read_base_" << base_id << "_len);\n";
 	output_gold_file << "        read_base_" << base_id << "_file.read((char *) &read_base_" << base_id << "[0], read_base_" << base_id << "_len);\n";
+	output_gold_file << " 	     read_base_" << base_id << "_file.close();\n";
 	output_gold_file << "\n";
 	return 0; 
 }
@@ -617,7 +642,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 			for (int i = 0; i < tensor_dim; i++) {
 				output_gold_file << "i" << i << ": \" << i" << i << " << \" ";
 			}
-			output_gold_file << "gold_ptr:\" << gold_ptr[" << id << "] << \" check_ptr:\" << check_ptr[" << id << "] << std::endl;";
+			output_gold_file << "gold_ptr:\" << gold_ptr[" << id << "] << \" check_ptr:\" << check_ptr[" << id << "] << std::endl;\n";
 		} else {
 			output_gold_file << "                trace_printf(\"error! tile: %d, "; 
 			for(int i = 0; i < tensor_dim; i++){
@@ -653,10 +678,13 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	else{
 		output_gold_file << "            " << type_16_bit << " vals_size = read_base_0[vals_idx" << type <<"] + 1;" << "\n";
 		output_gold_file << "            if(read_base_0[vals_idx" << type <<" + 1] != gold_ptr[0]){" << "\n"; 
-		if(ap_gcheck)
-			output_gold_file << "                printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
-		else
-			output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n";
+		if (ap_gcheck) {
+			output_gold_file << "                std::cout << \"error! tile: \" << run << \", ";
+			output_gold_file << "gold_ptr:\" << gold_ptr[0] << \" check_ptr:\" << read_base_0[vals_idx" << type << " + 1] << std::endl;\n";
+        }
+        else {
+		    output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
+        }
 		output_gold_file << "                err++;" << "\n";
 		output_gold_file << "            }" << "\n";
 		output_gold_file << "            vals_idx" << type <<" += vals_size;" << "\n";
@@ -670,10 +698,11 @@ int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck){
 	output_gold_file << "    }\n";
 	if (ap_gcheck) {
 		output_gold_file << "    std::cout << \"err: \" << err << std::endl;\n";
-		output_gold_file << "    return 0;\n";
-	} else {
-		output_gold_file << "    return err;\n";
+		output_gold_file << "    std::cout << \"total_op_cnt: \" << total_op_cnt << std::endl;\n";
 	}
+
+	output_gold_file << "    return err;\n";
+	
 	output_gold_file << "}\n";
 	return 0;
 }

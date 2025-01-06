@@ -22,6 +22,23 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
 
+def dense_mat_padding(tensor, tile_dims):
+    # make tensor size a multiple of cpu tile size
+    dense_tensor = tensor.todense()
+    tensor_n_dims = len(dense_tensor.shape)
+    padded_tensor_size = []
+    for idx in range(0, tensor_n_dims):
+        if dense_tensor.shape[idx] % tile_dims[0][idx] != 0:
+            padded_tensor_size.append(math.ceil(dense_tensor.shape[idx] / tile_dims[0][idx]) * tile_dims[0][idx])
+        else:
+            padded_tensor_size.append(dense_tensor.shape[idx])
+
+    padded_tensor = np.zeros(padded_tensor_size)
+    for idx, val in np.ndenumerate(dense_tensor):
+        padded_tensor[idx] = val
+
+    return sparse.COO(padded_tensor)
+
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype):
     
     ''' 
@@ -42,6 +59,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
         data = tensor.data
     # if the input format is dense, we need to fill in all the zero entries
     elif format == "d":
+        tensor = dense_mat_padding(tensor, tile_dims)
         n_dim = len(tensor.coords)
         for i in range(n_dim):
             coords.append([])
@@ -249,7 +267,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
         tensor = None
-        value_cap = int(math.pow(2, 8)) - 1
+        value_cap = 10
         if dtype == "int":
             tensor = np.random.randint(1, 3, size=size)
         else:
@@ -423,7 +441,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         if other_nonempty:
             matrix_d[0] = 1
         tensor = matrix_d
-    elif gen_tensor != "0":
+    elif gen_tensor != "0" and gen_tensor != "relu":
         raise NotImplementedError
 
     tensor = sparse.COO(tensor)

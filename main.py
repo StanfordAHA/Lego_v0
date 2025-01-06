@@ -479,9 +479,9 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 main_file.write("        " + "output_gold_file.open(output_gold_path, std::ios::app);\n")
 
             if ap_gcheck:
-                main_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
+                main_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, curr_subtile_num, output_subtile_size, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
             else:
-                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, false);\n")
+                main_file.write("        " + "codegen_check_gold_head(output_gold_file, curr_subtile_num, output_subtile_size, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, false);\n")
 
             for i in range(0, out_tensor_dim + 1):
                 curr_mapping = mapping_dict[dest_read][i]
@@ -560,6 +560,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
             outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
+        main_file.write("    " + "int op_cnt = 0;\n")
         main_file.write("\n")
 
         main_file.write("    " + "float *" + key + "_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
@@ -611,6 +612,7 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
             outsize = 1
     
         main_file.write("    " + "int output_subtile_size = " + str(outsize) + ";\n")
+        main_file.write("    " + "int op_cnt = 0;\n")
         main_file.write("\n")
 
         main_file.write("    " + "float *" + key + "_output_vals = (float*)malloc(sizeof(float) * output_subtile_size);\n")
@@ -632,12 +634,20 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 
-def apply_activation(main_file, output_tile_size, activation_function):
+def apply_output_activation(main_file, output_tile_size, activation_function):
     if activation_function == "none":
         return
     
-    main_file.write("    apply_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
+    main_file.write("    apply_output_" + activation_function + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
+
+def apply_input_activation(main_file, input_activation_dict):
+    supported_activations = ["relu"]
+
+    for op, activation in input_activation_dict.items():
+        if activation in supported_activations:
+            main_file.write(f"    apply_input_{activation}(subtile_{op}.vals);\n")
+            main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel_name):
     output_tile_size = 0
@@ -759,7 +769,7 @@ if __name__ == "__main__":
         input_list = [input.strip(".raw") for input in inputs]
         linker_header_file.write(generate_data_location_content(input_list, input_order, glb_tile_offset))
         if(unroll != "0"): 
-            linker_header_file.write(generate_data_location_content_unroll(input_list, glb_tile_offset))
+            linker_header_file.write(generate_data_location_content_unroll(input_list, input_order, glb_tile_offset))
         bottom_half_of_body(linker_header_file)
 
         reg_write_file = args.reg_write
@@ -850,6 +860,9 @@ if __name__ == "__main__":
     main_file.write("float* subtile_gold" + stmt + " {\n")
     stile_outsize = cg_tensor_decleration(main_file, cg_source_id, cg_split_factor, cg_dest_id, scalar, nnz_ctr)
 
+    input_activation = tensor_transpose_dict
+    apply_input_activation(main_file, input_activation)
+
     for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
         if element != [""]:
             main_file.write(element[0])
@@ -864,7 +877,7 @@ if __name__ == "__main__":
         for key in cg_dest_id.keys():
             for id in cg_dest_id[key]:
                 cg_tile_size *= cg_split_factor[id][1]
-    apply_activation(main_file, cg_tile_size, cg_activation)
+    apply_output_activation(main_file, cg_tile_size, cg_activation)
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
@@ -895,9 +908,9 @@ if __name__ == "__main__":
                 stmt += "\n"
 
             if ap_gcheck:
-                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true);"
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", true, op_cnt);"
             else:
-                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", false);"
+                stmt += "    output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, \"" + dtype +  "\", false, op_cnt);"
 
     main_file.write(stmt)
     main_file.write("\n")
@@ -979,7 +992,7 @@ if __name__ == "__main__":
             for id in cp_dest_id[key]:
                 cp_tile_size *= cp_split_factor[id][0]
 
-    apply_activation(main_file, cp_split_factor, cp_activation)
+    apply_output_activation(main_file, cp_split_factor, cp_activation)
     
     main_file.write("\n")
     for key in cg_dest_id.keys():
@@ -1036,7 +1049,7 @@ if __name__ == "__main__":
             for id in ap_dest_id[key]:
                 ap_tile_size *= ap_split_factor[id][0]
                 
-    apply_activation(main_file, ap_tile_size, ap_activation)
+    apply_output_activation(main_file, ap_tile_size, ap_activation)
 
     # generate code that write the output matrix to file
     if (workspace):

@@ -248,18 +248,16 @@ def generate_data_location_content(data_list, data_order, glb_tile_offset):
 
     return result
 
-def generate_data_location_content_unroll(data_list, glb_tile_offset):
+def generate_data_location_content_unroll(data_list, data_order, glb_tile_offset):
     result = ""
-    increment = 0x00000
     base_location = 0x20400000
-    unrolled_location = base_location + int(glb_tile_offset, 16) * 8
 
-    for data_name in data_list:
-        current_location = hex(unrolled_location + increment)[2:]
+    for idx, data_name in enumerate(data_list):
+        data_tile_offset = data_order[idx][0] * int(glb_tile_offset, 16)
+        current_location = hex(base_location + data_tile_offset + int(glb_tile_offset, 16) * 8)[2:]
         result += f".data_at_specific_location 0x{current_location} : {{\n"
         result += f"    *(.app_{data_name}_unroll_data)\n"
         result += f"    KEEP(*(.app_{data_name}_unroll_data))\n"
         result += "}\n"
-        increment += int(glb_tile_offset, 16)
 
     return result
