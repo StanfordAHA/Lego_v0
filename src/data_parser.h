@@ -5,7 +5,12 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <csignal>
+#include <iomanip>
+#include <bitset>
+#include <cmath>
 #include "bf16_op.h"
+#include "gen_lut.h"
 
 using namespace std;
 
@@ -16,7 +21,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 int lut_data_printer(std::ofstream &header_file, std::string lut_name);
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0);
 int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name);
-int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name);
+int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name, bool is_dense);
 int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, std::string tensor_name);
 int rtl_lut_data_printer(std::string output_path, std::string lut_name);
 int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, int dim1);
