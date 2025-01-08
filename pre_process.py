@@ -267,10 +267,13 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         # Generating a random tensor for testing purposes of pre-processing kernel 
         size = tuple(tensor_size[0])
         tensor = None
-        value_cap = 10
+        # TODO: Parameterize this
+        np.random.seed(0)
         if dtype == "int":
-            tensor = np.random.randint(1, 3, size=size)
+            value_cap = 10
+            tensor = np.random.randint(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
         else:
+            value_cap = 10
             tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
             if dtype == "bf16":
                 for idx, val in np.ndenumerate(tensor):

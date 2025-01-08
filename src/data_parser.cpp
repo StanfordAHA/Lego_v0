@@ -2,6 +2,7 @@
 #include <csignal>
 #include <iomanip>
 #include <bitset>
+#include <cmath>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -77,7 +78,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 		for (int index = 1; index < mode_0.size();) {
 			for (int i = 0; i < run_length; i++) {
 				header_file << ", ";
-				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true);
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true, false);
 				index++;
 			}
 			if (index < mode_0.size()) {
@@ -110,10 +111,62 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
 		header_file << extents_mode_0[2 * map[i]];
 		header_file << ", "; 
 		header_file << extents_mode_0[2 * map[i] + 1];
-    }
+	}
     header_file << "};";
     header_file << "\n";
     return 0;
+}
+
+
+
+int lut_data_printer(std::ofstream &header_file, std::string lut_name) {
+	// generate lut values based on the specified lut name
+	int lut_content[1024] = {0};
+	if (lut_name == "exp") {
+		int index = 0;
+		for (int i = 0; i < 128; i ++) {
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = -128; i < 0; i ++) {
+			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
+			index ++;
+		}
+		for (int i = 256; i < 1024; i ++) {
+			lut_content[i] = 0;
+		}
+	}
+
+	// print the lut to the input script file
+
+	header_file << "const unsigned int app_tensor_" << lut_name << "_mode_vals_data_size =  " << 1025 << ";";
+	header_file << "\n";
+
+	header_file << "uint16_t app_tensor_" << lut_name << "mode_vals_data[] " <<  "__attribute__((section(\".app_tensor_" <<  lut_name << "_mode_vals_data\"))) = {";
+	header_file << "\n";
+
+	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << 1024;
+	header_file << ", ";
+
+	for (int i = 0; i < 1024; i ++) {
+		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << lut_content[i];
+		if (i != 1023) {
+			header_file << ", ";
+		}
+	}
+
+	header_file << "\n";
+	header_file << "};";
+	header_file << std::dec;
+
+	return 0;
+}
+
+int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name) {
+	header_file << "const int tensor_" << lut_name << "_mode_vals_extents[2] = {0, 1025};";
+	header_file << "\n";
+
+	return 0;
 }
 
 int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name) {
@@ -212,7 +265,7 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
     
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
-            output_gold_file << float2bfbin(op_vals[pA], false);
+            output_gold_file << float2bfbin(op_vals[pA], false, false);
             if (pA != output_subtile_size - 1){
 				if (ap_gcheck) {
 					output_gold_file << "\n";

@@ -17,6 +17,8 @@ int build_vec_val(std::vector<float> &vec, std::string file_path);
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0);
 int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype);
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map);
+int lut_data_printer(std::ofstream &header_file, std::string lut_name);
+int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name);
 int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name);
 int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, std::string tensor_name);
 int rtl_size_data_printer_1(std::string output_path, std::string tensor_name, int dim1);
