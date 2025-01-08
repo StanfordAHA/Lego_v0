@@ -530,14 +530,15 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 
-def apply_activation(main_file, output_tile_size, activation_function):
+def apply_activation(main_file, output_tile_size, activation_function, dest_id):
     supported_activation = ["relu", "leakyrelu", "exp", "elu"]
-    for activation in activation_function:
-        if activation == "none":
-            continue
-        if activation not in supported_activation:
-            raise NotImplementedError(f"Activation function {activation} is not supported")
-        main_file.write("    apply_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
+    for dest in dest_id.keys():
+        for activation in activation_function:
+            if activation == "none":
+                continue
+            if activation not in supported_activation:
+                raise NotImplementedError(f"Activation function {activation} is not supported")
+            main_file.write("    apply_" + activation + "(" + dest + "_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
         
 def write_output(main_file, ap_split_factor, dest_id, scalar, output_dir, kernel_name):
@@ -756,7 +757,7 @@ if __name__ == "__main__":
         for key in cg_dest_id.keys():
             for id in cg_dest_id[key]:
                 cg_tile_size *= cg_split_factor[id][1]
-    apply_activation(main_file, cg_tile_size, cg_activation)
+    apply_activation(main_file, cg_tile_size, cg_activation, cg_dest_id)
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
@@ -857,7 +858,7 @@ if __name__ == "__main__":
             for id in cp_dest_id[key]:
                 cp_tile_size *= cp_split_factor[id][0]
 
-    apply_activation(main_file, cp_split_factor, cp_activation)
+    apply_activation(main_file, cp_split_factor, cp_activation, cp_dest_id)
     
     main_file.write("\n")
     for key in cg_dest_id.keys():
@@ -914,7 +915,7 @@ if __name__ == "__main__":
             for id in ap_dest_id[key]:
                 ap_tile_size *= ap_split_factor[id][0]
                 
-    apply_activation(main_file, ap_tile_size, ap_activation)
+    apply_activation(main_file, ap_tile_size, ap_activation, ap_dest_id)
 
     # generate code that write the output matrix to file
     if (workspace):
