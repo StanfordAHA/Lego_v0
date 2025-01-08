@@ -596,7 +596,7 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
 
     return outsize
 
-def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
+def subtile_output_declaration(main_file, dest_id, split_factor, scalar):
     for name, id in dest_id.items():
         dest_name = name
     # declare the vectors 
@@ -655,14 +655,14 @@ def subtile_output_decleration(main_file, dest_id, split_factor, scalar):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 
-def apply_activation(main_file, output_tile_size, activation_function):
+def apply_output_activation(main_file, output_tile_size, activation_function):
     supported_activation = ["relu", "leakyrelu", "exp", "elu"]
     for activation in activation_function:
         if activation == "none":
             continue
         if activation not in supported_activation:
             raise NotImplementedError(f"Activation function {activation} is not supported")
-        main_file.write("    apply_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
+        main_file.write("    apply_output_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
 
 def apply_input_activation(main_file, input_activation_dict):
@@ -950,7 +950,7 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     main_file.write("float* read_subtile_output(std::string subtile_path) {\n")
-    subtile_output_decleration(main_file, cg_dest_id, cg_split_factor, scalar)
+    subtile_output_declaration(main_file, cg_dest_id, cg_split_factor, scalar)
     rtl_output_dest_id = {}
     for key in cg_dest_id.keys():
         dest_name = key
