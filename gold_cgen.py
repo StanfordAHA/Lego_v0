@@ -194,7 +194,6 @@ def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scala
     gold_file.write("#include <fstream>\n")
     gold_file.write("#include <vector>\n")
     gold_file.write("#include <string>\n")
-    gold_file.write("#include <boost/format.hpp>\n")
     gold_file.write("#include <sys/types.h>\n")
     gold_file.write("#include <sys/stat.h>\n")
     gold_file.write("using namespace std;\n")
@@ -210,7 +209,7 @@ def sparse(expr, op_list, op_dict, dest_dict, split_dict, output_dir_path, scala
     outsize = gold_tensor_decleration(gold_file, op_dict, dest_dict, split_factor, scalar)
     gold_file.write("\n")
     
-    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False, False):
+    for element in codegen.lower(expr, op_dict, op_dict, op_list, schedule, 1, "cg", split_factor, dest_dict, "rtl", op_dict, op_map, scalar, workspace, False, 0,  False, False, 0):
         if element != [""]:
             gold_file.write(element[0])
             gold_file.write("\n")
