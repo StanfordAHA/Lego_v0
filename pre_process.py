@@ -12,6 +12,7 @@ import random
 import sparse
 import sys
 import math
+from scipy.io import mmwrite
 
 from pathlib import Path
 
@@ -20,6 +21,23 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
     InputCacheSparseML, SPARSEML_PATH, SparseMLTensor
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
+
+def dense_mat_padding(tensor, tile_dims):
+    # make tensor size a multiple of cpu tile size
+    dense_tensor = tensor.todense()
+    tensor_n_dims = len(dense_tensor.shape)
+    padded_tensor_size = []
+    for idx in range(0, tensor_n_dims):
+        if dense_tensor.shape[idx] % tile_dims[0][idx] != 0:
+            padded_tensor_size.append(math.ceil(dense_tensor.shape[idx] / tile_dims[0][idx]) * tile_dims[0][idx])
+        else:
+            padded_tensor_size.append(dense_tensor.shape[idx])
+
+    padded_tensor = np.zeros(padded_tensor_size)
+    for idx, val in np.ndenumerate(dense_tensor):
+        padded_tensor[idx] = val
+
+    return sparse.COO(padded_tensor)
 
 def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype):
     
@@ -41,6 +59,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
         data = tensor.data
     # if the input format is dense, we need to fill in all the zero entries
     elif format == "d":
+        tensor = dense_mat_padding(tensor, tile_dims)
         n_dim = len(tensor.coords)
         for i in range(n_dim):
             coords.append([])
@@ -142,6 +161,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
         for val in range(num_values):
             if(dtype == "int"):
                 if positive_only:
+                    # caution: could lead to overflow
                     f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
                 else:
                     f.write("%s\n" % (int(tiled_COO.data[val])))
@@ -198,13 +218,45 @@ def write_csf(COO, output_dir_path):
     d_list_path = output_dir_path + "/csf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % (COO.data[val]))
+            f.write("%s\n" % abs((COO.data[val])))
+
+def write_to_tns(tensor, filename, one_based_indexing=False):
+    """
+    Writes a sparse.COO tensor to a .tns file.
+
+    Parameters:
+    - tensor: sparse.COO tensor to write.
+    - filename: Name of the output .tns file.
+    - one_based_indexing: If True, indices are incremented by 1 (MATLAB style).
+    """
+    coords = tensor.coords  # shape: (ndim, nnz)
+    data = tensor.data      # shape: (nnz,)
+
+    with open(filename, 'w') as f:
+        for i in range(tensor.nnz):
+            # Extract indices for the i-th non-zero element
+            indices = coords[:, i]
+            if one_based_indexing:
+                indices += 1  # Convert to 1-based indexing if necessary
+            # Prepare the line to write
+            line = ' '.join(map(str, indices)) + ' ' + str(data[i])
+            f.write(line + '\n')
+
+def write_to_mtx_scipy(tensor, filename):
+    """
+    Writes a 2D sparse.COO tensor to a Matrix Market .mtx file using scipy.
+    """
+    if tensor.ndim != 2:
+        raise ValueError("Tensor must be 2-dimensional to write to Matrix Market format.")
+
+    # Convert sparse.COO to scipy.sparse.coo_matrix
+    scipy_tensor = scipy.sparse.coo_matrix((tensor.data, tensor.coords), shape=tensor.shape)
+    mmwrite(filename, scipy_tensor)
 
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype):
-
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype, fill_diag):
     tensor = None
     cwd = os.getcwd()
     inputCache = None
@@ -240,6 +292,12 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor_path = os.path.join(SUITESPARSE_PATH, input_path + ".mtx")
         ss_tensor = SuiteSparseTensor(tensor_path)
         tensor = inputCache.load(ss_tensor, False)
+    elif tensor_type == "fusion":
+        # Reading a SuiteSparse tensor for testing purposes of pre-processing kernel
+        inputCache = inputCacheSuiteSparse
+        tensor_path = os.path.join("./exp_30_tensors/", input_path + ".mtx")
+        ss_tensor = SuiteSparseTensor(tensor_path)
+        tensor = inputCache.load(ss_tensor, False)
     elif tensor_type == "frostt":
         # Reading a FROSTT tensor for testing purposes of pre-processing kernel
         inputCache = inputCacheTensor
@@ -271,12 +329,37 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
 
         tile_op_crd_list = np.zeros((2, num_values), dtype=int)
         tile_op_val_list = []
+
+        subtile_size = tensor_size[-1]
         
         for idx in range(0, num_values):
-
             i = tensor.coords[0][idx]
             j = tensor.coords[1][idx]
-   
+
+            crd_i = i % subtile_size[0]
+            crd_j = j % subtile_size[0]
+
+            ii = i - crd_i + crd_j
+            jj = j - crd_j + crd_i  
+
+            tile_op_crd_list[0][idx] = ii 
+            tile_op_crd_list[1][idx] = jj
+            tile_op_val_list.append(tensor.data[idx])
+        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)    
+    elif gen_tensor == "onyx_matmul_rect": 
+        shifted = ScipyTensorShifter().shiftLastMode(tensor)
+        tensor = shifted.transpose()
+
+        tensor = sparse.COO(tensor)
+        num_values = len(tensor.data)
+
+        tile_op_crd_list = np.zeros((2, num_values), dtype=int)
+        tile_op_val_list = []
+        
+        for idx in range(0, num_values):
+            i = tensor.coords[0][idx]
+            j = tensor.coords[1][idx]
+
             crd_i = i%30
             crd_j = j%30
 
@@ -286,16 +369,21 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
             tile_op_crd_list[0][idx] = ii 
             tile_op_crd_list[1][idx] = jj
             tile_op_val_list.append(tensor.data[idx])
-        
-        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)
-        
+        tensor = sparse.COO(tile_op_crd_list, tile_op_val_list)                                
     elif gen_tensor == "shift_twice_dim2":
         shifted = ScipyTensorShifter().shiftLastMode(tensor)
         shifted2 = ScipyTensorShifter().shiftLastMode(shifted)
         tensor = shifted2
     elif gen_tensor == "gen_colvec_dim1":
-        rows, cols = tensor.shape
-        tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
+        tensorName = input_path
+        variant = "mode1"
+        path = constructOtherVecKey(tensorName,variant)
+        tensor_c_from_path = FrosttTensor(path)
+        tensor_c = tensor_c_from_path.load().todense()
+        # print("TENSOR SHAPE: ", tensor.shape)
+        # print("TENSOR_C SHAPE: ", tensor_c.shape)
+        #rows, cols = tensor.shape
+        #tensor_c = scipy.sparse.random(cols, 1, data_rvs=np.ones).toarray().flatten()
         if other_nonempty: tensor_c[0] = 1
         tensor = tensor_c
     elif gen_tensor == "gen_rowvec_dim1":
@@ -312,8 +400,8 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         path = constructOtherVecKey(tensorName, variant)
         tensor_c_loader = FrosttTensor(path)
         tensor_c = tensor_c_loader.load().todense()
-        size_i, size_j, size_k = tensor.shape  # i,j,k
-        tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
+        #size_i, size_j, size_k = tensor.shape  # i,j,k
+        #tensor_c = scipy.sparse.random(size_k, 4, data_rvs=np.ones).toarray().flatten()
         if other_nonempty:
             tensor_c[0] = 1
         tensor = tensor_c   
@@ -356,10 +444,55 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         if other_nonempty:
             matrix_d[0] = 1
         tensor = matrix_d
-    elif gen_tensor != "0":
+    elif gen_tensor != "0" and gen_tensor != "relu":
         raise NotImplementedError
 
     tensor = sparse.COO(tensor)
+
+    if(fill_diag):
+
+        subtile_size = tensor_size[-1]
+        tensor_dim = len(subtile_size)        
+
+        if(tensor_dim > 1): 
+            
+            subtile_dim = min(subtile_size[0], subtile_size[1])
+            coords_0 = tensor.coords[0]
+            coords_1 = tensor.coords[1]
+            data     = tensor.data
+            num_values = len(data)
+
+            tile_dict = {}
+           
+            for id1 in range(0, num_values):
+                id_key = ""
+
+                tile_id1 = coords_0[id1] // subtile_size[0]
+                tile_id2 = coords_1[id1] // subtile_size[1]
+
+                id_key = str(tile_id1) + "." + str(tile_id2)
+
+                if id_key not in tile_dict.keys():         
+                    tile_dict[id_key] = 1
+                    
+                    for ii in range(0, subtile_dim):
+                        glob_id1 = tile_id1 * subtile_size[0] + ii 
+                        glob_id2 = tile_id2 * subtile_size[1] + ii 
+
+                        is_present = False
+
+                        if(glob_id1 in coords_0):
+                            idx_glob_id1 = [idx for idx, value in enumerate(coords_0) if value == glob_id1]
+                            for idx in idx_glob_id1:                             
+                                if(coords_1[idx] == glob_id2): 
+                                    is_present = True
+                        
+                        if not is_present: 
+                            coords_0 = np.append(coords_0, [glob_id1])
+                            coords_1 = np.append(coords_1, [glob_id2])
+                            data = np.append(data, [0])
+
+            tensor = sparse.COO([coords_0, coords_1], data)
 
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
@@ -372,6 +505,10 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
     elif(gold_check == "s"):
         size = tensor_size[0]
         write_csf(tensor, output_dir_path)
+        if(input_path == "mtx"):
+            write_to_mtx_scipy(tensor, output_dir_path + "/tensor.mtx")
+        elif(input_path == "tns"):
+            write_to_tns(tensor, output_dir_path + "/tensor.tns", True)        
 
     tile_size = tensor_size[1:]
     process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype)

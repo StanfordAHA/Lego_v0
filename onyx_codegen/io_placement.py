@@ -61,7 +61,7 @@ def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, g
         f.write("\n")
     f.write("}\n")
 
-    if(unroll):
+    if(unroll == "1"):
         f.write("\n")
         f.write("static void update_glb_input_unroll(int k)\n")
         f.write("{\n")
@@ -71,6 +71,21 @@ def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, g
             input_name_str = input_name_str.replace(".raw", "")
             f.write(f"  {input_name_str}_extents_sum_unroll = {input_name_str}_unroll_extents[2 * k] * 2;\n")
             f.write(f"  {input_name_str}_extents_len_unroll = {input_name_str}_unroll_extents[2 * k + 1] - {input_name_str}_unroll_extents[2 * k] - 2;\n")
+            f.write(f"  HAL_Cgra_Glb_WriteReg(0x100*8 + 0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_START_ADDR_R, {glb_tile_offset} * 8 + {glb_tile_offset} * ({input_name_str}_unroll_array[0]) + {input_name_str}_extents_sum_unroll);\n")
+            f.write(f"  HAL_Cgra_Glb_WriteReg(0x100*8 + 0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_RANGE_0_R, {input_name_str}_extents_len_unroll);\n")
+            f.write("\n")
+        f.write("}\n")
+    
+    if(unroll == "2"):
+        f.write("\n")
+        f.write("static void update_glb_input_unroll(int k)\n")
+        f.write("{\n")
+        for idx, input_name in enumerate(inputs):
+            f.write("\n")
+            input_name_str = input_name.replace("hw_", "")
+            input_name_str = input_name_str.replace(".raw", "")
+            f.write(f"  {input_name_str}_extents_sum_unroll = {input_name_str}_extents[2 * k] * 2;\n")
+            f.write(f"  {input_name_str}_extents_len_unroll = {input_name_str}_extents[2 * k + 1] - {input_name_str}_extents[2 * k] - 2;\n")
             f.write(f"  HAL_Cgra_Glb_WriteReg(0x100*8 + 0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_START_ADDR_R, {glb_tile_offset} * 8 + {glb_tile_offset} * ({input_name_str}_unroll_array[0]) + {input_name_str}_extents_sum_unroll);\n")
             f.write(f"  HAL_Cgra_Glb_WriteReg(0x100*8 + 0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_RANGE_0_R, {input_name_str}_extents_len_unroll);\n")
             f.write("\n")
