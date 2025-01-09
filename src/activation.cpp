@@ -1,7 +1,4 @@
 #include "activation.h"
-#include "bf16_op.h"
-#include <bitset>
-#include <cmath>
 
 void apply_relu(float *input, int size) {
     for (int i = 0; i < size; i++) {
@@ -17,7 +14,7 @@ void apply_exp(float *input, int size) {
     // for more details
 
     // generate the rom content for the exp function
-    float exp_rom[256] = {0};
+    std::vector<float> exp_rom = gen_exp_lut();
     int index = 0;
     for (int i = -128; i < 0; i ++) {
         exp_rom[index] = bfbin2float(float2bfbin(pow(2, float(i) / 128.0), false, true));
