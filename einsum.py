@@ -5,16 +5,21 @@ grammar = """
 
 assignment: access "=" expr        -> assign
 
-access: IDENTIFIER "(" indices ")" -> access_tensor
-      | IDENTIFIER                 -> access_variable
+access: IDENTIFIER "(" indices ")"                                  -> access_tensor
+      | IDENTIFIER                                                  -> access_variable
+      | NUMBER "*" IDENTIFIER "(" indices ")" "+" NUMBER              -> mac_access_tensor
+      | NUMBER "*" IDENTIFIER "(" indices ")"                       -> mul_access_tensor
+      | IDENTIFIER "(" indices ")" "+" NUMBER                         -> add_access_tensor
+      | NUMBER "*" IDENTIFIER "+" NUMBER                              -> mac_access_variable   
+      | NUMBER "*" IDENTIFIER                                       -> mul_access_variable
+      | IDENTIFIER "+" NUMBER                                         -> add_access_variable
 
 indices: index_expr ("," index_expr)*
 
-expr: NUMBER                         -> literal
-    | access                         -> expr_access
-    | "(" expr ")"                   -> group
-    | expr "+" expr                  -> add
-    | expr "*" expr                    -> multiply
+expr: access                                 -> expr_access
+    | "(" expr ")"                           -> group
+    | expr "+" expr                          -> add
+    | expr "*" expr                          -> multiply
 
 index_expr: index_expr "+" index_expr -> index_add
     | index_expr "*" index_expr       -> index_multiply
@@ -22,7 +27,7 @@ index_expr: index_expr "+" index_expr -> index_add
     | INDEX                           -> index_literal
     | NUMBER                          -> index_number
 
-NUMBER: /[0-9]+/
+NUMBER: /[+\-]?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+\-]?\d+)?/
 INDEX: /[a-zA-Z_][0-9a-zA-Z_]*/
 IDENTIFIER: /[a-zA-Z_][0-9a-zA-Z_]*/
 %ignore /\\s+/
@@ -56,10 +61,10 @@ class IndexSetBuilder(Visitor):
 parser = Lark(grammar, parser='lalr')
 
 
-def build_dict(parsed_code, is_dest, dest_dict, op_dict):
+def build_dict(parsed_code, is_dest, dest_dict, op_dict, mac_dict):
     if(parsed_code.data == "assign"):
-        dest_dict, op_dict = build_dict(parsed_code.children[0], 1, dest_dict, op_dict)
-        dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[0], 1, dest_dict, op_dict, mac_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict, mac_dict)
     elif(parsed_code.data == "access_tensor"):
         key = parsed_code.children[0]
         n_dims = len(parsed_code.children[1].children)
@@ -70,26 +75,102 @@ def build_dict(parsed_code, is_dest, dest_dict, op_dict):
             dest_dict[key[0]] = id_list
         else:
             op_dict[key[0]] = id_list 
-        return dest_dict, op_dict
+        return dest_dict, op_dict, mac_dict
     elif (parsed_code.data == "access_variable"):
         key = parsed_code.children[0]
         if(is_dest):
             dest_dict[key[0]] = ['0']
         else:
             op_dict[key[0]] = ['0']
-        return dest_dict, op_dict
+        return dest_dict, op_dict, mac_dict
+    elif(parsed_code.data == "mac_access_tensor"):
+        key = parsed_code.children[1]
+        n_dims = len(parsed_code.children[2].children)
+        id_list = []
+        for idx in parsed_code.children[2].children:
+            id_list.append(idx.children[0][0])
+        if(is_dest):
+            dest_dict[key[0]] = id_list
+        else:
+            op_dict[key[0]] = id_list
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["*"] = parsed_code.children[0][:]
+        mac_dict[key[0]]["+"] = parsed_code.children[3][:]
+        return dest_dict, op_dict, mac_dict
+    elif(parsed_code.data == "mul_access_tensor"):
+        key = parsed_code.children[1]
+        n_dims = len(parsed_code.children[2].children)
+        id_list = []
+        for idx in parsed_code.children[2].children:
+            id_list.append(idx.children[0][0])
+        if(is_dest):
+            dest_dict[key[0]] = id_list
+        else:
+            op_dict[key[0]] = id_list
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["*"] = parsed_code.children[0][:]
+        return dest_dict, op_dict, mac_dict
+    elif(parsed_code.data == "add_access_tensor"):
+        key = parsed_code.children[0]
+        n_dims = len(parsed_code.children[1].children)
+        id_list = []
+        for idx in parsed_code.children[1].children:
+            id_list.append(idx.children[0][0])
+        if(is_dest):
+            dest_dict[key[0]] = id_list
+        else:
+            op_dict[key[0]] = id_list 
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["+"] = parsed_code.children[2][:]
+        return dest_dict, op_dict, mac_dict        
+    elif (parsed_code.data == "mac_access_variable"):
+        key = parsed_code.children[1]
+        if(is_dest):
+            dest_dict[key[0]] = ['0']
+        else:
+            op_dict[key[0]] = ['0']
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["*"] = parsed_code.children[0][:]
+        mac_dict[key[0]]["+"] = parsed_code.children[2][:]
+        return dest_dict, op_dict, mac_dict
+    elif(parsed_code.data == "mul_access_variable"):
+        key = parsed_code.children[1]
+        if(is_dest):
+            dest_dict[key[0]] = ['0']
+        else:
+            op_dict[key[0]] = ['0']
+        
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["*"] = parsed_code.children[0][:]
+        return dest_dict, op_dict, mac_dict
+    elif(parsed_code.data == "add_access_variable"):
+        key = parsed_code.children[0]
+        if(is_dest):
+            dest_dict[key[0]] = ['0']
+        else:
+            op_dict[key[0]] = ['0']
+        if key[0] not in mac_dict:
+            mac_dict[key[0]] = {}
+        mac_dict[key[0]]["+"] = parsed_code.children[1][:]
+        return dest_dict, op_dict, mac_dict
     elif(parsed_code.data == "expr_access"):
-        dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict, mac_dict)
     elif(parsed_code.data == "multiply"):
-        dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
-        dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict, mac_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict, mac_dict)
     elif(parsed_code.data == "add"):
-        dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
-        dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict, mac_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict, mac_dict)
     elif(parsed_code.data == "group"):
-        dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
+        dest_dict, op_dict, mac_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict, mac_dict)
 
-    return dest_dict, op_dict
+
+    return dest_dict, op_dict, mac_dict
 
 def build_expr(parsed_code): 
     if(parsed_code.data == "assign"):
@@ -99,6 +180,18 @@ def build_expr(parsed_code):
     elif(parsed_code.data == "access_tensor"):
         return parsed_code.children[0][0] 
     elif (parsed_code.data == "access_variable"):
+        return parsed_code.children[0][0]
+    elif(parsed_code.data == "mac_access_tensor"):
+        return parsed_code.children[1][0]
+    elif(parsed_code.data == "mul_access_tensor"):
+        return parsed_code.children[1][0]
+    elif(parsed_code.data == "add_access_tensor"):
+        return parsed_code.children[0][0]   
+    elif(parsed_code.data == "mac_access_variable"):
+        return parsed_code.children[1][0]
+    elif(parsed_code.data == "mul_access_variable"):
+        return parsed_code.children[1][0]
+    elif(parsed_code.data == "add_access_variable"):
         return parsed_code.children[0][0]
     elif(parsed_code.data == "expr_access"):
         return  build_expr(parsed_code.children[0])

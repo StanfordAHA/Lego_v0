@@ -21,7 +21,7 @@ from sam.util import SUITESPARSE_PATH, SuiteSparseTensor, InputCacheSuiteSparse,
 from sam.sim.src.tiling.process_expr import parse_all
 from lassen.utils import float2bfbin, bfbin2float
 
-def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype):
+def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, positive_only, dtype, mac_scale):
     
     ''' 
     This is the main function that is called to tile and store as CSF
@@ -70,7 +70,15 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
 
     # Creating the COO representation for the tiled tensor at each level
     for i in range(num_values):
-        d_list[i] = data[i] 
+        if mac_scale != {}:
+            if "*" in mac_scale and "+" in mac_scale:
+                d_list[i] = float(mac_scale["*"]) * data[i] + float(mac_scale["+"])
+            elif "*" in mac_scale:
+                d_list[i] = float(mac_scale["*"]) * data[i]
+            elif "+" in mac_scale:
+                d_list[i] = float(mac_scale["+"]) + data[i]
+        else:
+            d_list[i] = data[i]
         for level in range(n_levels):
             for dim in range(n_dim):
 
@@ -203,7 +211,7 @@ def write_csf(COO, output_dir_path):
 inputCacheSuiteSparse = InputCacheSuiteSparse()
 inputCacheTensor = InputCacheTensor()
 
-def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype):
+def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict, format, gen_tensor, density, gold_check, positive_only, dtype, mac_scale):
 
     tensor = None
     cwd = os.getcwd()
@@ -374,4 +382,4 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         write_csf(tensor, output_dir_path)
 
     tile_size = tensor_size[1:]
-    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype)
+    process_coo(tensor, tile_size, output_dir_path, format, schedule_dict, positive_only, dtype, mac_scale)

@@ -72,7 +72,8 @@ def data_parser(data):
 
     parsed_stmt = einsum.parser.parse(stmt)
     expr = einsum.build_expr(parsed_stmt)
-    dest, op = einsum.build_dict(parsed_stmt, 1, {}, {})
+    
+    dest, op, mac_dict = einsum.build_dict(parsed_stmt, 1, {}, {}, {})
     op_list = list(op.keys()) 
 
     schedule_rule = Word(alphanums) + "_" + Word(alphanums) + ':' + '[' + Word(alphas) + ']'
@@ -101,13 +102,13 @@ def data_parser(data):
     activation["cp"].extend(list(activation_rule.parseString(data[5 + num_ids]))[3:])
     activation["cg"].extend(list(activation_rule.parseString(data[6 + num_ids]))[3:])
 
-    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation
+    return app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation, mac_dict
 
 def parse(input_file, level):
 
     with open(input_file, 'r') as f:
         data = f.read().splitlines()
-    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation = data_parser(data)
+    app_name, dest, op, op_list, schedule_1, schedule_2, schedule_3, split_factor, expr, activation, mac_dict = data_parser(data)
 
     expr = expr.split("=")
     expr = expr[1]
@@ -163,7 +164,7 @@ def parse(input_file, level):
     else: 
         dest_id = dest
     
-    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
+    return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation, mac_dict
 
 def parse_lut_tensor(activation_list):
 
@@ -590,13 +591,13 @@ if __name__ == "__main__":
     tensor_path_dict, tensor_type_dict, tensor_format_dict, tensor_transpose_dict, tensor_density_dict, tensor_dtype_dict = tensor_path_type_dict(args.tensor)
 
     level = "ap"
-    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation = parse(args.program, level)
+    app_name, dest, op, ap_dest_id, ap_dest_map, ap_source_id, ap_source_map, expr, ap_split_factor, op_list, ap_schedule, scalar, ap_activation, mac_dict = parse(args.program, level)
 
     level = "cp"
-    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation = parse(args.program, level)
+    _, _, _, cp_dest_id, cp_dest_map, cp_source_id, cp_source_map, _, cp_split_factor, _, cp_schedule, scalar, cp_activation, _ = parse(args.program, level)
 
     level = "cg"
-    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
+    _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation, _ = parse(args.program, level)
 
     # go throug the activation function and return list of lut required
     lut_tensor = parse_lut_tensor(cg_activation)
@@ -690,9 +691,12 @@ if __name__ == "__main__":
         format         = tensor_format_dict[key]  
         density        = tensor_density_dict[key]
         dtype          = tensor_dtype_dict[key]
-
+        if key in mac_dict.keys():
+            mac_scale = mac_dict[key]
+        else:
+            mac_scale = {}
         if(not args.no_preprocess): 
-            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, args.positive_only, dtype)    
+            pre_process.process(tensor_type, input_dir_path, output_dir_path, tensor_size, tensor_schedule, format, transpose, density, args.gold_check, args.positive_only, dtype, mac_scale)    
     
     workspace = args.workspace
 
