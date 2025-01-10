@@ -210,23 +210,16 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 
 int rtl_lut_data_printer(std::string output_path, std::string lut_name) {
 	// generate lut values based on the specified lut name
-	int lut_content[1024] = {0};
+	std::vector<float> lut_content;
 	if (lut_name == "exp") {
-		int index = 0;
-		for (int i = 0; i < 128; i ++) {
-			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
-			index ++;
-		}
-		for (int i = -128; i < 0; i ++) {
-			lut_content[index] = bfbin2uint(float2bfbin(pow(2, float(i) / 128.0), false, true));
-			index ++;
-		}
-		for (int i = 256; i < 1024; i ++) {
-			lut_content[i] = 0;
-		}
+		lut_content = gen_exp_lut();
+	} else if (lut_name == "recip") {
+		lut_content = gen_div_lut();
+		// hack to make the name of the file matches that expected by the metamapper
+		lut_name = "div";
 	}
-
-	// the metamapper mapped lut will be looking for a file with the name "fp_<operation>"
+	
+	// the metamapper mapped lut will be looking for a file with the name "tensor_fp_<operation>_mode_vals"
 	std::string output_file_name = output_path + "/tensor_fp_" + lut_name + "_mode_vals";
 	ofstream output_file(output_file_name.c_str());
 

@@ -18,7 +18,14 @@ int apply_input_relu(std::vector<float> &input) {
     return 0;
 }
 
-void apply_exp(float *input, int size) {
+int apply_input_recip(std::vector<float> &input) {
+    for (int i = 0; i < input.size(); i++) {
+        input[i] = bf16_div(1, input[i]);
+    }
+    return 0;
+}
+
+void apply_output_exp(float *input, int size) {
     // this is implemented according to the composition of complex ops in our cgra
     // please refer to the amber paper https://ieeexplore.ieee.org/document/10258121 
     // for more details
@@ -49,7 +56,7 @@ void apply_exp(float *input, int size) {
     }
 }
 
-void apply_leakyrelu(float *input, int size) {
+void apply_output_leakyrelu(float *input, int size) {
 
     // TODO: parameterize the leaky relu slope
     for (int i = 0; i < size; i++) {
@@ -59,7 +66,7 @@ void apply_leakyrelu(float *input, int size) {
     }
 }
 
-void apply_elu(float *input, int size) {
+void apply_output_elu(float *input, int size) {
 
     // this is the same implementation as the exp activation, TODO: move this to bf16_op.h
     float exp_rom[256] = {0};

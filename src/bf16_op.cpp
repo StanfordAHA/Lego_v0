@@ -115,10 +115,10 @@ float bf16_div(float in1, float in2) {
 
     // generate the lut for div
     std::vector<float> div_rom = gen_div_lut();
-    unsigned int in1_mant = bf16_getman(in1);
-    float lut_out = div_rom[in1_mant];
-    float subexp_out = bf16_expsub(lut_out, in1);
-    float result = bf16_mul(subexp_out, in2);
+    unsigned int in2_mant = bf16_getman(in2);
+    float lut_out = div_rom[in2_mant];
+    float subexp_out = bf16_expsub(lut_out, in2);
+    float result = bf16_mul(subexp_out, in1);
 
     return result;
 }
@@ -239,15 +239,16 @@ float bf16_expsub(float in1, float in2) {
     unsigned long in1_lfrac = ((in1_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
 
     // extract exponent of in2
+    std::bitset<1> in2_sign_bit = std::bitset<1>(in2_bin[31]);
     unsigned long in2_exp = ((in2_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
 
-    // substract the exponent
-    unsigned long res_exp = in1_exp - in2_exp;
+    // substract the exponent, remember to re-bias the exponent!!
+    unsigned long res_exp = in1_exp - in2_exp + 127;
 
     // reconstruct result with the new exponent
     std::bitset<8> res_exp_bit(res_exp);
     std::bitset<7> res_lfrac_bit(in1_lfrac);
-    std::bitset<32> result_bin(in1_sign_bit.to_string() + res_exp_bit.to_string() + res_lfrac_bit.to_string() + "0000000000000000");
+    std::bitset<32> result_bin((in1_sign_bit | in2_sign_bit).to_string() + res_exp_bit.to_string() + res_lfrac_bit.to_string() + "0000000000000000");
 
     // convert to float
     unsigned int tmp_result_bf16 =static_cast<unsigned int>(result_bin.to_ulong());
