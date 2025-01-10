@@ -166,11 +166,11 @@ def parse(input_file, level):
     return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
 
 def parse_lut_tensor(activation_list):
-
     lut_tensor = []
     lut_mapping = {
         "exp": "exp",
-        "elu": "exp"
+        "elu": "exp",
+        "recip": "recip",
     }
     for activation in activation_list:
         if activation in lut_mapping:
@@ -666,7 +666,7 @@ def apply_output_activation(main_file, output_tile_size, activation_function, de
     main_file.write("\n")
 
 def apply_input_activation(main_file, input_activation_dict):
-    supported_activations = ["relu"]
+    supported_activations = ["relu", "recip"]
     for op, activation in input_activation_dict.items():
         if activation in supported_activations:
             main_file.write(f"    apply_input_{activation}(subtile_{op}.vals);\n")
@@ -743,7 +743,9 @@ if __name__ == "__main__":
     nnz_ctr        = args.nnz_ctr
 
     # go throug the activation function and return list of lut required
-    lut_tensor = parse_lut_tensor(cg_activation)
+    activation_list = cg_activation.copy()
+    activation_list.extend(list(tensor_transpose_dict.values()))
+    lut_tensor = parse_lut_tensor(activation_list)
 
     if os.path.exists("./lego_scratch"):
         shutil.rmtree("./lego_scratch")
