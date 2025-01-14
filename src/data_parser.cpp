@@ -1,8 +1,4 @@
 #include "data_parser.h"
-#include <csignal>
-#include <iomanip>
-#include <bitset>
-#include <cmath>
 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
@@ -169,14 +165,26 @@ int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name) {
 	return 0;
 }
 
-int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name) {
+int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name, bool is_dense) {
+
+	// for dimension, the regression is only expecting seg
+	if (mode_type == "crd" && is_dense) {
+		return 0;
+	}
 
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_" + mode_name + "_" + mode_type;
 	ofstream output_file(output_file_name.c_str());
-
-	for (int pA = 0; pA < mode_0.size(); pA++) {
-		output_file << mode_0[pA];
-		output_file << "\n";
+	if (is_dense) {
+		// for dense dimension, dump the (0, dim_size) pair
+		// since the matrix is completely dense, data at index 1 in the segment array 
+		// will be the size of the dimension
+		output_file << "0\n";
+		output_file <<  mode_0[1] << "\n";
+	} else {
+		for (int pA = 0; pA < mode_0.size(); pA++) {
+			output_file << mode_0[pA];
+			output_file << "\n";
+		}
 	}
 
 	return 0;
@@ -197,6 +205,33 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 	// TODO: Store integer values to file if dtype is integer 
 	// Propogate data type 
 
+	return 0;
+}
+
+int rtl_lut_data_printer(std::string output_path, std::string lut_name) {
+	// generate lut values based on the specified lut name
+	std::vector<float> lut_content;
+	if (lut_name == "exp") {
+		lut_content = gen_exp_lut();
+	} else if (lut_name == "recip") {
+		lut_content = gen_div_lut();
+		// hack to make the name of the file matches that expected by the metamapper
+		lut_name = "div";
+	}
+	
+	// the metamapper mapped lut will be looking for a file with the name "tensor_fp_<operation>_mode_vals"
+	std::string output_file_name = output_path + "/tensor_fp_" + lut_name + "_mode_vals";
+	ofstream output_file(output_file_name.c_str());
+
+	for (int i = 0; i < 1024; i ++) {
+		// FIXME: Temporary fix to avoid precision loss
+		// TODO: Find a better way to set the digit precision
+		output_file << std::fixed << setprecision(30) << lut_content[i];
+		output_file << "\n";
+	}
+
+	// TODO: Store integer values to file if dtype is integer 
+	// Propogate data type 
 
 	return 0;
 }
@@ -230,6 +265,15 @@ int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, in
 	output_file << dim1 << "\n";
 	output_file << dim2 << "\n";
 	output_file << dim3 << "\n";
+
+	return 0;
+}
+
+int rtl_dump_dtype(std::string output_path, std::string dtype) {
+	std::string output_file_name = output_path + "/dtype";
+	ofstream output_file(output_file_name.c_str());
+
+	output_file << dtype << "\n";
 
 	return 0;
 }

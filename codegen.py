@@ -634,7 +634,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
     
         stmt = ""
     
@@ -840,15 +840,18 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     for op in op_list:
                         
                         tensor_dim = len(id_dict_true[op])
+                        is_dense = "false"
+                        if (tensor_format_dict[op] == "d"):
+                            is_dense = "true"
 
                         for i in range(tensor_dim):
                             stmt += "    " * (level + 3)
                             stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
                             stmt += "\n"    
                             stmt += "    " * (level + 3)
                             stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"" + ");"
+                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
                             stmt += "\n"
                         
                         stmt += "    " * (level + 3)
@@ -872,6 +875,13 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                                     stmt += ", " + str(split_dict[idx][0])
                         stmt += ");"
                         stmt += "\n"
+                        stmt += "\n"
+
+                        if lut_tensor is not None:
+                            for lut in lut_tensor:
+                                stmt += "        " + "rtl_lut_data_printer(subtile_path, \"" + lut + "\");\n"
+                        
+                        stmt += "         " + "rtl_dump_dtype(subtile_path, \"" + dtype + "\");\n"
                         stmt += "\n"
 
                     stmt += "    " * (level + 2) + "}\n"
@@ -963,7 +973,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype=None):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
     
     curr_id = schedule[0]
     stmt_list = []
@@ -1004,11 +1014,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype, nnz_ctr))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         

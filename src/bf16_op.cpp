@@ -1,5 +1,4 @@
 #include "bf16_op.h"
-#include <cmath>
 
 float bf16_add(float input1, float input2) {
     
@@ -106,6 +105,24 @@ float bf16_mul(float input1, float input2) {
     return result_bf16;
 }
 
+float bf16_div(float in1, float in2) {
+
+    // check inputs are in bfloat16 format
+    std::bitset<32> in1_bin(*reinterpret_cast<unsigned int*>(&in1));
+    std::bitset<32> in2_bin(*reinterpret_cast<unsigned int*>(&in2));
+    assert((in1_bin & std::bitset<32>(0x0000FFFF)) == std::bitset<32>(0x00000000));
+    assert((in2_bin & std::bitset<32>(0x0000FFFF)) == std::bitset<32>(0x00000000));
+
+    // generate the lut for div
+    std::vector<float> div_rom = gen_div_lut();
+    unsigned int in2_mant = bf16_getman(in2);
+    float lut_out = div_rom[in2_mant];
+    float subexp_out = bf16_expsub(lut_out, in2);
+    float result = bf16_mul(subexp_out, in1);
+
+    return result;
+}
+
 int bf16_f2int(float input) {
 
     // check if input is in bfloat16 format
@@ -205,6 +222,53 @@ float bf16_faddiexp(float input1, int input2) {
     float result_bf16 = *reinterpret_cast<float *>(&tmp_result_bf16);
 
     return result_bf16;
+}
+
+// bf16_expsub substracts the exponent of in2 from the that of the in1
+float bf16_expsub(float in1, float in2) {
+
+    // ensuring both floating point inputs are of the bf16 format
+    std::bitset<32> in1_bin(*reinterpret_cast<unsigned int*>(&in1));
+    std::bitset<32> in2_bin(*reinterpret_cast<unsigned int*>(&in2));
+    assert((in1_bin & std::bitset<32>(0x0000FFFF)) == std::bitset<32>(0x00000000));
+    assert((in2_bin & std::bitset<32>(0x0000FFFF)) == std::bitset<32>(0x00000000));
+    
+    // extract sign, exponent, and mantissa of in1
+    std::bitset<1> in1_sign_bit = std::bitset<1>(in1_bin[31]);
+    unsigned long in1_exp = ((in1_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
+    unsigned long in1_lfrac = ((in1_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
+
+    // extract exponent of in2
+    std::bitset<1> in2_sign_bit = std::bitset<1>(in2_bin[31]);
+    unsigned long in2_exp = ((in2_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
+
+    // substract the exponent, remember to re-bias the exponent!!
+    unsigned long res_exp = in1_exp - in2_exp + 127;
+
+    // reconstruct result with the new exponent
+    std::bitset<8> res_exp_bit(res_exp);
+    std::bitset<7> res_lfrac_bit(in1_lfrac);
+    std::bitset<32> result_bin((in1_sign_bit | in2_sign_bit).to_string() + res_exp_bit.to_string() + res_lfrac_bit.to_string() + "0000000000000000");
+
+    // convert to float
+    unsigned int tmp_result_bf16 =static_cast<unsigned int>(result_bin.to_ulong());
+    float result_bf16 = *reinterpret_cast<float *>(&tmp_result_bf16);
+
+    return result_bf16;
+}
+
+unsigned long bf16_getman(float input) {
+
+    // check if input is in bfloat16 format
+    std::bitset<32> input_bin(*reinterpret_cast<unsigned int*>(&input));
+    assert((input_bin & std::bitset<32>(0x0000FFFF)) == std::bitset<32>(0x00000000));
+
+    // extract sign, exponent, and fraction
+    unsigned long sign = ((input_bin & std::bitset<32>(0x80000000)) >> 31).to_ulong();
+    unsigned long exp = ((input_bin & std::bitset<32>(0x7F800000)) >> 23).to_ulong();
+    unsigned long lfrac = ((input_bin & std::bitset<32>(0x007F0000)) >> 16).to_ulong();
+    
+    return lfrac;
 }
 
 std::string float2bfbin(float input, bool return_hex, bool return_bin_string) {

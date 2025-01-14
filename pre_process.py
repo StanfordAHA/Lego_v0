@@ -271,13 +271,18 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         np.random.seed(0)
         if dtype == "int":
             value_cap = 10
-            tensor = np.random.randint(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+            tensor = np.random.randint(low=1, high = value_cap / 2, size=size)
         else:
             value_cap = 10
-            tensor = np.random.uniform(low=-1 * value_cap / 2, high = value_cap / 2, size=size)
+            tensor = np.random.uniform(low=1, high = value_cap / 2, size=size)
             if dtype == "bf16":
                 for idx, val in np.ndenumerate(tensor):
                     tensor[idx] = bfbin2float(float2bfbin(val))
+        # randomly negates 50% of the values
+        negate_indices = np.random.choice(np.prod(tensor.shape), int(np.prod(tensor.shape) * 0.5), replace=False)
+        tensor[np.unravel_index(negate_indices, tensor.shape)] *= -1
+        
+        # inject zeros according to the specified density
         num_zero = int(np.prod(tensor.shape) * (1 - density / 100))
         zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
         tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
@@ -444,7 +449,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         if other_nonempty:
             matrix_d[0] = 1
         tensor = matrix_d
-    elif gen_tensor != "0" and gen_tensor != "relu":
+    elif gen_tensor != "0" and gen_tensor != "relu" and gen_tensor != "recip":
         raise NotImplementedError
 
     tensor = sparse.COO(tensor)

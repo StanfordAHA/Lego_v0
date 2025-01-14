@@ -166,11 +166,11 @@ def parse(input_file, level):
     return app_name, dest, op, dest_id, dest_map, source_id, source_map, expr, split_factor, op_list, schedule, scalar, activation
 
 def parse_lut_tensor(activation_list):
-
     lut_tensor = []
     lut_mapping = {
         "exp": "exp",
-        "elu": "exp"
+        "elu": "exp",
+        "recip": "recip",
     }
     for activation in activation_list:
         if activation in lut_mapping:
@@ -655,19 +655,18 @@ def subtile_output_declaration(main_file, dest_id, split_factor, scalar):
         main_file.write("\n")
         main_file.write("    " + "int p" + key + "_output;\n")
 
-def apply_output_activation(main_file, output_tile_size, activation_function):
+def apply_output_activation(main_file, output_tile_size, activation_function, dest_id):
     supported_activation = ["relu", "leakyrelu", "exp", "elu"]
     for activation in activation_function:
         if activation == "none":
             continue
         if activation not in supported_activation:
             raise NotImplementedError(f"Activation function {activation} is not supported")
-        main_file.write("    apply_output_" + activation + "(X_vals, " + str(output_tile_size) + ");\n")
+        main_file.write("    apply_output_" + activation + "(" + dest + "_vals, " + str(output_tile_size) + ");\n")
     main_file.write("\n")
 
 def apply_input_activation(main_file, input_activation_dict):
-    supported_activations = ["relu"]
-
+    supported_activations = ["relu", "recip"]
     for op, activation in input_activation_dict.items():
         if activation in supported_activations:
             main_file.write(f"    apply_input_{activation}(subtile_{op}.vals);\n")
@@ -744,7 +743,9 @@ if __name__ == "__main__":
     nnz_ctr        = args.nnz_ctr
 
     # go throug the activation function and return list of lut required
-    lut_tensor = parse_lut_tensor(cg_activation)
+    activation_list = cg_activation.copy()
+    activation_list.extend(list(tensor_transpose_dict.values()))
+    lut_tensor = parse_lut_tensor(activation_list)
 
     if os.path.exists("./lego_scratch"):
         shutil.rmtree("./lego_scratch")
@@ -890,7 +891,7 @@ if __name__ == "__main__":
     input_activation = tensor_transpose_dict
     apply_input_activation(main_file, input_activation)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -904,7 +905,7 @@ if __name__ == "__main__":
         for key in cg_dest_id.keys():
             for id in cg_dest_id[key]:
                 cg_tile_size *= cg_split_factor[id][1]
-    apply_output_activation(main_file, cg_tile_size, cg_activation)
+    apply_output_activation(main_file, cg_tile_size, cg_activation, cg_dest_id)
 
     if(mode == "rtl"):
         stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
@@ -962,7 +963,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, 0, dtype):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, 0, lut_tensor, dtype, tensor_format_dict):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -998,7 +999,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -1019,7 +1020,7 @@ if __name__ == "__main__":
             for id in cp_dest_id[key]:
                 cp_tile_size *= cp_split_factor[id][0]
 
-    apply_output_activation(main_file, cp_split_factor, cp_activation)
+    apply_output_activation(main_file, cp_split_factor, cp_activation, cp_dest_id)
     
     main_file.write("\n")
     for key in cg_dest_id.keys():
@@ -1057,7 +1058,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, dtype):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -1076,7 +1077,7 @@ if __name__ == "__main__":
             for id in ap_dest_id[key]:
                 ap_tile_size *= ap_split_factor[id][0]
                 
-    apply_output_activation(main_file, ap_tile_size, ap_activation)
+    apply_output_activation(main_file, ap_tile_size, ap_activation, ap_dest_id)
 
     # generate code that write the output matrix to file
     if (workspace):
