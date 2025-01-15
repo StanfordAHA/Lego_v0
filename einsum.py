@@ -60,6 +60,7 @@ def build_dict(parsed_code, is_dest, dest_dict, op_dict):
     if(parsed_code.data == "assign"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 1, dest_dict, op_dict)
         dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        return dest_dict, op_dict
     elif(parsed_code.data == "access_tensor"):
         key = parsed_code.children[0]
         n_dims = len(parsed_code.children[1].children)
@@ -77,19 +78,22 @@ def build_dict(parsed_code, is_dest, dest_dict, op_dict):
             dest_dict[key[0]] = ['0']
         else:
             op_dict[key[0]] = ['0']
+
         return dest_dict, op_dict
     elif(parsed_code.data == "expr_access"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
+        return dest_dict, op_dict
     elif(parsed_code.data == "multiply"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
         dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        return dest_dict, op_dict
     elif(parsed_code.data == "add"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
         dest_dict, op_dict = build_dict(parsed_code.children[1], 0, dest_dict, op_dict)
+        return dest_dict, op_dict
     elif(parsed_code.data == "group"):
         dest_dict, op_dict = build_dict(parsed_code.children[0], 0, dest_dict, op_dict)
-
-    return dest_dict, op_dict
+        return dest_dict, op_dict
 
 def build_expr(parsed_code): 
     if(parsed_code.data == "assign"):

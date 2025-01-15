@@ -201,6 +201,8 @@ def get_stmt(stmt, id_dict, dtype):
         op_cnt = left_op_cnt + 1
         if(id_dict[stmt.right] == ['-']):
             right = "0"
+        elif(id_dict[stmt.right] == ['0']):
+            right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + "]"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"  
         if(dtype == "bf16"):
@@ -224,6 +226,8 @@ def get_stmt(stmt, id_dict, dtype):
         op_cnt = right_op_cnt + 1
         if(id_dict[stmt.left] == ['-']):
             left = "0"
+        elif(id_dict[stmt.left] == ['0']):
+            left = stmt.left + "_vals[" + id_dict[stmt.left][-1] + "]"
         else:
             left =  stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
         if(dtype == "bf16"):
@@ -245,11 +249,15 @@ def get_stmt(stmt, id_dict, dtype):
     else:
         if stmt.left is not None and (id_dict[stmt.left] == ['-']):
             left = "0"
+        elif stmt.left is not None and (id_dict[stmt.left] == ['0']):
+            left = stmt.left + "_vals[" + id_dict[stmt.left][-1] + "]"
         elif stmt.left is not None:
             left = stmt.left + "_vals[" + id_dict[stmt.left][-1] + stmt.left + "]"
 
         if(id_dict[stmt.right] == ['-']):
             right = "0"
+        elif(id_dict[stmt.right] == ['0']):
+            right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + "]"
         else:
             right = stmt.right + "_vals[" + id_dict[stmt.right][-1] + stmt.right + "]"
         if(dtype == "bf16"):
@@ -839,7 +847,11 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     stmt += "if (mode == \"tiling\") {\n"
                     for op in op_list:
                         
-                        tensor_dim = len(id_dict_true[op])
+                        if id_dict_true[op] != ['0']:
+                            tensor_dim = len(id_dict_true[op])
+                        else:
+                            tensor_dim = 0
+
                         is_dense = "false"
                         if (tensor_format_dict[op] == "d"):
                             is_dense = "true"
@@ -860,11 +872,18 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         
                         stmt += "    " * (level + 3)
                         stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
-                        for idx in cg_source_map[op]:
-                            id = cg_source_id[op][idx]
-                            stmt += ", " + str(split_dict[id][1]) 
-                        stmt += ");"
-                        stmt += "\n"
+
+                        print("id_dict_true[op]: ", id_dict_true[op])
+                        
+                        if id_dict_true[op] == ['0']:
+                            stmt += ", 1);\n"
+                        else:
+                            for idx in cg_source_map[op]:
+                                id = cg_source_id[op][idx]
+                                stmt += ", " + str(split_dict[id][1]) 
+                            stmt += ");"
+                            stmt += "\n"
+
                         for dest_name, ids in dest.items():
                             stmt += "    " * (level + 3)
                             stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + "out" + "\""

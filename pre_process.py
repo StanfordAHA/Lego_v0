@@ -50,7 +50,6 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
     '''
     
     # The input tensor is a COO tensor
-
     coords = []
     data = []
 
@@ -87,25 +86,27 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
     else:
         d_list = np.zeros((num_values), dtype=float)
 
-    # Creating the COO representation for the tiled tensor at each level
-    for i in range(num_values):
-        d_list[i] = data[i] 
-        for level in range(n_levels):
-            for dim in range(n_dim):
+    if tile_dims[0] == "0": 
+        d_list[0] = tensor.fill_value
+    else:
+        # Creating the COO representation for the tiled tensor at each level
+        for i in range(num_values):
+            d_list[i] = data[i] 
+            for level in range(n_levels):
+                for dim in range(n_dim):
 
-                crd_dim = schedule_dict[level][dim] 
-                nxt_dim = schedule_dict[level + 1].index(crd_dim)
+                    crd_dim = schedule_dict[level][dim] 
+                    nxt_dim = schedule_dict[level + 1].index(crd_dim)
 
-                idx1 = level * n_dim + dim
-                idx2 = (level + 1) * n_dim + nxt_dim
+                    idx1 = level * n_dim + dim
+                    idx2 = (level + 1) * n_dim + nxt_dim
 
-                if(level == 0):
-                    n_lists[idx1][i] = coords[crd_dim][i] // tile_dims[level][crd_dim]
-                    n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
-                else:
-                    n_lists[idx1][i] = n_lists[idx1][i] // tile_dims[level][crd_dim]
-                    n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
-
+                    if(level == 0):
+                        n_lists[idx1][i] = coords[crd_dim][i] // tile_dims[level][crd_dim]
+                        n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
+                    else:
+                        n_lists[idx1][i] = n_lists[idx1][i] // tile_dims[level][crd_dim]
+                        n_lists[idx2][i] = coords[crd_dim][i] % tile_dims[level][crd_dim]
 
     tiled_COO = sparse.COO(n_lists, d_list)
 
@@ -157,16 +158,24 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
                     f.write("%s\n" % item)
     
     d_list_path = output_dir_path + "/tcsf_vals" + ".txt"
+
     with open(d_list_path, 'w+') as f:
-        for val in range(num_values):
+        if tile_dims[0][0] == '0':
             if(dtype == "int"):
-                if positive_only:
-                    # caution: could lead to overflow
-                    f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
-                else:
-                    f.write("%s\n" % (int(tiled_COO.data[val])))
-            else:   
-                f.write("%s\n" % (tiled_COO.data[val]))                
+                f.write("%s\n" % (int(tensor.fill_value)))
+            else:
+                f.write("%s\n" % (tensor.fill_value))
+        else:
+            for val in range(num_values):
+                if(dtype == "int"):
+                    if positive_only:
+                        # caution: could lead to overflow
+                        f.write("%s\n" % (abs(int(tiled_COO.data[val]))))
+                    else:
+                        f.write("%s\n" % (int(tiled_COO.data[val])))
+                else:   
+                    f.write("%s\n" % (tiled_COO.data[val]))      
+
     return n_lists, d_list, crd_dict, pos_dict
 
 def write_csf(COO, output_dir_path): 
@@ -269,25 +278,35 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         tensor = None
         # TODO: Parameterize this
         np.random.seed(0)
-        if dtype == "int":
-            value_cap = 10
-            tensor = np.random.randint(low=1, high = value_cap / 2, size=size)
-        else:
-            value_cap = 10
-            tensor = np.random.uniform(low=1, high = value_cap / 2, size=size)
-            if dtype == "bf16":
-                for idx, val in np.ndenumerate(tensor):
-                    tensor[idx] = bfbin2float(float2bfbin(val))
-        # randomly negates 50% of the values
-        negate_indices = np.random.choice(np.prod(tensor.shape), int(np.prod(tensor.shape) * 0.5), replace=False)
-        tensor[np.unravel_index(negate_indices, tensor.shape)] *= -1
-        
-        # inject zeros according to the specified density
-        num_zero = int(np.prod(tensor.shape) * (1 - density / 100))
-        zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
-        tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
-        # tensor = scipy.sparse.coo_array(tensor)
-        # tensor = sparse.COO(tensor)
+        if size[0] == '0': 
+            if dtype == "int":
+                # Generate a random integer
+                tensor = np.random.randint(low=1, high=10)
+            else:
+                # Generate a random float
+                tensor = np.random.uniform(low=1, high=10)
+                if dtype == "bf16":
+                    tensor = bfbin2float(float2bfbin(tensor))
+        else: 
+            if dtype == "int":
+                value_cap = 10
+                tensor = np.random.randint(low=1, high = value_cap / 2, size=size)
+            else:
+                value_cap = 10
+                tensor = np.random.uniform(low=1, high = value_cap / 2, size=size)
+                if dtype == "bf16":
+                    for idx, val in np.ndenumerate(tensor):
+                        tensor[idx] = bfbin2float(float2bfbin(val))
+            # randomly negates 50% of the values
+            negate_indices = np.random.choice(np.prod(tensor.shape), int(np.prod(tensor.shape) * 0.5), replace=False)
+            tensor[np.unravel_index(negate_indices, tensor.shape)] *= -1
+            
+            # inject zeros according to the specified density
+            num_zero = int(np.prod(tensor.shape) * (1 - density / 100))
+            zero_indices = np.random.choice(np.prod(tensor.shape), num_zero, replace=False)
+            tensor[np.unravel_index(zero_indices, tensor.shape)] = 0
+            # tensor = scipy.sparse.coo_array(tensor)
+            # tensor = sparse.COO(tensor)
     elif tensor_type == "ex":
         # Reading an extensor tensor for testing purposes of pre-processing kernel
         tensor = scipy.io.mmread(input_path)

@@ -146,6 +146,12 @@ def parse(input_file, level):
             if id in op[tensor]:
                 source_id[tensor].append(id)
                 source_map[tensor].append(op[tensor].index(id)) 
+    
+    for tensor in op:
+        for id in op[tensor]: 
+            if(id == '0'): 
+                source_id[tensor].append(id)
+    
 
     for tensor in dest:
         for id in dest[tensor]: 
@@ -181,7 +187,10 @@ def ap_tensor_decleration(main_file, ap_source_id):
 
     for key, value in ap_source_id.items():
 
-        tensor_dim = len(value)
+        if value[0] == '0':
+            tensor_dim = 0
+        else:
+            tensor_dim = len(value)
 
         main_file.write("\n")
 
@@ -215,6 +224,8 @@ def ap_tensor_decleration(main_file, ap_source_id):
         main_file.write("\n")
 
         main_file.write("    " + "tile" + str(tensor_dim) + " tile_" + key + ";\n"); 
+        if tensor_dim == 0:
+            main_file.write("    " + "tile_" + key + " = tensor_mem_op_0(tensor_" + key + ");\n")
 
     main_file.write("\n")  
     main_file.write("    " + "std::string tile_name;")
@@ -225,7 +236,11 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     for key, value in cp_source_id.items():
 
-        tensor_dim = len(value)
+        if value[0] == '0':
+            tensor_dim = 0
+        else:
+            tensor_dim = len(value)
+
         main_file.write("\n")
 
         for i in range(0, 2 * tensor_dim):
@@ -236,6 +251,9 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("\n")
 
         main_file.write("    " + "subtile" + str(tensor_dim) + " subtile_" + key + ";\n")
+
+        if tensor_dim == 0:
+            main_file.write("    " + "subtile_" + key + " = tile_mem_op_0(tile_" + key + ");\n")
 
         main_file.write("\n")
 
@@ -554,7 +572,11 @@ def cg_tensor_decleration(main_file, cg_source_id, split_factor, cg_dest_id, sca
 
     for key, value in cg_source_id.items():
 
-        tensor_dim = len(value)
+        if value[0] == '0':
+            tensor_dim = 0
+        else:
+            tensor_dim = len(value)
+
         main_file.write("\n")
         
         for i in range(0, tensor_dim):
@@ -820,12 +842,19 @@ if __name__ == "__main__":
             tensor_size.append([])
 
         for i in range(0, len(id_list)):
-            tensor_size[0].append(int(ap_split_factor[id_list[i]][0]))
+            if id_list[i] == '0':
+                tensor_size[0].append('0')
+            else:
+                tensor_size[0].append(int(ap_split_factor[id_list[i]][0]))
         
         for i in range(0, len(id_list)):
-            tensor_size[1].append(int(cp_split_factor[id_list[i]][0]))
-            tensor_size[2].append(int(cp_split_factor[id_list[i]][1]))
-
+            if id_list[i] == '0':
+                tensor_size[1].append('0')
+                tensor_size[2].append('0')
+            else:
+                tensor_size[1].append(int(cp_split_factor[id_list[i]][0]))
+                tensor_size[2].append(int(cp_split_factor[id_list[i]][1]))
+        
         input_dir_path = tensor_path_dict[key]
         tensor_type    = tensor_type_dict[key]
         transpose      = tensor_transpose_dict[key]  
@@ -871,13 +900,20 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write("\n")
 
+    print(cg_source_id)
     # CGRA gold code
-    tensor_dim = str(len(cg_source_id[op_list[0]]))
+    if cg_source_id[op_list[0]] == ['0']:
+        tensor_dim = "0"
+    else:
+        tensor_dim = str(len(cg_source_id[op_list[0]]))
     stmt = ""
     stmt = stmt + "(" + "subtile" + tensor_dim + " subtile_" + op_list[0]  
 
     for op in op_list[1:]: 
-        tensor_dim = str(len(cg_source_id[op]))
+        if cg_source_id[op] == ['0']:
+            tensor_dim = "0"
+        else:
+            tensor_dim = str(len(cg_source_id[op]))
         stmt = stmt + ", " + "subtile" + tensor_dim + " subtile_" + op
     
     if(nnz_ctr):
@@ -976,12 +1012,18 @@ if __name__ == "__main__":
     main_file.write("\n")
 
     # Sub-tile pairing code
-    tensor_dim = str(len(cp_source_id[op_list[0]]))
+    if cp_source_id[op_list[0]] == ['0']:
+        tensor_dim = "0"
+    else:
+        tensor_dim = str(len(cp_source_id[op_list[0]]))
     stmt = ""
     stmt = stmt + "(" + "tile" + tensor_dim + " tile_" + op_list[0]  
     
     for op in op_list[1:]: 
-        tensor_dim = str(len(cp_source_id[op]))
+        if cp_source_id[op] == ['0']:
+            tensor_dim = "0"
+        else:
+            tensor_dim = str(len(cp_source_id[op]))
         stmt = stmt + ", " + "tile" + tensor_dim + " tile_" + op
     stmt += ", std::string curr_tile"
     

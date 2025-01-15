@@ -36,6 +36,10 @@ struct cg_extents3 {
     std::vector<int> extents_mode_vals;
 };
 
+struct tile0 {
+    std::vector<float> vals;
+};
+
 struct tile1 {
     std::vector<int> pos1;
     std::vector<int> crd1;
@@ -69,6 +73,10 @@ struct tile3 {
     std::vector<int> crd5;
     std::vector<int> pos6;
     std::vector<int> crd6;
+    std::vector<float> vals;
+};
+
+struct subtile0 {
     std::vector<float> vals;
 };
 

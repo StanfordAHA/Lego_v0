@@ -1,5 +1,13 @@
 #include "mem_op.h"
 
+
+tile0 tensor_mem_op_0(int **tensor_op){
+    float *vals = (float *) tensor_op[0];
+    tile0 tile_op; 
+    tile_op.vals.push_back(vals[0]);    
+    return tile_op;
+}
+
 tile1 tensor_mem_op_1(int **tensor_op, int index){
     
     int *pos1 = tensor_op[2]; 
@@ -175,6 +183,12 @@ tile3 tensor_mem_op_3(int **tensor_op, int index){
         tile_op.pos6.push_back(pos6[pos5[pos4[pos3[pos2[pos1[index + 1]]]]]] - pos6[pos5[pos4[pos3[pos2[pos1[index]]]]]]);
 
         return tile_op;
+}
+
+subtile0 tile_mem_op_0(tile0 tile_op){
+    subtile0 subtile_op;
+    subtile_op.vals.push_back(tile_op.vals[0]);
+    return subtile_op;
 }
 
 subtile1 tile_mem_op_1(tile1 tile_op, int index){
