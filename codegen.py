@@ -865,6 +865,16 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                             stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
                             stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
                             stmt += "\n"
+
+                        if tensor_dim == 0:
+                            stmt += "    " * (level + 3)
+                            stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(1) + ", subtile_path, "
+                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + "0" + "\"," +  is_dense + ");"
+                            stmt += "\n"    
+                            stmt += "    " * (level + 3)
+                            stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(1) + ", subtile_path, "
+                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + "0" + "\"," +  is_dense + ");"
+                            stmt += "\n"
                         
                         stmt += "    " * (level + 3)
                         stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
@@ -873,7 +883,6 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                         stmt += "    " * (level + 3)
                         stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
 
-                        print("id_dict_true[op]: ", id_dict_true[op])
                         
                         if id_dict_true[op] == ['0']:
                             stmt += ", 1);\n"

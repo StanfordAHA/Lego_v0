@@ -37,6 +37,8 @@ struct cg_extents3 {
 };
 
 struct tile0 {
+    std::vector<int> pos1;
+    std::vector<int> crd1;
     std::vector<float> vals;
 };
 
@@ -77,6 +79,8 @@ struct tile3 {
 };
 
 struct subtile0 {
+    std::vector<int> pos1;
+    std::vector<int> crd1;
     std::vector<float> vals;
 };
 

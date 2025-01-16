@@ -4,6 +4,9 @@
 tile0 tensor_mem_op_0(int **tensor_op){
     float *vals = (float *) tensor_op[0];
     tile0 tile_op; 
+    tile_op.pos1.push_back(0);
+    tile_op.pos1.push_back(1);
+    tile_op.crd1.push_back(0);
     tile_op.vals.push_back(vals[0]);    
     return tile_op;
 }
@@ -187,6 +190,9 @@ tile3 tensor_mem_op_3(int **tensor_op, int index){
 
 subtile0 tile_mem_op_0(tile0 tile_op){
     subtile0 subtile_op;
+    subtile_op.pos1.push_back(0);
+    subtile_op.pos1.push_back(1);
+    subtile_op.crd1.push_back(0);
     subtile_op.vals.push_back(tile_op.vals[0]);
     return subtile_op;
 }

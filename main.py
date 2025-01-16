@@ -900,7 +900,6 @@ if __name__ == "__main__":
     main_file.write("\n")
     main_file.write("\n")
 
-    print(cg_source_id)
     # CGRA gold code
     if cg_source_id[op_list[0]] == ['0']:
         tensor_dim = "0"
