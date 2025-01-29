@@ -273,7 +273,7 @@ def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
     
     stmt = ""
     loop_counter = 0
-    all_dense = True 
+    one_dense = True 
 
     for op in op_list:
         if curr_id in id_dict[op]:
@@ -286,7 +286,6 @@ def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
                 next_id = prev_id + " + 1"
             
             if(data_format_dict[op][curr_id] == "s"):
-                all_dense = False
                 if loop_counter != 0:
                     stmt = stmt + "\n"
                 stmt = stmt + "    " * level
@@ -297,10 +296,12 @@ def pos_read(curr_id, op_list, id_dict, level, data_format_dict):
                 stmt = stmt + "int p" + op + str(curr_id_pos) + "_end" 
                 stmt = stmt + " = " + op + str(curr_id_pos) + "_pos[" + next_id + "];"
                 loop_counter += 1
+            elif(data_format_dict[op][curr_id] == "d"):
+                one_dense = True 
     
-    if all_dense:
-        stmt = "    " * level
-        stmt = stmt + "int " + curr_id + " = 0;"
+    if one_dense:
+        stmt += "    " * level
+        stmt += "int " + curr_id + " = 0;"
 
     return [stmt]
 
@@ -350,6 +351,7 @@ def while_stmt_close(point, id_dict, level):
 
 def id_init(point, id_dict, level, data_format_dict):
 
+
     sparse_point = []
 
     for sub_point in point:
@@ -379,6 +381,7 @@ def id_init(point, id_dict, level, data_format_dict):
             arr_idx_pos = id_dict[arr_read].index(arr_idx) + 1
             stmt = stmt + "int " + id + "0 = " 
             stmt = stmt + arr_read +  str(arr_idx_pos) + "_crd[" + id + "];"
+
 
     return [stmt]
 
@@ -423,6 +426,7 @@ def id_init_dense(point, id_dict, level, data_format_dict):
 def id_merge(point, id_dict, level, data_format_dict):
     
     sparse_point = []
+    dense_point = []
 
     for sub_point in point:
         arr_read = sub_point[1]
@@ -430,9 +434,11 @@ def id_merge(point, id_dict, level, data_format_dict):
 
         if data_format_dict[arr_read][arr_idx] == "s":
             sparse_point.append(sub_point)
+        elif data_format_dict[arr_read][arr_idx] == "d":
+            dense_point.append(sub_point)
 
     stmt = ""
-    if(len(sparse_point) != 0):
+    if(len(sparse_point) != 0 and len(dense_point) == 0):
         if(len(sparse_point) == 1):
             arr_idx = sparse_point[0][0]
             stmt = stmt + "int " + arr_idx + " = " + sparse_point[0] + "0;"
@@ -454,12 +460,16 @@ def id_merge(point, id_dict, level, data_format_dict):
                 stmt = stmt + ")"   
 
             stmt = stmt + ";"
-
-    return ["    " * (level + 1) + stmt]
+        return ["    " * (level + 1) + stmt]
+    elif(len(sparse_point) != 0 and len(dense_point) != 0):
+        return [""]
+    elif(len(sparse_point) == 0 and len(dense_point) != 0):
+        return [""]
 
 def if_stmt_open(sub_point, id_dict, level, data_format_dict):
 
     sparse_sub_point = []
+    dense_sub_point = []
 
     for point in sub_point:
         arr_read = point[1]
@@ -467,6 +477,8 @@ def if_stmt_open(sub_point, id_dict, level, data_format_dict):
 
         if data_format_dict[arr_read][arr_idx] == "s":
             sparse_sub_point.append(point)
+        elif data_format_dict[arr_read][arr_idx] == "d":
+            dense_sub_point.append(point)
 
     if(sparse_sub_point != []):
         stmt = "if("
@@ -486,11 +498,12 @@ def if_stmt_open(sub_point, id_dict, level, data_format_dict):
 
         return ["    " * (level + 1) + stmt]
     else:
-        return [""]
+        return ["if(1){"]    
 
 def elif_stmt_open(sub_point, id_dict, level, data_format_dict):
 
     sparse_sub_point = []
+    dense_sub_point = []
 
     for point in sub_point:
         arr_read = point[1]
@@ -498,6 +511,9 @@ def elif_stmt_open(sub_point, id_dict, level, data_format_dict):
 
         if data_format_dict[arr_read][arr_idx] == "s":
             sparse_sub_point.append(point)
+
+        if data_format_dict[arr_read][arr_idx] == "d":
+            dense_sub_point.append(point)
 
     if(sparse_sub_point != []):
         stmt = "else if("
@@ -514,12 +530,16 @@ def elif_stmt_open(sub_point, id_dict, level, data_format_dict):
             stmt = stmt + id[0]
 
         stmt = stmt + "){"
+    elif(dense_sub_point != []):
+        stmt = "else{"
+
 
     return ["    " * (level + 1) + stmt]
 
 def if_stmt_close(sub_point, id_dict, level, data_format_dict):
 
     sparse_sub_point = []
+    dense_sub_point = []
 
     for point in sub_point:
         arr_read = point[1]
@@ -527,8 +547,12 @@ def if_stmt_close(sub_point, id_dict, level, data_format_dict):
 
         if data_format_dict[arr_read][arr_idx] == "s":
             sparse_sub_point.append(point)
+        if data_format_dict[arr_read][arr_idx] == "d":
+            dense_sub_point.append(point)
 
     if(sparse_sub_point != []):
+        return ["    " * (level + 1) + "}"]
+    elif(dense_sub_point != []):
         return ["    " * (level + 1) + "}"]
     else:
         return [""]
@@ -538,12 +562,17 @@ def id_increment(point, id_dict, level, data_format_dict):
     stmt = "    " * (level + 1)
 
     sparse_point = []
+    dense_point = []
+
     for sub_point in point:
         arr_read = sub_point[1]
         arr_idx  = sub_point[0]
 
         if data_format_dict[arr_read][arr_idx] == "s":
             sparse_point.append(sub_point)
+        elif data_format_dict[arr_read][arr_idx] == "d":
+            dense_point.append(sub_point)
+
     
     if(len(sparse_point) != 0):
         arr_idx = sparse_point[0][0]
@@ -555,7 +584,8 @@ def id_increment(point, id_dict, level, data_format_dict):
             stmt += "    " * (level + 1)
             stmt = stmt + id + " += (int)"
             stmt = stmt + "(" + id + "0 == " + id[0] + ");"
-    elif len(point) != 0:
+    
+    if len(dense_point) != 0:
         arr_idx = point[0][0]
         stmt = stmt + arr_idx + " += 1;"
 
@@ -692,7 +722,7 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
     
         return [stmt]
 
-def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace):
+def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace, data_format):
 
     stmt = ""
 
@@ -719,9 +749,11 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
     for op in op_list: 
         if op not in valid_op_list: 
             if(len(valid_op_list) != 1 or mode == "rtl"): 
+                out_fmt = "".join(data_format[op][1 * len(id_dict[op]):])
                 stmt = stmt + "    " * (level + 2)
                 stmt += "tile_" + op + " = " 
-                stmt += "tensor_zero_op_" + str(len(id_dict_true[op])) + "(" + "tile_" + op  + ");"
+                # stmt += "tensor_zero_op_" + str(len(id_dict_true[op])) + "(" + "tile_" + op  + ");"
+                stmt += "zero_op_" + out_fmt + "(" + "tile_" + op  + ");"   
                 stmt += "\n"
     
     if(len(valid_op_list) != 1 or mode == "rtl"):    
@@ -851,7 +883,8 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                     elif(mode == "rtl"): 
                         stmt = stmt + "    " * (level + 2)
                         stmt += "subtile_" + op + " = " 
-                        stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
+                        out_fmt = "".join(data_format[op][2 * len(id_dict[op]):])
+                        stmt += "zero_op_" + out_fmt + "(" + "subtile_" + op  + ");"
                         stmt += "\n" 
     
         if(valid_op_list != []):
@@ -1110,7 +1143,7 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
 
             if(len(schedule) == 1):
                 if(target == "ap"):
-                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
+                    stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace, data_format))
                 elif(target == "cp"):
                     stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, data_format))
                 elif(target == "cg"):

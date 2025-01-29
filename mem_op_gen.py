@@ -18,6 +18,41 @@ def struct_gen(format_str, file):
     file.write("std::vector<float> vals;\n")
     file.write("};\n\n")
 
+def zero_op_gen(format_str, file):  
+    
+    in_format_str, out_format_str = format_str.split("->")
+    in_format = in_format_str.split(":")
+    out_format = out_format_str.split(":")
+
+    # Defining the required encodings
+    in_encoding = "".join(in_format)
+    out_encoding = "".join(out_format)
+
+    # Defining the function to generate the memory operation
+    file.write(f"tile_{out_encoding} zero_op_{out_encoding}(tile_{out_encoding} tile_op1)")
+    file.write("{\n")
+
+    len_in = len(in_format)
+    len_out = len(out_format)
+
+    if out_format != in_format[len_in - len_out:]:
+        print("Error: Output format should be a subset of input format")
+        return
+
+    file.write(f"tile_{out_encoding} tile_op;\n\n")
+
+    for i in range(len_out):
+        if(out_format[i] == "s"):
+            file.write(f"tile_op.pos{i + 1}.push_back(0);\n")
+            file.write(f"tile_op.pos{i + 1}.push_back(1);\n")
+            file.write(f"tile_op.crd{i + 1}.push_back(0);\n")
+        elif(out_format[i] == "d"):
+            file.write(f"tile_op.dim{i + 1}.push_back(1);\n")
+
+    file.write(f"tile_op.vals.push_back(0);\n")
+    file.write("return tile_op;\n")
+    file.write("}\n\n") 
+
 def mem_op_gen(format_str, file) :
 
     in_format_str, out_format_str = format_str.split("->")

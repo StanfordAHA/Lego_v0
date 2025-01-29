@@ -200,8 +200,8 @@ def process_coo(tensor, tensor_dims, output_dir_path, format, schedule_dict, pos
     for i in range(len(data_format)):
         if data_format[i] == dense: 
             # tiled_dict['dense'][i] = schedule_dict
-            level = i // 2
-            dim = i % 2
+            level = i // n_dim
+            dim = i % n_dim
 
             if level == 2: 
                 crd_dim = schedule_dict[level][dim]

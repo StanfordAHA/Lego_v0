@@ -823,6 +823,7 @@ if __name__ == "__main__":
 
     for mem_op in mem_op_list:
         mem_op_gen.mem_op_gen(mem_op, main_file)
+        mem_op_gen.zero_op_gen(mem_op, main_file)
 
     # CGRA gold code
     tensor_dim = len(cg_source_id[op_list[0]])
