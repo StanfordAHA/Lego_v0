@@ -900,7 +900,7 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
                                 if(idx == '0'): 
                                     stmt += ", " + str(1)
                                 else:
-                                    stmt += ", " + str(split_dict[idx][0])
+                                    stmt += ", " + str(split_dict[idx][1])
                         stmt += ");"
                         stmt += "\n"
                         stmt += "\n"

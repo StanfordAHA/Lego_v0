@@ -679,6 +679,8 @@ int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_
         output_gold_file << std::fixed << setprecision(30) << A_vals[pA];
         output_gold_file << "\n";
     }
+
+    output_gold_file.close();
     
     return 0;
 }
