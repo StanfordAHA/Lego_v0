@@ -187,6 +187,8 @@ int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std:
 		}
 	}
 
+	output_file.close();
+
 	return 0;
 }
 
@@ -202,6 +204,7 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 		output_file << "\n";
 	}
 
+	output_file.close();
 	// TODO: Store integer values to file if dtype is integer 
 	// Propogate data type 
 
