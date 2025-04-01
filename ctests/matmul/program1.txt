@@ -6,3 +6,6 @@ schedule_cgra: [ikj]
 i:split:16:8:4
 j:split:30:15:5
 k:split:40:20:10
+activation_ap:   none
+activation_cp:   none
+activation_cgra: none

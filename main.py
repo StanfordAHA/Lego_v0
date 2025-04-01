@@ -868,7 +868,7 @@ if __name__ == "__main__":
     workspace = args.workspace
 
     if(args.gold_check == "s"):
-        gold_cgen.sparse(expr, op_list, op, dest, ap_split_factor, "./lego_scratch/", scalar, workspace)
+        gold_cgen.sparse(expr, op_list, ap_source_id, ap_dest_id, ap_split_factor, "./lego_scratch/", scalar, workspace, ap_schedule, ap_source_map)
     elif(args.gold_check == "d"):
         gold_file = open("gold_check.py", "w+") 
         stmt = gold_cgen.dense(expr, op_list, op, dest, "./lego_scratch/")

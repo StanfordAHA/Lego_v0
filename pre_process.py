@@ -178,7 +178,7 @@ def process_coo(tensor, tile_dims, output_dir_path, format, schedule_dict, posit
 
     return n_lists, d_list, crd_dict, pos_dict
 
-def write_csf(COO, output_dir_path): 
+def write_csf(COO, output_dir_path, positive_only):
 
     # The number of values in the tensor
     num_values = len(COO.data)
@@ -227,7 +227,11 @@ def write_csf(COO, output_dir_path):
     d_list_path = output_dir_path + "/csf_vals" + ".txt"
     with open(d_list_path, 'w+') as f:
         for val in range(num_values):
-            f.write("%s\n" % abs((COO.data[val])))
+            if positive_only:
+                # caution: could lead to overflow
+                f.write("%s\n" % abs((COO.data[val])))
+            else:
+                f.write("%s\n" % (COO.data[val]))    
 
 def write_to_tns(tensor, filename, one_based_indexing=False):
     """
@@ -528,7 +532,7 @@ def process(tensor_type, input_path, output_dir_path, tensor_size, schedule_dict
         np.savez(out_path, array1 = numpy_array)
     elif(gold_check == "s"):
         size = tensor_size[0]
-        write_csf(tensor, output_dir_path)
+        write_csf(tensor, output_dir_path, positive_only)
         if(input_path == "mtx"):
             write_to_mtx_scipy(tensor, output_dir_path + "/tensor.mtx")
         elif(input_path == "tns"):
