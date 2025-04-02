@@ -10,4 +10,4 @@ activation_ap:   none
 activation_cp:   none
 activation_cgra: none
 B:ss:ss:ss
-C:ss:ss:ss
+C:ss:ss:dd

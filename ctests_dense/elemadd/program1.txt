@@ -1,13 +1,12 @@
 app_name: ctest_output
-stmt: X(i, j) = B(i, k) * C(k, j)
-schedule_ap:   [ikj]
-schedule_cp:   [ikj]
-schedule_cgra: [ikj]
+stmt: X(i, j) = B(i, j) + C(i, j)
+schedule_ap:   [ij]
+schedule_cp:   [ij]
+schedule_cgra: [ij]
 i:split:16:8:4
 j:split:30:15:5
-k:split:40:20:10
 activation_ap:   none
 activation_cp:   none
 activation_cgra: none
 B:ss:ss:ss
-C:ss:ss:ss
+C:ss:ss:dd
