@@ -334,6 +334,9 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
             main_file.write("    " + "std::ofstream gcheck_cpp_file;\n")
             main_file.write("\n")
 
+        main_file.write("    " + "int stream_ID = 0;\n")
+        main_file.write("\n")
+
     if(mode == 'rtl'): 
         main_file.write("    std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
         main_file.write("    std::ofstream output_gold_file;\n")
@@ -341,7 +344,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
 
     main_file.write("\n")
 
-def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict=None, lut_tensor=None):
+def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode, dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict=None, lut_tensor=None, hardware_pipeline=False):
 
     for key, value in dest_id.items(): 
         dest_read = key   
@@ -407,7 +410,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
             main_file.write("        " + "auto map1 = generate_range(curr_subtile_num);\n")
             main_file.write("\n")
         
-        main_file.write("        " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1);\n")
+        main_file.write("        " + "header_meta_data(input_meta_data_file, \"\", curr_subtile_num1, " + str(hardware_pipeline).lower() + ");\n")
         main_file.write("\n")
         main_file.write("        " + "num_stile_pairs_file << curr_subtile_num1;\n")
         main_file.write("\n")
@@ -428,12 +431,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 mode_list.sort()
             for i in range(0, tensor_dim):
                 main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
-                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
+                main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1, " + str(hardware_pipeline).lower() + ");\n")
                 main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                 main_file.write("\n")
 
             main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
-            main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + "1.extents_mode_vals, map1);\n")
+            main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + "1.extents_mode_vals, map1, " + str(hardware_pipeline).lower() + ");\n")
             main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
             main_file.write("\n")
 
@@ -442,7 +445,7 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
 
         if(unroll != "0"):
             if(unroll == "1"):
-                main_file.write("        " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2);\n")
+                main_file.write("        " + "header_meta_data(input_meta_data_file, \"_unroll\", curr_subtile_num2, " + str(hardware_pipeline).lower() + ");\n")
                 main_file.write("\n")
                 main_file.write("        " + "num_stile_pairs_file << \" \" << curr_subtile_num2;\n")
                 main_file.write("\n")
@@ -461,12 +464,12 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                 for i in range(0, tensor_dim):
                     main_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                     if(unroll == "1"):
-                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2);\n")
+                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map2, " + str(hardware_pipeline).lower() + ");\n")
                     main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_" + str(i) + ".size() << \"\\n\";\n")
                     main_file.write("\n")
                 main_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals_unroll\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
                 if(unroll == "1"):
-                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2);\n")
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map2, " + str(hardware_pipeline).lower() + ");\n")
                 main_file.write("            " + "mode_data_len_file << " + "cg_subtile_" + key + "1.mode_vals.size() << \"\\n\";\n")
                 main_file.write("\n")
 
@@ -487,9 +490,9 @@ def cp_closing_decleration(main_file, cg_source_id, cg_source_map, op_list, mode
                     for tensor_name, mode_list in cg_source_map_cpy.items():
                         mode_list.sort()
                     for i in range(0, tensor_dim):
-                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1);\n")
+                        main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "_unroll\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1, " + str(hardware_pipeline).lower() + ");\n")
                     main_file.write("\n")
-                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map1);\n")
+                    main_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals_unroll\", cg_extents_" + key + "1.extents_mode_vals, map1, " + str(hardware_pipeline).lower() + ");\n")
                     main_file.write("\n")
                 main_file.write("        " + "}")          
                 main_file.write("\n")
@@ -739,6 +742,8 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--xplicit_zero", action="store_true")
     parser.add_argument("-u", "--unroll_cgen", type=str, default="0")
     parser.add_argument("-f", "--fill_diag", action="store_true")
+    parser.add_argument("--hardware_unroll", type=int, default=1)
+    parser.add_argument("--hardware_pipeline", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--gcheck", action="store_true")
     parser.add_argument("--ap_gcheck", action="store_true")
@@ -757,12 +762,14 @@ if __name__ == "__main__":
     level = "cg"
     _, _, _, cg_dest_id, cg_dest_map, cg_source_id, cg_source_map, _, cg_split_factor, _, cg_schedule, scalar, cg_activation = parse(args.program, level)
 
-    process_csf    = args.xplicit_zero
-    unroll         = args.unroll_cgen
-    fill_diag      = args.fill_diag
-    gcheck         = args.gcheck
-    ap_gcheck      = args.ap_gcheck
-    nnz_ctr        = args.nnz_ctr
+    process_csf       = args.xplicit_zero
+    unroll            = args.unroll_cgen
+    hardware_unroll   = args.hardware_unroll
+    hardware_pipeline = args.hardware_pipeline
+    fill_diag         = args.fill_diag
+    gcheck            = args.gcheck
+    ap_gcheck         = args.ap_gcheck
+    nnz_ctr           = args.nnz_ctr
 
     # go throug the activation function and return list of lut required
     activation_list = cg_activation.copy()
@@ -926,7 +933,7 @@ if __name__ == "__main__":
     input_activation = tensor_transpose_dict
     apply_input_activation(main_file, input_activation)
 
-    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
+    for element in codegen.lower(expr, cg_source_id, cg_source_id, op_list, cg_schedule, 1, "cg", cg_split_factor, cg_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
@@ -998,7 +1005,7 @@ if __name__ == "__main__":
     # This is accomplished by generating code using the A = A expression 
 
     if(scalar != 1):
-        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, 0, lut_tensor, dtype, tensor_format_dict):
+        for element in codegen.lower("(" + dest_name + ")", cg_dest_id, cg_dest_id, [dest_name], cg_dest_id[dest_name], 1, "cg", cg_split_factor, rtl_output_dest_id, mode, rtl_output_dest_id, cg_dest_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, 0, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
             if element != [""]:
                 main_file.write(element[0])
                 main_file.write("\n")
@@ -1040,12 +1047,12 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(cp_split_factor, cp_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
+    for element in codegen.lower(expr, cp_source_id, cp_source_id, op_list, cp_schedule, 1, "cp", cp_split_factor, cp_dest_id, mode, cg_source_id, cg_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")
 
-    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict=mapping_dict, lut_tensor=lut_tensor)
+    cp_closing_decleration(main_file, cp_source_id, cg_source_map, op_list, mode, ap_dest_id, unroll, glb_tile_offset, gcheck, ap_gcheck, cg_dest_id, cg_dest_map, stile_outsize, scalar, mapping_dict=mapping_dict, lut_tensor=lut_tensor, hardware_pipeline=hardware_pipeline)
     main_file.write("\n")
 
     if(workspace):
@@ -1099,7 +1106,7 @@ if __name__ == "__main__":
         main_file.write(codegen.workspace_declaration(ap_split_factor, ap_dest_id, scalar))
         main_file.write("\n")
 
-    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
+    for element in codegen.lower(expr, ap_source_id, ap_source_id, op_list, ap_schedule, 1, "ap", ap_split_factor, ap_dest_id, mode, cp_source_id, cp_source_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
         if element != [""]:
             main_file.write(element[0])
             main_file.write("\n")

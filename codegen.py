@@ -541,16 +541,16 @@ def cp_mem_stmt(op_list, sub_point, id_dict, level, curr_id, split_dict, mode, p
                     if(loop_counter != 0):  
                         stmt = stmt + "\n" 
 
-                    if((mode == "rtl") or (len(sub_point) != 1) or (len(valid_op_list) != 1)):
+                    # if((mode == "rtl") or (len(sub_point) != 1) or (len(valid_op_list) != 1)):
+                    stmt = stmt + "    " * (level + 2)
+                    stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
+                    stmt = stmt + "\n"
+                    if(process_csf):
                         stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "subtile_" + arr_read + " = " + "tile_mem_op_" + str(len(id_dict[arr_read])) + "(" + "tile_" + arr_read + ", " + id + ");"
-                        stmt = stmt + "\n"
-                        if(process_csf):
-                            stmt = stmt + "    " * (level + 2)
-                            stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
-                            for id1 in id_dict[arr_read]:
-                                stmt = stmt + ", " + str(int(split_dict[id1][1]) - 1)
-                            stmt = stmt + ");"
+                        stmt = stmt + "subtile_" + arr_read + " = " + "process_csf_" + str(len(id_dict[arr_read])) + "(" + "subtile_" + arr_read
+                        for id1 in id_dict[arr_read]:
+                            stmt = stmt + ", " + str(int(split_dict[id1][1]) - 1)
+                        stmt = stmt + ");"
 
                     if(mode != "rtl"):
                         if(len(sub_point) != 1 or len(valid_op_list) != 1):
@@ -590,44 +590,44 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     valid_op_list = [x for x in op_list if x in valid_op_list]
 
-    if(len(valid_op_list) == 1):
-        if(mode == "onyx" or mode == "opal"):
-            stmt = "    " * (level + 2) + "/* Reserved operation */"
+    # if(len(valid_op_list) == 1):
+    #     if(mode == "onyx" or mode == "opal"):
+    #         stmt = "    " * (level + 2) + "/* Reserved operation */"
 
     for op in op_list: 
         if op not in valid_op_list: 
-            if(len(valid_op_list) != 1 or mode == "rtl"): 
-                stmt = stmt + "    " * (level + 2)
-                stmt += "tile_" + op + " = " 
-                stmt += "tensor_zero_op_" + str(len(id_dict_true[op])) + "(" + "tile_" + op  + ");"
-                stmt += "\n"
+            # if(len(valid_op_list) != 1 or mode == "rtl"): 
+            stmt = stmt + "    " * (level + 2)
+            stmt += "tile_" + op + " = " 
+            stmt += "tensor_zero_op_" + str(len(id_dict_true[op])) + "(" + "tile_" + op  + ");"
+            stmt += "\n"
     
-    if(len(valid_op_list) != 1 or mode == "rtl"):    
-        stmt += "    " * (level + 2)
-        stmt += "tile_name = \"tile\";" 
-        for key in id_dict_true.keys():
-            for id in id_dict_true[key]:
-                stmt += "\n"
-                stmt += "    " * (level + 2)
-                stmt += "tile_name += " + "\"_" + id + key + "_\"" + " + std::to_string(" + id + ");"  
+    # if(len(valid_op_list) != 1 or mode == "rtl"):    
+    stmt += "    " * (level + 2)
+    stmt += "tile_name = \"tile\";" 
+    for key in id_dict_true.keys():
+        for id in id_dict_true[key]:
+            stmt += "\n"
+            stmt += "    " * (level + 2)
+            stmt += "tile_name += " + "\"_" + id + key + "_\"" + " + std::to_string(" + id + ");"  
 
     stmt += "\n"           
 
     if(valid_op_list != []):
-        if(len(valid_op_list) != 1 or mode == "rtl"):
-            stmt += "    " * (level + 2)
-            stmt += "float* partial = tile_operate" + "(" + "tile_" + op_list[0]
-            op_list = op_list[1:]
+        # if(len(valid_op_list) != 1 or mode == "rtl"):
+        stmt += "    " * (level + 2)
+        stmt += "float* partial = tile_operate" + "("
 
-            for op in op_list:
-                stmt += ", " + "tile_" + op 
+        for i, op in enumerate(op_list):
+            stmt += ", " if i != 0 else ""
+            stmt += "tile_" + op 
 
-            stmt += ", tile_name"
-            
-            if mode == "rtl":
-                stmt += ", subtile_paths, mode"  
+        stmt += ", tile_name"
+        
+        if mode == "rtl":
+            stmt += ", subtile_paths, mode"  
 
-            stmt += ");\n"
+        stmt += ");\n"
         for name in dest: 
             dest_name = name
 
@@ -642,7 +642,7 @@ def ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, 
 
     return [stmt]
 
-def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
+def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, cg_source_id, dest, cg_source_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
     
         stmt = ""
     
@@ -665,9 +665,9 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
     
         valid_op_list = [x for x in op_list if x in valid_op_list]
     
-        if(len(valid_op_list) == 1):
-            if(mode == "onyx" or mode == "opal"):
-                stmt = "    " * (level + 2) + "/* Reserved operation */"
+        # if(len(valid_op_list) == 1):
+        #     if(mode == "onyx" or mode == "opal"):
+        #         stmt = "    " * (level + 2) + "/* Reserved operation */"
 
         if(unroll != "0"): 
             unroll_factor = 2
@@ -676,261 +676,264 @@ def cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, 
     
         for op in op_list: 
             if op in valid_op_list: 
-                if(len(valid_op_list) != 1):
-                    if(mode == "onyx" or mode == "opal"): 
+                # if(len(valid_op_list) != 1):
+                if(mode == "onyx" or mode == "opal"): 
+                    stmt = stmt + "    " * (level + 2)
+                    stmt = stmt + "if(!store_" + op + "1[id_store_" + op + "]){"
+                    stmt = stmt + "\n"
+                    stmt = stmt + "    " * (level + 3)
+                    stmt = stmt + "store_" + op + "1[id_store_" + op + "] = 1;"
+                    stmt = stmt + "\n"
+                    stmt = stmt + "    " * (level + 3)
+                    stmt = stmt + "cg_subtile_" + op + "1 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "1, store_subtile_" + op + "1, " + "subtile_" + op +  ", " + "id_store_" + op + ", stream_ID);"
+                    stmt = stmt + "\n"
+                    stmt = stmt + "    " * (level + 2)
+                    stmt = stmt + "}"
+                    stmt = stmt + "\n" 
+
+                    """"
+                    if(unroll):   
                         stmt = stmt + "    " * (level + 2)
-                        stmt = stmt + "if(!store_" + op + "1[id_store_" + op + "]){"
+                        stmt = stmt + "if(!store_" + op + "2[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 1)){"
                         stmt = stmt + "\n"
                         stmt = stmt + "    " * (level + 3)
-                        stmt = stmt + "store_" + op + "1[id_store_" + op + "] = 1;"
+                        stmt = stmt + "store_" + op + "2[id_store_" + op + "] = 1;"
                         stmt = stmt + "\n"
                         stmt = stmt + "    " * (level + 3)
-                        stmt = stmt + "cg_subtile_" + op + "1 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "1, store_subtile_" + op + "1, " + "subtile_" + op +  ", " + "id_store_" + op + ");"    
+                        stmt = stmt + "cg_subtile_" + op + "2 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "2, store_subtile_" + op + "2, " + "subtile_" + op +  ", " + "id_store_" + op + ");"    
                         stmt = stmt + "\n"
                         stmt = stmt + "    " * (level + 2)
                         stmt = stmt + "}"
-                        stmt = stmt + "\n" 
-
-                        """"
-                        if(unroll):   
-                            stmt = stmt + "    " * (level + 2)
-                            stmt = stmt + "if(!store_" + op + "2[id_store_" + op + "] && ((curr_subtile_num % " + str(unroll_factor) + ") == 1)){"
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 3)
-                            stmt = stmt + "store_" + op + "2[id_store_" + op + "] = 1;"
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 3)
-                            stmt = stmt + "cg_subtile_" + op + "2 = " + "cg_tile_mem_op_" + str(len(id_dict_true[op])) + "(" + "cg_subtile_" + op + "2, store_subtile_" + op + "2, " + "subtile_" + op +  ", " + "id_store_" + op + ");"    
-                            stmt = stmt + "\n"
-                            stmt = stmt + "    " * (level + 2)
-                            stmt = stmt + "}"
-                            stmt = stmt + "\n"   
-                        """                   
+                        stmt = stmt + "\n"   
+                    """                   
 
             if op not in valid_op_list: 
-                if(len(valid_op_list) != 1 or mode == "rtl"):    
-                    if(mode == "onyx" or mode == "opal"):
-                        stmt = stmt + "    " * (level + 2)
-                        stmt += "id_store_" + op + " = " + "store_size_" + op + ";"
-                        stmt += "\n"
-                        stmt += "    " * (level + 2)
-                        stmt += "if(!store_" + op + "1[id_store_" + op + "]){"
-                        stmt += "\n"
-                        stmt += "    " * (level + 3)
-                        stmt += "store_" + op + "1[id_store_" + op + "] = 1;"
-                        stmt += "\n"
-                        stmt += "    " * (level + 3)
-                        stmt += "cg_subtile_" + op + "1 = cg_tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "store_subtile_" + op + "1, cg_subtile_" + op + "1, id_store_" + op + ");"
-                        stmt += "\n"
-                        stmt += "    " * (level + 2)
-                        stmt += "}"
-                        stmt += "\n"
-                        stmt = stmt + "    " * (level + 2)
-                        stmt += "subtile_" + op + " = " 
-                        stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
-                        stmt += "\n" 
-                    elif(mode == "rtl"): 
-                        stmt = stmt + "    " * (level + 2)
-                        stmt += "subtile_" + op + " = " 
-                        stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
-                        stmt += "\n" 
-    
-        if(valid_op_list != []):
-            if(len(valid_op_list) != 1 or mode == "rtl"):
-
+                # if(len(valid_op_list) != 1 or mode == "rtl"):    
                 if(mode == "onyx" or mode == "opal"):
-                    # stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 0){\n"
-                    for op in op_list:
-                        stmt += "    " * (level + 2)                        
-                        stmt += "cg_extents_" + op + "1 = "
-                        stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "1, store_subtile_" + op + "1, id_store_" + op + ");"
-                        stmt += "\n"
-                    # stmt += "    " * (level + 2)  + "}\n"
-                    """
-                    if(unroll):
-                        stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 1){\n"
-                        for op in op_list:
-                            stmt += "    " * (level + 3)                        
-                            stmt += "cg_extents_" + op + "2 = "
-                            stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "2, store_subtile_" + op + "2, id_store_" + op + ");"
-                            stmt += "\n"
-                        stmt += "    " * (level + 2)  + "}\n"
-                    """
-
-                stmt += "    " * (level + 2)
-                stmt += "mkdir(data_path, 0777);"
-                stmt += "\n"
-                stmt += "\n"
-
-                if(mode == "rtl"):
-                    stmt += "    " * (level + 2)
-                    stmt += "subtile_path = out_dir + \"/set_" + dest[dest_read][0] + "_\" + std::to_string(" + dest[dest_read][0] + ");"
-                    stmt += "\n"
-                    for id in dest[dest_read][1:]:
-                        stmt += "    " * (level + 2)
-                        stmt += "subtile_path += \"_" + id + "_\" + std::to_string(" + id + ");"
-                        stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "mkdir(subtile_path.c_str(), 0777);"
-                    stmt += "\n"
+                    stmt = stmt + "    " * (level + 2)
+                    stmt += "id_store_" + op + " = " + "store_size_" + op + ";"
                     stmt += "\n"
                     stmt += "    " * (level + 2)
-                    stmt += "subtile_path += \"/subtile_pair_\" + std::to_string(curr_subtile_num);"
+                    stmt += "if(!store_" + op + "1[id_store_" + op + "]){"
                     stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "const char *subtile_path_str = subtile_path.c_str();"
-                    stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "mkdir(subtile_path_str, 0777);"
-                    stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "output_gold_path = subtile_path + \"/output_gold.h\";"
-                    stmt += "\n"   
-                         
-                stmt += "    " * (level + 2)
-                if(ap_gcheck and (mode == "onyx" or mode == "opal")): 
-                    stmt += "output_gold_file.open(output_gold_path + \"/\" + std::to_string(curr_subtile_num)  + \".txt\");\n"
-                else:
-                    stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
-                stmt += "\n"
-                stmt += "    " * (level + 2)
-
-                stmt += "float *partial = nullptr;\n"
-
-                if(mode == "rtl"): 
-                    stmt += "if (mode == \"tiling\")\n"
                     stmt += "    " * (level + 3)
+                    stmt += "store_" + op + "1[id_store_" + op + "] = 1;"
+                    stmt += "\n"
+                    stmt += "    " * (level + 3)
+                    stmt += "cg_subtile_" + op + "1 = cg_tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "store_subtile_" + op + "1, cg_subtile_" + op + "1, id_store_" + op + ");"
+                    stmt += "\n"
+                    stmt += "    " * (level + 2)
+                    stmt += "}"
+                    stmt += "\n"
+                    stmt = stmt + "    " * (level + 2)
+                    stmt += "subtile_" + op + " = " 
+                    stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
+                    stmt += "\n" 
+                elif(mode == "rtl"): 
+                    stmt = stmt + "    " * (level + 2)
+                    stmt += "subtile_" + op + " = " 
+                    stmt += "tile_zero_op_" + str(len(id_dict_true[op])) + "(" + "subtile_" + op  + ");"
+                    stmt += "\n" 
+
+        if(valid_op_list != []):
+            # if(len(valid_op_list) != 1 or mode == "rtl"):
+
+            if(mode == "onyx" or mode == "opal"):
+                # stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 0){\n"
+                for op in op_list:
+                    stmt += "    " * (level + 2)                        
+                    stmt += "cg_extents_" + op + "1 = "
+                    stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "1, store_subtile_" + op + "1, id_store_" + op + ");"
+                    stmt += "\n"
+                # stmt += "    " * (level + 2)  + "}\n"
+                """
+                if(unroll):
+                    stmt += "    " * (level + 2)  + "if((curr_subtile_num % " + str(unroll_factor) + ") == 1){\n"
+                    for op in op_list:
+                        stmt += "    " * (level + 3)                        
+                        stmt += "cg_extents_" + op + "2 = "
+                        stmt += "build_extents_" + str(len(id_dict_true[op])) + "(" + "cg_extents_" + op + "2, store_subtile_" + op + "2, id_store_" + op + ");"
+                        stmt += "\n"
+                    stmt += "    " * (level + 2)  + "}\n"
+                """
+
+            stmt += "    " * (level + 2)
+            stmt += "mkdir(data_path, 0777);"
+            stmt += "\n"
+            stmt += "\n"
+
+            if(mode == "rtl"):
+                stmt += "    " * (level + 2)
+                stmt += "subtile_path = out_dir + \"/set_" + dest[dest_read][0] + "_\" + std::to_string(" + dest[dest_read][0] + ");"
+                stmt += "\n"
+                for id in dest[dest_read][1:]:
+                    stmt += "    " * (level + 2)
+                    stmt += "subtile_path += \"_" + id + "_\" + std::to_string(" + id + ");"
+                    stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "mkdir(subtile_path.c_str(), 0777);"
+                stmt += "\n"
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "subtile_path += \"/subtile_pair_\" + std::to_string(curr_subtile_num);"
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "const char *subtile_path_str = subtile_path.c_str();"
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "mkdir(subtile_path_str, 0777);"
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "output_gold_path = subtile_path + \"/output_gold.h\";"
+                stmt += "\n"   
+                        
+            stmt += "    " * (level + 2)
+            if(ap_gcheck and (mode == "onyx" or mode == "opal")): 
+                stmt += "output_gold_file.open(output_gold_path + \"/\" + std::to_string(curr_subtile_num)  + \".txt\");\n"
+            else:
+                stmt += "output_gold_file.open(output_gold_path, std::ios_base::app);"
+            stmt += "\n"
+            stmt += "    " * (level + 2)
+
+            stmt += "float *partial = nullptr;\n"
+
+            if(mode == "rtl"): 
+                stmt += "if (mode == \"tiling\")\n"
+                stmt += "    " * (level + 3)
+                stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
+
+                for op in op_list[1:]:
+                    stmt += ", " + "subtile_" + op 
+                
+                if(nnz_ctr):
+                    stmt += ", curr_subtile_num, output_gold_file, nnz_check_file);"   
+                else: 
+                    stmt += ", curr_subtile_num, output_gold_file);"  
+
+                stmt += "\n"
+                stmt += "    " * (level + 2)
+                stmt += "else if (mode == \"reduce\")\n"
+                stmt += "    " * (level + 3)
+                stmt += "partial = read_subtile_output(subtile_path);\n"
+                stmt += "    " * (level + 2)
+                stmt += "else\n"
+                stmt += "    " * (level + 3)
+                stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
+            elif(mode == "onyx" or mode == "opal"):
+                if(gcheck or nnz_ctr): 
+                    stmt += "    " * (level + 2)
                     stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
-
-                    for op in op_list[1:]:
-                        stmt += ", " + "subtile_" + op 
-                    
+                    for op in op_list[1:]:  
+                        stmt += ", " + "subtile_" + op
                     if(nnz_ctr):
-                        stmt += ", curr_subtile_num, output_gold_file, nnz_check_file);"   
+                        stmt += ", curr_subtile_num, output_gold_file, nnz_check_file);"
                     else: 
-                        stmt += ", curr_subtile_num, output_gold_file);"  
-
+                        stmt += ", curr_subtile_num, output_gold_file);"
                     stmt += "\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "else if (mode == \"reduce\")\n"
-                    stmt += "    " * (level + 3)
-                    stmt += "partial = read_subtile_output(subtile_path);\n"
-                    stmt += "    " * (level + 2)
-                    stmt += "else\n"
-                    stmt += "    " * (level + 3)
-                    stmt += "assert(0 && \"mode must be \'reduce\' or \'tiling\'\");\n"
-                elif(mode == "onyx" or mode == "opal"):
-                    if(gcheck or nnz_ctr): 
-                        stmt += "    " * (level + 2)
-                        stmt += "partial = subtile_gold" + "(" + "subtile_" + op_list[0]
-                        for op in op_list[1:]:  
-                            stmt += ", " + "subtile_" + op
-                        if(nnz_ctr):
-                            stmt += ", curr_subtile_num, output_gold_file, nnz_check_file);"
-                        else: 
-                            stmt += ", curr_subtile_num, output_gold_file);"
+
+            if(workspace):
+                stmt += "    " * (level + 2)
+                stmt += "subtile_workspace[" + dest[dest_read][0]
+                for dim_count, id in enumerate(dest[dest_read][1:]):
+                    for i in range(dim_count + 1, len(dest[dest_read])):
+                        stmt += " * " + str(int(math.ceil(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1])))
+                    stmt += " + " + id
+                stmt += "].push_back(partial);"       
+                stmt += "\n"
+                stmt += "\n"
+
+            if(mode == "rtl"):
+                stmt += "    " * (level + 2)
+                stmt += "if (mode == \"tiling\") {\n"
+                for op in op_list:
+                    
+                    if id_dict_true[op] != ['0']:
+                        tensor_dim = len(id_dict_true[op])
+                    else:
+                        tensor_dim = 0
+
+                    is_dense = "false"
+                    if (tensor_format_dict[op] == "d"):
+                        is_dense = "true"
+
+                    for i in range(tensor_dim):
+                        stmt += "    " * (level + 3)
+                        stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
+                        stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
+                        stmt += "\n"    
+                        stmt += "    " * (level + 3)
+                        stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
+                        stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
                         stmt += "\n"
 
-                if(workspace):
-                    stmt += "    " * (level + 2)
-                    stmt += "subtile_workspace[" + dest[dest_read][0]
-                    for dim_count, id in enumerate(dest[dest_read][1:]):
-                        for i in range(dim_count + 1, len(dest[dest_read])):
-                            stmt += " * " + str(int(math.ceil(split_dict[dest[dest_read][i]][0] / split_dict[dest[dest_read][i]][1])))
-                        stmt += " + " + id
-                    stmt += "].push_back(partial);"       
-                    stmt += "\n"
-                    stmt += "\n"
-
-                if(mode == "rtl"):
-                    stmt += "    " * (level + 2)
-                    stmt += "if (mode == \"tiling\") {\n"
-                    for op in op_list:
-                        
-                        if id_dict_true[op] != ['0']:
-                            tensor_dim = len(id_dict_true[op])
-                        else:
-                            tensor_dim = 0
-
-                        is_dense = "false"
-                        if (tensor_format_dict[op] == "d"):
-                            is_dense = "true"
-
-                        for i in range(tensor_dim):
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
-                            stmt += "\n"    
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(i + 1) + ", subtile_path, "
-                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + str(cg_source_map[op][i]) + "\"," +  is_dense + ");"
-                            stmt += "\n"
-
-                        if tensor_dim == 0:
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(1) + ", subtile_path, "
-                            stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + "0" + "\"," +  is_dense + ");"
-                            stmt += "\n"    
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(1) + ", subtile_path, "
-                            stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + "0" + "\"," +  is_dense + ");"
-                            stmt += "\n"
-                        
+                    if tensor_dim == 0:
                         stmt += "    " * (level + 3)
-                        stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
+                        stmt += "rtl_mode_data_printer(subtile_" + op + ".pos" + str(1) + ", subtile_path, "
+                        stmt += "\"" + op +  "\", " + "\"seg\", " + "\"" + "0" + "\"," +  is_dense + ");"
+                        stmt += "\n"    
+                        stmt += "    " * (level + 3)
+                        stmt += "rtl_mode_data_printer(subtile_" + op + ".crd" + str(1) + ", subtile_path, "
+                        stmt += "\"" + op + "\", " + "\"crd\", " + "\"" + "0" + "\"," +  is_dense + ");"
                         stmt += "\n"
-                        
-                        stmt += "    " * (level + 3)
-                        stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
+                    
+                    stmt += "    " * (level + 3)
+                    stmt += "rtl_vals_data_printer(subtile_" + op + ".vals, subtile_path, " + "\"" + op + "\"" + ");"
+                    stmt += "\n"
+                    
+                    stmt += "    " * (level + 3)
+                    stmt += "rtl_size_data_printer_" + str(len(id_dict_true[op])) + "(subtile_path" + ", " + "\"" + op + "\""
 
-                        
-                        if id_dict_true[op] == ['0']:
-                            stmt += ", 1);\n"
-                        else:
-                            for idx in cg_source_map[op]:
-                                id = cg_source_id[op][idx]
-                                stmt += ", " + str(split_dict[id][1]) 
-                            stmt += ");"
-                            stmt += "\n"
-
-                        for dest_name, ids in dest.items():
-                            stmt += "    " * (level + 3)
-                            stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + "out" + "\""
-                            for idx in ids:
-                                if(idx == '0'): 
-                                    stmt += ", " + str(1)
-                                else:
-                                    stmt += ", " + str(split_dict[idx][1])
+                    
+                    if id_dict_true[op] == ['0']:
+                        stmt += ", 1);\n"
+                    else:
+                        for idx in cg_source_map[op]:
+                            id = cg_source_id[op][idx]
+                            stmt += ", " + str(split_dict[id][1]) 
                         stmt += ");"
                         stmt += "\n"
-                        stmt += "\n"
 
-                        if lut_tensor is not None:
-                            for lut in lut_tensor:
-                                stmt += "        " + "rtl_lut_data_printer(subtile_path, \"" + lut + "\");\n"
-                        
-                        stmt += "         " + "rtl_dump_dtype(subtile_path, \"" + dtype + "\");\n"
-                        stmt += "\n"
-
-                    stmt += "    " * (level + 2) + "}\n"
-
-                    stmt += "    " * (level + 2)
-                    stmt += "subtile_paths.push_back(subtile_path);\n"
+                    for dest_name, ids in dest.items():
+                        stmt += "    " * (level + 3)
+                        stmt += "rtl_size_data_printer_" + str(len(ids)) + "(subtile_path" + ", " + "\"" + "out" + "\""
+                        for idx in ids:
+                            if(idx == '0'): 
+                                stmt += ", " + str(1)
+                            else:
+                                stmt += ", " + str(split_dict[idx][1])
+                    stmt += ");"
+                    stmt += "\n"
                     stmt += "\n"
 
-                """ 
-                stmt += "    " * (level + 2)
-                stmt += "curr_subtile_num1 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 0) ?  curr_subtile_num1 + 1 : curr_subtile_num1;\n"
-                if(unroll): 
-                    stmt += "    " * (level + 2)
-                    stmt += "curr_subtile_num2 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 1) ?  curr_subtile_num2 + 1 : curr_subtile_num2;\n"  
-                """    
-                stmt += "    " * (level + 2)
-                stmt += "curr_subtile_num++;\n"    
+                    if lut_tensor is not None:
+                        for lut in lut_tensor:
+                            stmt += "        " + "rtl_lut_data_printer(subtile_path, \"" + lut + "\");\n"
+                    
+                    stmt += "         " + "rtl_dump_dtype(subtile_path, \"" + dtype + "\");\n"
+                    stmt += "\n"
 
-                if(gcheck):                                  
-                    stmt += "    " * (level + 2)
-                    stmt += "output_gold_file.close();"   
+                stmt += "    " * (level + 2) + "}\n"
+
+                stmt += "    " * (level + 2)
+                stmt += "subtile_paths.push_back(subtile_path);\n"
+                stmt += "\n"
+
+            """ 
+            stmt += "    " * (level + 2)
+            stmt += "curr_subtile_num1 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 0) ?  curr_subtile_num1 + 1 : curr_subtile_num1;\n"
+            if(unroll): 
+                stmt += "    " * (level + 2)
+                stmt += "curr_subtile_num2 = ((curr_subtile_num % " + str(unroll_factor)  + ") == 1) ?  curr_subtile_num2 + 1 : curr_subtile_num2;\n"  
+            """    
+            stmt += "    " * (level + 2)
+            stmt += "curr_subtile_num++;\n"    
+
+            if(gcheck):                                  
+                stmt += "    " * (level + 2)
+                stmt += "output_gold_file.close();\n"
+            
+            stmt += "    " * (level + 2)
+            stmt += "stream_ID = (stream_ID + 1) % " + str(hardware_unroll) + ";"
     
         return [stmt]
 
@@ -1001,7 +1004,7 @@ def cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, expr, 
   
         return [stmt]
 
-def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict):
+def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll):
     
     curr_id = schedule[0]
     stmt_list = []
@@ -1042,11 +1045,11 @@ def lower(stmt, id_dict, id_dict_true, op_list, schedule, level, target, split_d
                 if(target == "ap"):
                     stmt_list.append(ap_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, dest, split_dict, mode, workspace))
                 elif(target == "cp"):
-                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict))
+                    stmt_list.append(cp_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, mode, split_dict, next_id_dict, dest, next_id_map, workspace, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll))
                 elif(target == "cg"):
                     stmt_list.append(cg_op_stmt(op_list, sub_point, id_dict, id_dict_true, level, curr_id, stmt, dest, split_dict, scalar, dtype, nnz_ctr))
             else:     
-                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict))
+                stmt_list.extend(lower(stmt, sub_point_id_dict, id_dict_true, op_list, sub_point_schedule, level + 2, target, split_dict, dest, mode, next_id_dict, next_id_map, scalar, workspace, process_csf, unroll, gcheck, ap_gcheck, nnz_ctr, lut_tensor, dtype, tensor_format_dict, hardware_unroll))
             stmt_list.append(if_stmt_close(sub_point, id_dict, level))
             loop_counter += 1
         

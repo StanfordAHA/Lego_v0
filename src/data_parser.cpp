@@ -97,19 +97,26 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	return 0;
 }
 
-int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map){
+int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map, bool hardware_pipeline){
     header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 * map.size() << "] = {";
-    header_file << extents_mode_0[2 * map[0]];
-	header_file << ", "; 
-	header_file << extents_mode_0[2 * map[0] + 1];
-    for(int i = 1; i < map.size(); i++){
-        header_file << ", "; 
-		header_file << extents_mode_0[2 * map[i]];
+	if (!hardware_pipeline) {
+		header_file << extents_mode_0[2 * map[0]];
 		header_file << ", "; 
-		header_file << extents_mode_0[2 * map[i] + 1];
+		header_file << extents_mode_0[2 * map[0] + 1];
+		for(int i = 1; i < map.size(); i++){
+			header_file << ", "; 
+			header_file << extents_mode_0[2 * map[i]];
+			header_file << ", "; 
+			header_file << extents_mode_0[2 * map[i] + 1];
+		}
+	} else {
+		// with pipelining, sum the extents across all tiles in glb
+		header_file << extents_mode_0[0];
+		header_file << ", ";
+		header_file << extents_mode_0[2 * map[map.size() - 1] + 1];
 	}
-    header_file << "};";
-    header_file << "\n";
+	header_file << "};";
+	header_file << "\n";
     return 0;
 }
 
@@ -375,8 +382,14 @@ int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 	return 0;
 }
 
-int header_meta_data(ofstream &header_file, std::string label, int max_run){
-	header_file << "const int runs" << label << " = " << max_run << ";" << "\n";
+int header_meta_data(ofstream &header_file, std::string label, int max_run, bool hardware_pipeline){
+	if (!hardware_pipeline) {
+		header_file << "const int runs" << label << " = " << max_run << ";" << "\n";
+	} else {
+		// with pipelining a single run process all the tiles in the glb
+		header_file << "const int runs" << label << " = " << 1 << ";" << "\n";
+	}
+	
 	return 0; 
 } 
 
@@ -408,6 +421,8 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 	if (ap_gcheck) {
 		output_gold_file << "int total_op_cnt = 0;\n";
 	}
+
+	output_gold_file << "const unsigned int stride = 1024;\n";
 
 	return 0;
 }
@@ -769,10 +784,10 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		}
 
 		for(int i = 0; i < tensor_dim; i++){
-			output_gold_file << "            mode" << i << "_idx" << type <<" += mode" << i << "_size;" << "\n";
+			output_gold_file << "            mode" << i << "_idx" << type <<" += stride;" << "\n";
 		}
 
-		output_gold_file << "            vals_idx" << type <<" += vals_size;" << "\n";
+		output_gold_file << "            vals_idx" << type <<" += stride;" << "\n";
 		output_gold_file << "        }" << "\n";
 	}
 	else{
@@ -787,7 +802,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
         }
 		output_gold_file << "                err++;" << "\n";
 		output_gold_file << "            }" << "\n";
-		output_gold_file << "            vals_idx" << type <<" += vals_size;" << "\n";
+		output_gold_file << "            vals_idx" << type <<" += stride;" << "\n";
 		output_gold_file << "        }" << "\n";
 	}
 	output_gold_file << "\n";

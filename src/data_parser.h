@@ -21,7 +21,7 @@ int build_vec(std::vector<int> &vec, std::string file_path);
 int build_vec_val(std::vector<float> &vec, std::string file_path);
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0);
 int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype);
-int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map);
+int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map, bool hardware_pipeline);
 int lut_data_printer(std::ofstream &header_file, std::string lut_name);
 int lut_extent_data_printer(std::ofstream &header_file, std::string lut_name);
 int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std::string tensor_name, std::string mode_type, std::string mode_name, bool is_dense);
@@ -43,7 +43,7 @@ int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, s
 int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset);
 int codegen_check_gold_unroll_ifdef_open(int select); 
 int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck); 
-int header_meta_data(ofstream &header_file, std::string label, int max_run);
+int header_meta_data(ofstream &header_file, std::string label, int max_run, bool hardware_pipeline);
 int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset, bool unroll);
 std::vector<int> generate_range(int n); 
 std::pair<std::vector<int>, std::vector<int>> partition_vec(const std::vector<int>& a);
