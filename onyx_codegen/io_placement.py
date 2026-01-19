@@ -1,10 +1,10 @@
 import sys
-import os 
+import os
 import re
 
-def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, glb_tile_offset, glb_bank_offset):
+def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, glb_tile_offset, glb_bank_offset, output_num_blocks):
     input_place_list = input_order
-    output_place_list = output_order 
+    output_place_list = output_order
 
     checkpoint = 0
     f.write("#include \"glb.h\"\n")
@@ -59,6 +59,23 @@ def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, g
         f.write(f"  HAL_Cgra_Glb_WriteReg(0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_START_ADDR_R, {glb_tile_offset} * ({input_name_str}_unroll_array[0]) + {input_name_str}_extents_sum);\n")
         f.write(f"  HAL_Cgra_Glb_WriteReg(0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_RANGE_0_R, {input_name_str}_extents_len);\n")
         f.write("\n")
+
+    f.write("  // New in Zircon: for tile pipelining, need to configure the output num blocks\n")
+    assert len(output_order) == len(output_num_blocks), "Number of output tiles and output num blocks must match. Check design_meta.json."
+    tile_idx = 0
+    for output_idx, output_num_block in zip(output_order, output_num_blocks):
+        for output_tile_idx, output_tile_num_block in zip(output_idx, output_num_block):
+            f.write(f"  int output_tile_{tile_idx} = {output_tile_idx};\n")
+            f.write(f"  int output_num_block_{tile_idx} = {output_tile_num_block};\n")
+            f.write("\n")
+            tile_idx += 1
+
+    tile_idx = 0
+    for output_idx, output_num_block in zip(output_order, output_num_blocks):
+        for output_tile_idx, output_tile_num_block in zip(output_idx, output_num_block):
+            f.write(f"  HAL_Cgra_Glb_WriteReg(0x100 * output_tile_{tile_idx} + GLB_ST_DMA_NUM_BLOCKS_R, output_num_block_{tile_idx});\n")
+            tile_idx += 1
+
     f.write("}\n")
 
     if(unroll == "1"):
@@ -75,7 +92,7 @@ def unrolling(inputs, outputs, input_order, output_order, f, app_name, unroll, g
             f.write(f"  HAL_Cgra_Glb_WriteReg(0x100*8 + 0x100 * ({input_name_str}_unroll_array[0]) + GLB_LD_DMA_HEADER_0_RANGE_0_R, {input_name_str}_extents_len_unroll);\n")
             f.write("\n")
         f.write("}\n")
-    
+
     if(unroll == "2"):
         f.write("\n")
         f.write("static void update_glb_input_unroll(int k)\n")

@@ -19,7 +19,7 @@ def generate_reg_write(input_reg_write_path, glb_tile_offset, glb_bank_offset):
             reg_write_output_list.append(f"0x1c, {hex(ouput_glb_tile_offset)}")
 
     # replace the SoC function calls with the HAL function calls
-    # also replace address and the data for input and output glb tiles  
+    # also replace address and the data for input and output glb tiles
     with open(input_reg_write_path, 'r') as file:
         data = file.read()
         data = data.replace('glb_config()', 'glb_config(int i)')
@@ -28,7 +28,8 @@ def generate_reg_write(input_reg_write_path, glb_tile_offset, glb_bank_offset):
         for item in reg_write_output_list:
             data = data.replace(item, item + f" + {glb_tile_offset} * i")
         data = data.replace('glb_reg_write(', 'HAL_Cgra_Glb_WriteReg(0x100 * i + ')
+        # GLC register writing is newly included in Zircon
+        data = data.replace('glc_reg_write', 'HAL_Cgra_Glc_WriteReg')
 
     return data
 
-    

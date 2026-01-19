@@ -12,9 +12,10 @@ def meta_scrape(meta_file_name):
     input_order_list = []
     output_files = []
     output_order_list = []
+    output_num_blocks_list = []
 
 
-    # inputs 
+    # inputs
     for input in meta["IOs"]["inputs"]:
         input_files.append(input["datafile"])
         input_order = []
@@ -26,25 +27,28 @@ def meta_scrape(meta_file_name):
     for output in meta["IOs"]["outputs"]:
         output_files.append(output["datafile"])
         output_order = []
+        tile_output_num_blocks = []
         for io in output["io_tiles"]:
             output_order.append(io["x_pos"] // 2)
+            tile_output_num_blocks.append(io["num_blocks"])
         output_order_list.append(output_order)
-    
-    return input_files, output_files, input_order_list, output_order_list,  meta["testing"]["bitstream"]
+        output_num_blocks_list.append(tile_output_num_blocks)
+
+    return input_files, output_files, input_order_list, output_order_list, output_num_blocks_list, meta["testing"]["bitstream"]
 
 def mapping_dict_gen(design_file):
-    
-    inputs, outputs, input_order, output_order, bitstream_name = meta_scrape(design_file)
+
+    inputs, outputs, input_order, output_order, output_num_blocks_list, bitstream_name = meta_scrape(design_file)
     map_dict = {}
     dim_dict = {}
-    for input in inputs: 
+    for input in inputs:
         input_name = input.split("_")[1]
         input_mode = input.split("_")[3].split(".")[0]
         if(input_name not in map_dict.keys()):
             dim_dict[input_name] = 0
             map_dict[input_name] = {}
             map_dict[input_name][input_mode] = input_order[inputs.index(input)][0]
-        else: 
+        else:
             dim_dict[input_name] += 1
             map_dict[input_name][input_mode] = input_order[inputs.index(input)][0]
 
@@ -55,7 +59,7 @@ def mapping_dict_gen(design_file):
             dim_dict[output_name] = 0
             map_dict[output_name] = {}
             map_dict[output_name][output_mode] = output_order[outputs.index(output)][0]
-        else: 
+        else:
             dim_dict[output_name] += 1
             map_dict[output_name][output_mode] = output_order[outputs.index(output)][0]
 
@@ -67,4 +71,4 @@ def mapping_dict_gen(design_file):
             mapping_dict[key].append(map_dict[key][str(i)])
         mapping_dict[key].append(map_dict[key]["vals"])
 
-    return mapping_dict  
+    return mapping_dict
