@@ -385,6 +385,50 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     return cg_subtile_op;
 } 
 
+cg_subtile2 cg_build_tile_mem_op_2(cg_subtile2 cg_subtile_op, subtile2 subtile_op, int stream_ID){
+
+    int *pos1 = subtile_op.pos1.data();
+    int *crd1 = subtile_op.crd1.data();
+    int *pos2 = subtile_op.pos2.data();
+    int *crd2 = subtile_op.crd2.data();
+    float *vals = subtile_op.vals.data();
+
+    int stile_pos1_len = subtile_op.pos1.size();	
+	int stile_pos2_len = subtile_op.pos2.size();
+	int stile_crd1_len = subtile_op.crd1.size();
+	int stile_crd2_len = subtile_op.crd2.size(); 
+	int stile_vals_len = subtile_op.vals.size(); 
+
+    cg_subtile_op.mode_0.push_back(stream_ID);
+    cg_subtile_op.mode_0.push_back(stile_pos1_len);
+	cg_subtile_op.mode_0.push_back(0);
+	cg_subtile_op.mode_0.push_back(pos1[1]);
+	cg_subtile_op.mode_0.push_back(stile_crd1_len);
+
+    for(int i = 0; i < pos1[1]; i++) {
+		cg_subtile_op.mode_0.push_back(crd1[i]);
+    }
+
+    cg_subtile_op.mode_1.push_back(stream_ID);
+	cg_subtile_op.mode_1.push_back(stile_pos2_len); 
+    for(int i = 0; i <= pos1[1]; i++) {
+        cg_subtile_op.mode_1.push_back(pos2[i]);
+    }
+
+	cg_subtile_op.mode_1.push_back(stile_crd2_len);
+    cg_subtile_op.mode_vals.push_back(stream_ID);
+	cg_subtile_op.mode_vals.push_back(stile_vals_len);
+
+	for(int i = 0; i < pos1[1]; i++) {
+        for(int j = pos2[i]; j < pos2[i + 1]; j++) {
+            cg_subtile_op.mode_1.push_back(crd2[j]);
+            cg_subtile_op.mode_vals.push_back(vals[j]);
+        }
+    }
+
+    return cg_subtile_op;
+} 
+
 cg_subtile1 cg_tile_zero_op_1(int **store_subtile_op, cg_subtile1 cg_subtile_op, int id_store_op, int stream_ID){
     
     int *op_mode0_start =  store_subtile_op[0];
@@ -689,10 +733,15 @@ int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string
 
 }
 
-int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file){
+int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_subtile_num, ofstream &output_gold_file, int op_cnt){
 
     for (int pA = 0; pA < output_subtile_size; pA++) {
         output_gold_file << std::fixed << setprecision(30) << A_vals[pA];
+        output_gold_file << "\n";
+    }
+
+    if(op_cnt != -1){
+        output_gold_file << op_cnt;
         output_gold_file << "\n";
     }
 

@@ -1,5 +1,125 @@
 #include "data_parser.h"
 
+void copy_and_patch_unrolling_h(
+    std::string& tile_dir,
+    std::string& out_dir,
+    int subtile_count
+) {
+    std::string unrolling_src = tile_dir + "/mat_elemmul_G42_unrolling.h";
+    std::string unrolling_dst = out_dir  + "/mat_elemmul_G42_unrolling.h";
+
+    std::filesystem::create_directories(out_dir);
+
+    std::filesystem::copy_file(
+        unrolling_src,
+        unrolling_dst,
+        std::filesystem::copy_options::overwrite_existing
+    );
+
+    // Read entire file
+    std::ifstream in(unrolling_dst);
+    if (!in.is_open()) {
+        throw std::runtime_error("Failed to open for read: " + unrolling_dst);
+    }
+    std::string content(
+        (std::istreambuf_iterator<char>(in)),
+        std::istreambuf_iterator<char>()
+    );
+    in.close();
+
+    // Compute literal value
+    const int output_num_blocks = subtile_count + 1;
+    const std::string replacement =
+        "int $1 = " + std::to_string(output_num_blocks) + ";";
+
+    // Replace:
+    //   int output_num_block_<N> = <anything>;
+    const std::regex pat(R"(\bint\s+(output_num_block_\d+)\s*=\s*[^;]*;)");
+
+    content = std::regex_replace(content, pat, replacement);
+
+    // Write back
+    std::ofstream out(unrolling_dst, std::ios::trunc);
+    if (!out.is_open()) {
+        throw std::runtime_error("Failed to open for write: " + unrolling_dst);
+    }
+    out << content;
+    out.close();
+}
+
+
+void parse_tile_toml(string tile_toml, std::vector<std::string> &subtile_paths) {
+    std::ifstream infile(tile_toml);
+    if (!infile.is_open()) {
+        std::cerr << "parse_tile_toml: failed to open " << tile_toml << std::endl;
+        return;
+    }
+
+    auto trim = [](std::string s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch){ return !std::isspace(ch); }));
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), s.end());
+        return s;
+    };
+
+    std::string line;
+    bool in_array = false;
+    while (std::getline(infile, line)) {
+        std::string t = trim(line);
+        if (t.empty()) continue;
+        // skip C++/shell style comments that may be present
+        if (t.rfind("//", 0) == 0) continue;
+
+        if (!in_array) {
+            // look for the sam_path array start
+            size_t pos_key = t.find("sam_path");
+            if (pos_key != std::string::npos) {
+                // if '[' is on same line, start parsing after it; otherwise next lines contain entries
+                size_t pos_bracket = t.find('[', pos_key);
+                std::string rest = (pos_bracket != std::string::npos) ? t.substr(pos_bracket + 1) : std::string();
+                in_array = true;
+                // fallthrough to extract any quoted entries on same line
+                t = rest;
+            } else {
+                continue;
+            }
+        }
+
+        // now in_array == true: extract quoted strings until we hit closing ']'
+        // stop when array ends
+        bool found_close = false;
+        // If line contains ']', process portion before it and set found_close
+        size_t close_pos = t.find(']');
+        if (close_pos != std::string::npos) {
+            found_close = true;
+            t = t.substr(0, close_pos);
+        }
+
+        // find all quoted strings in t
+        size_t i = 0;
+        while (true) {
+            size_t q1 = t.find('"', i);
+            if (q1 == std::string::npos) break;
+            size_t q2 = t.find('"', q1 + 1);
+            if (q2 == std::string::npos) break;
+            std::string entry = t.substr(q1 + 1, q2 - (q1 + 1));
+            if (!entry.empty()) {
+                subtile_paths.push_back(entry);
+            }
+            i = q2 + 1;
+        }
+
+        if (found_close) break;
+    }
+    infile.close();
+
+    if (subtile_paths.empty()) {
+        std::cerr << "parse_tile_toml: found no entries in sam_path of " << tile_toml << std::endl;
+    } else {
+        std::cout << "parse_tile_toml: total entries = " << subtile_paths.size() << std::endl;
+    }
+}
+
+
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
 
@@ -98,8 +218,8 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 }
 
 int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> extents_mode_0, std::vector<int> map, bool hardware_pipeline){
-    header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 * map.size() << "] = {";
 	if (!hardware_pipeline) {
+		header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 * map.size() << "] = {";
 		header_file << extents_mode_0[2 * map[0]];
 		header_file << ", "; 
 		header_file << extents_mode_0[2 * map[0] + 1];
@@ -111,9 +231,10 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
 		}
 	} else {
 		// with pipelining, sum the extents across all tiles in glb
+		header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 << "] = {";
 		header_file << extents_mode_0[0];
 		header_file << ", ";
-		header_file << extents_mode_0[2 * map[map.size() - 1] + 1];
+		header_file << extents_mode_0[1];
 	}
 	header_file << "};";
 	header_file << "\n";
@@ -334,9 +455,8 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 		}
     }
 
-	// write the total number of ops required to compute this tile
 	if (ap_gcheck) {
-		output_gold_file << "\n" << op_cnt << "\n";
+	output_gold_file << "\n" << op_cnt << "\n";
 	}
 
     return 0;

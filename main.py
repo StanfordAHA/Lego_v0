@@ -302,6 +302,8 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
     main_file.write("    " + "const char *data_path = out_dir.c_str();\n")
     main_file.write("\n")
 
+
+
     if(mode == 'onyx' or mode == 'opal'):
         main_file.write("    " + "std::string input_data_path = out_dir + \"/" + app_name + "_input_script.h\";\n")
         main_file.write("    " + "std::ofstream input_data_file;\n")
@@ -338,6 +340,11 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         main_file.write("\n")
 
     if(mode == 'rtl'):
+
+        if(zircon_flag):
+            main_file.write("    " + "int stream_ID = 0;\n")
+            main_file.write("\n")
+        
         main_file.write("    std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
         main_file.write("    std::ofstream output_gold_file;\n")
         main_file.write("    std::string subtile_path;\n")
@@ -748,6 +755,8 @@ if __name__ == "__main__":
     parser.add_argument("--gcheck", action="store_true")
     parser.add_argument("--ap_gcheck", action="store_true")
     parser.add_argument("--nnz_ctr", action="store_true")
+    parser.add_argument("--zircon", action="store_true")
+    parser.add_argument("--glb_batch_size", type=int, default=32)
 
     args = parser.parse_args()
 
@@ -770,6 +779,7 @@ if __name__ == "__main__":
     gcheck            = args.gcheck
     ap_gcheck         = args.ap_gcheck
     nnz_ctr           = args.nnz_ctr
+    zircon_flag       = args.zircon
 
     # go throug the activation function and return list of lut required
     activation_list = cg_activation.copy()
@@ -793,13 +803,13 @@ if __name__ == "__main__":
 
     glb_tile_offset = None
     glb_bank_offset = None
-    if mode == "onyx" or mode == "opal":
+    if mode == "onyx" or mode == "opal" or zircon_flag:
 
         # decide the bank and tile offset of GLB base on the chip
         if mode == "onyx":
             glb_tile_offset = "0x40000"
             glb_bank_offset = "0x20000"
-        elif mode == "opal":
+        elif mode == "opal" or zircon_flag:
             glb_tile_offset = "0x20000"
             glb_bank_offset = "0x10000"
 
@@ -882,6 +892,8 @@ if __name__ == "__main__":
         gold_file.write("".join(stmt))
 
 
+    zircon_flag = args.zircon
+
     main_file = open("main.cpp", "w+")
 
     # Printing the header files
@@ -950,7 +962,10 @@ if __name__ == "__main__":
     apply_output_activation(main_file, cg_tile_size, cg_activation, cg_dest_id)
 
     if(mode == "rtl"):
-        stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file);"
+        if(zircon_flag):
+            stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, op_cnt);"
+        else:
+            stmt = "    rtl_output_subtile_printer(" + dest + "_vals, output_subtile_size, curr_subtile_num, output_gold_file, -1);"
     elif(mode == "onyx" or mode == "opal"):
         stmt = ""
         if(nnz_ctr):
@@ -1140,3 +1155,216 @@ if __name__ == "__main__":
     main_file.write("    return 0;\n")
     main_file.write("}\n")
     main_file.close()
+
+    if(zircon_flag):
+        glb_tile_offset = "0x20000"
+        glb_bank_offset = "0x10000"
+        mapping_dict = mapping_dict_gen(args.design_meta)
+
+        zircon_mapper_file = open("zircon_mapper.cpp", "w+")
+        zircon_mapper_file.write("#include <stdlib.h>\n")
+        zircon_mapper_file.write("#include <stdio.h>\n")
+        zircon_mapper_file.write("#include <cstring>\n")
+        zircon_mapper_file.write("#include <iostream>\n")
+        zircon_mapper_file.write("#include <fstream>\n")
+        zircon_mapper_file.write("#include <vector>\n")
+        zircon_mapper_file.write("#include <string>\n")
+        zircon_mapper_file.write("#include <cassert>\n")
+        zircon_mapper_file.write("#include <sys/types.h>\n")
+        zircon_mapper_file.write("#include <sys/stat.h>\n")
+        zircon_mapper_file.write("#include <filesystem>\n")
+        zircon_mapper_file.write("using namespace std;\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("#include \"src/data_parser.h\"\n")
+        zircon_mapper_file.write("#include \"src/mem_op.h\"\n")
+        zircon_mapper_file.write("#include \"src/activation.h\"\n")
+        zircon_mapper_file.write("#include \"src/bf16_op.h\"\n")
+
+        zircon_mapper_file.write("\n")
+        zircon_mapper_file.write("int main(int argc, char *argv[]) {\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("    std::string tile_dir = \"" + args.output_dir + "/" + app_name + "\";\n")
+        zircon_mapper_file.write("    std::string tile_toml = tile_dir + \"/subtile_paths_0.toml\";\n")
+
+        zircon_mapper_file.write("    std::vector<std::string> subtile_paths;\n")
+        zircon_mapper_file.write("    parse_tile_toml(tile_toml, subtile_paths);\n")
+        zircon_mapper_file.write("\n")
+
+        out_tensor_dim = 0
+        if scalar != 1:
+            out_tensor_dim = len(list(cg_dest_id.values())[0])
+        else:
+            out_tensor_dim = 0
+
+        z_batch_size = int(args.glb_batch_size)
+
+        for opn in op_list:
+            dim = 0 if cg_source_id[opn] == ['0'] else len(cg_source_id[opn])
+            zircon_mapper_file.write(f"    cg_subtile{dim} cg_subtile_{opn}1;\n")
+            zircon_mapper_file.write(f"    cg_extents{dim} cg_extents_{opn}1;\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("    int curr_tile_batch = 0;\n")
+        zircon_mapper_file.write("    int stream_ID = 0;\n")
+        zircon_mapper_file.write("    int subtile_count = 0;\n")
+        zircon_mapper_file.write("\n")
+
+
+        zircon_mapper_file.write("    std::string out_dir = tile_dir + \"/tile_batch_\" + std::to_string(curr_tile_batch);\n")
+
+        zircon_mapper_file.write("    std::string input_data_path = out_dir + \"/" + app_name + "_input_script.h\";\n")
+        zircon_mapper_file.write("    std::ofstream input_data_file;\n")
+
+        zircon_mapper_file.write("    std::string input_meta_data_path = out_dir + \"/" + app_name + "_extents.h\";\n")
+        zircon_mapper_file.write("    std::ofstream input_meta_data_file;\n")
+
+        zircon_mapper_file.write("    std::string output_gold_path = out_dir;\n")
+        zircon_mapper_file.write("    std::ofstream output_gold_file;\n")
+
+        zircon_mapper_file.write("    std::string gcheck_cpp_path = out_dir + \"/" + app_name + "_gold.cpp\";\n")
+        zircon_mapper_file.write("    std::ofstream gcheck_cpp_file;\n")
+
+        zircon_mapper_file.write("    for (const auto& subtile_path : subtile_paths) {\n")
+
+
+        for opn in op_list:
+            zircon_mapper_file.write(f"            subtile{dim} subtile_{opn};\n")
+            for mi in range(dim):
+                zircon_mapper_file.write(f"            build_vec(subtile_{opn}.pos{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_seg\");\n")
+                zircon_mapper_file.write(f"            build_vec(subtile_{opn}.crd{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_crd\");\n")
+            zircon_mapper_file.write(f"            build_vec_val(subtile_{opn}.vals, subtile_path + \"/tensor_{opn}_mode_vals\");\n")
+            zircon_mapper_file.write("\n")
+            zircon_mapper_file.write(f"            cg_subtile_{opn}1 = cg_build_tile_mem_op_{dim}(cg_subtile_{opn}1, subtile_{opn}, stream_ID);\n")
+            zircon_mapper_file.write("\n")
+
+        
+
+        
+        zircon_mapper_file.write("            std::vector<float> output_vals;\n")
+        zircon_mapper_file.write("            build_vec_val(output_vals, subtile_path + \"/output_gold.h\");\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("            std::error_code ec;\n")
+        zircon_mapper_file.write("            std::filesystem::create_directories(out_dir, ec);\n")
+        zircon_mapper_file.write("            if (ec) {\n")
+        zircon_mapper_file.write("                std::cerr << \"Failed to create directory '\" << out_dir << \"': \" << ec.message() << \"\\n\";\n")
+        zircon_mapper_file.write("            }\n")
+
+        zircon_mapper_file.write("            output_gold_file.open(output_gold_path + \"/\" + std::to_string(subtile_count)  + \".txt\");\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("            float* output_subtile_vals = output_vals.data();\n")
+        zircon_mapper_file.write("\n")
+        zircon_mapper_file.write("output_subtile_printer(output_subtile_vals, " + str(stile_outsize) + ", subtile_count, output_gold_file, \"int\", true, output_vals.back());\n")
+
+        zircon_mapper_file.write("            output_gold_file.close();\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("            stream_ID = (stream_ID + 1) % 1;\n")
+
+        zircon_mapper_file.write("            if(subtile_count == " + str(z_batch_size - 1) + " || subtile_path == subtile_paths.back()) {\n")
+
+       
+        for opn in op_list:
+            for mi in range(len(cg_source_id[opn])):
+                zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_{mi}.push_back(0);\n")
+                zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_{mi}.push_back(cg_subtile_{opn}1.mode_{mi}.size());\n")
+            zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_vals.push_back(0);\n")
+            zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_vals.push_back(cg_subtile_{opn}1.mode_vals.size());\n")
+
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("                input_data_file.open(input_data_path);\n")
+        zircon_mapper_file.write("                input_meta_data_file.open(input_meta_data_path);\n")
+        zircon_mapper_file.write("                gcheck_cpp_file.open(gcheck_cpp_path, std::ios::app);\n")
+        zircon_mapper_file.write("\n") 
+
+        zircon_mapper_file.write("                int output_subtile_size = " + str(stile_outsize) + ";\n")
+        stmt = ""
+        if(scalar != 1):
+            for key in cg_dest_id.keys():
+                out_id_list = cg_dest_id[key]
+                out_id_map = cg_dest_map[key]
+            for i in range(0, len(out_id_list)):
+                stmt += "        header_subtile_dim_decl(gcheck_cpp_file, " + str(out_id_map[i]) + ", " + str(cg_split_factor[out_id_list[i]][1]) + ");\n"
+
+        stmt += "        header_check_gold(gcheck_cpp_file, output_subtile_size, true);\n"
+        stmt += "\n"
+        zircon_mapper_file.write(stmt)
+
+        zircon_mapper_file.write("                auto map1 = generate_range(subtile_count + 1);\n")
+        zircon_mapper_file.write("                header_meta_data(input_meta_data_file, \"\", subtile_count + 1, true);\n")
+        zircon_mapper_file.write("\n")
+
+        for key, value in cg_source_id.items():
+            tensor_dim = len(value)
+            # TODO: Introduce systematic change to replace this hack
+            # this hack is to cope with the old RTL bitstream generation that
+            # always place the matrix modes in the data flow order
+            # e.g. for X(i,j) = B(i, k) * C(k, j), C_mode_0 is k and C_mode_1 is j
+            # however, for RTL, C_mode_0 is mapped to j and C_mode_1 is mapped to k
+            cg_source_map_cpy = copy.deepcopy(cg_source_map)
+            for tensor_name, mode_list in cg_source_map_cpy.items():
+                mode_list.sort()
+            for i in range(0, tensor_dim):
+                zircon_mapper_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
+                zircon_mapper_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1, " + str(hardware_pipeline).lower() + ");\n")
+                zircon_mapper_file.write("\n")
+
+            zircon_mapper_file.write("            " + "val_data_printer(input_data_file, \"" + key + "\", \"vals\", cg_subtile_" + key + "1.mode_vals, \"" + dtype + "\");\n")
+            zircon_mapper_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"vals\", cg_extents_" + key + "1.extents_mode_vals, map1, " + str(hardware_pipeline).lower() + ");\n")
+            zircon_mapper_file.write("\n")
+
+
+        zircon_mapper_file.write("            " + "output_gold_file.open(output_gold_path, std::ios_base::app);\n")
+        zircon_mapper_file.write("        " + "codegen_check_gold_head(gcheck_cpp_file, subtile_count + 1, output_subtile_size, " + str(out_tensor_dim) + ", " + str(unroll) +", \"" + glb_bank_offset + "\", \"" + glb_tile_offset + "\", map1, true);\n")
+
+        for i in range(0, out_tensor_dim + 1):
+            curr_mapping = mapping_dict[dest_read][i]
+            zircon_mapper_file.write("        " + "codegen_check_gold_read_gdb_bin(gcheck_cpp_file, \"" + str(i) + "\", \"" + str(curr_mapping) + "\", \"" + glb_tile_offset + "\", false);\n")
+        zircon_mapper_file.write("        " + "codegen_check_gold_unroll_ifdef_open(gcheck_cpp_file, " + str(unroll) + ", 0);\n")
+        zircon_mapper_file.write("        " + "codegen_check_gold_tail(gcheck_cpp_file, subtile_count + 1, " + str(out_tensor_dim) + ", \"\", true);\n")
+        zircon_mapper_file.write("        " + "codegen_check_gold_ret(gcheck_cpp_file, true);\n")
+        zircon_mapper_file.write("                gcheck_cpp_file.close();\n")
+        zircon_mapper_file.write("                input_data_file.close();\n")
+        zircon_mapper_file.write("                input_meta_data_file.close();\n")
+        zircon_mapper_file.write("\n")
+        zircon_mapper_file.write("                copy_and_patch_unrolling_h(tile_dir, out_dir, subtile_count);\n")
+        zircon_mapper_file.write("                curr_tile_batch++;\n")
+        zircon_mapper_file.write("                subtile_count = 0;\n")
+
+        zircon_mapper_file.write("                out_dir = tile_dir + \"/tile_batch_\" + std::to_string(curr_tile_batch);\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("                input_data_path = out_dir + \"/" + app_name + "_input_script.h\";\n")
+        zircon_mapper_file.write("                input_meta_data_path = out_dir + \"/" + app_name + "_extents.h\";\n")
+        zircon_mapper_file.write("\n")
+
+        zircon_mapper_file.write("                output_gold_path = out_dir;\n")
+        zircon_mapper_file.write("                gcheck_cpp_path = out_dir + \"/" + app_name + "_gold.cpp\";\n")
+
+        for opn in op_list:
+            zircon_mapper_file.write(f"                cg_subtile_{opn}1 = cg_subtile{len(cg_source_id[opn])}();\n")
+            zircon_mapper_file.write(f"                cg_extents_{opn}1 = cg_extents{len(cg_source_id[opn])}();\n")
+        zircon_mapper_file.write("            }\n")
+
+        zircon_mapper_file.write("            else{\n")
+        zircon_mapper_file.write("                subtile_count++;\n")
+        zircon_mapper_file.write("            }\n")
+        zircon_mapper_file.write("    }\n")
+
+        zircon_mapper_file.write("\n")
+        zircon_mapper_file.write("for (const auto& subtile_path : subtile_paths) {\n")
+        zircon_mapper_file.write("    std::filesystem::remove_all(std::filesystem::path(subtile_path).parent_path());\n")
+        zircon_mapper_file.write("}\n")
+
+        zircon_mapper_file.write("std::string unrolling_path = tile_dir + \"/unrolling.h\";\n")
+        zircon_mapper_file.write("if (std::filesystem::exists(unrolling_path)) {\n")
+        zircon_mapper_file.write("    std::filesystem::remove(unrolling_path);\n")
+        zircon_mapper_file.write("}\n")
+        zircon_mapper_file.write("\n")
+        zircon_mapper_file.write("    return 0;\n")
+        zircon_mapper_file.write("}\n")
+    

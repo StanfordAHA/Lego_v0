@@ -1,8 +1,10 @@
 #ifndef DATA_PARSER_H
 #define DATA_PARSER_H
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <vector>
 #include <string>
 #include <csignal>
@@ -11,12 +13,15 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include <regex>
+#include <stdexcept>
 #include "bf16_op.h"
 #include "gen_lut.h"
 
 
 using namespace std;
-
+void parse_tile_toml(string tile_toml, std::vector<std::string> &subtile_paths);
+void copy_and_patch_unrolling_h(std::string& tile_dir, std::string& out_dir, int subtile_count); 
 int build_vec(std::vector<int> &vec, std::string file_path);
 int build_vec_val(std::vector<float> &vec, std::string file_path);
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0);
