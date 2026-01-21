@@ -1262,7 +1262,8 @@ if __name__ == "__main__":
         zircon_mapper_file.write("            output_gold_file.close();\n")
         zircon_mapper_file.write("\n")
 
-        zircon_mapper_file.write("            stream_ID = (stream_ID + 1) % 1;\n")
+        stmt = "stream_ID = (stream_ID + 1) % " + str(hardware_unroll) + ";"
+        zircon_mapper_file.write("            " + stmt + "\n")
 
         zircon_mapper_file.write("            if(subtile_count == " + str(z_batch_size - 1) + " || subtile_path == subtile_paths.back()) {\n")
 
