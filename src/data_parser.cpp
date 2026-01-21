@@ -3,45 +3,47 @@
 void copy_and_patch_unrolling_h(
     std::string& tile_dir,
     std::string& out_dir,
+    std::string& app_name,
     int subtile_count
 ) {
-    std::string unrolling_src = tile_dir + "/mat_elemmul_G42_unrolling.h";
-    std::string unrolling_dst = out_dir  + "/mat_elemmul_G42_unrolling.h";
+    namespace fs = std::filesystem;
 
-    std::filesystem::create_directories(out_dir);
+    // Build paths without hardcoding filenames
+    const fs::path unrolling_src = fs::path(tile_dir) / (app_name + "_unrolling.h");
+    const fs::path unrolling_dst = fs::path(out_dir)  / (app_name + "_unrolling.h");
 
-    std::filesystem::copy_file(
-        unrolling_src,
-        unrolling_dst,
-        std::filesystem::copy_options::overwrite_existing
-    );
+    // Ensure output directory exists
+    fs::create_directories(unrolling_dst.parent_path());
+
+    // Copy file
+    fs::copy_file(unrolling_src, unrolling_dst, fs::copy_options::overwrite_existing);
 
     // Read entire file
-    std::ifstream in(unrolling_dst);
+    std::ifstream in(unrolling_dst, std::ios::binary);
     if (!in.is_open()) {
-        throw std::runtime_error("Failed to open for read: " + unrolling_dst);
+        throw std::runtime_error("Failed to open for read: " + unrolling_dst.string());
     }
-    std::string content(
-        (std::istreambuf_iterator<char>(in)),
-        std::istreambuf_iterator<char>()
-    );
+    std::string content((std::istreambuf_iterator<char>(in)),
+                        std::istreambuf_iterator<char>());
     in.close();
 
-    // Compute literal value
+    // Compute literal replacement value
     const int output_num_blocks = subtile_count + 1;
-    const std::string replacement =
-        "int $1 = " + std::to_string(output_num_blocks) + ";";
 
     // Replace:
     //   int output_num_block_<N> = <anything>;
+    // with:
+    //   int output_num_block_<N> = (subtile_count + 1 literal);
     const std::regex pat(R"(\bint\s+(output_num_block_\d+)\s*=\s*[^;]*;)");
+    const std::string replacement =
+        "int $1 = " + std::to_string(output_num_blocks) + ";";
 
     content = std::regex_replace(content, pat, replacement);
 
     // Write back
-    std::ofstream out(unrolling_dst, std::ios::trunc);
+    std::ofstream out(unrolling_dst, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
-        throw std::runtime_error("Failed to open for write: " + unrolling_dst);
+        throw std::runtime_error("Failed to open for write: " + unrolling_dst.string());
     }
     out << content;
     out.close();

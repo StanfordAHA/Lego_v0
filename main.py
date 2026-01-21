@@ -1331,7 +1331,8 @@ if __name__ == "__main__":
         zircon_mapper_file.write("                input_data_file.close();\n")
         zircon_mapper_file.write("                input_meta_data_file.close();\n")
         zircon_mapper_file.write("\n")
-        zircon_mapper_file.write("                copy_and_patch_unrolling_h(tile_dir, out_dir, subtile_count);\n")
+        zircon_mapper_file.write("                std::string app_name = \"" + app_name + "\";\n")
+        zircon_mapper_file.write("                copy_and_patch_unrolling_h(tile_dir, out_dir, app_name, subtile_count);\n")
         zircon_mapper_file.write("                curr_tile_batch++;\n")
         zircon_mapper_file.write("                subtile_count = 0;\n")
 
@@ -1360,7 +1361,10 @@ if __name__ == "__main__":
         zircon_mapper_file.write("    std::filesystem::remove_all(std::filesystem::path(subtile_path).parent_path());\n")
         zircon_mapper_file.write("}\n")
 
-        zircon_mapper_file.write("std::string unrolling_path = tile_dir + \"/unrolling.h\";\n")
+
+        zircon_mapper_file.write("std::string unrolling_header = \"/" + app_name + "_unrolling.h\";\n")
+        zircon_mapper_file.write("std::string unrolling_path = tile_dir + unrolling_header;\n")
+        zircon_mapper_file.write("std::cout << \"Removing unrolling header at: \" << unrolling_path << std::endl;\n")
         zircon_mapper_file.write("if (std::filesystem::exists(unrolling_path)) {\n")
         zircon_mapper_file.write("    std::filesystem::remove(unrolling_path);\n")
         zircon_mapper_file.write("}\n")
