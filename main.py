@@ -1336,6 +1336,7 @@ if __name__ == "__main__":
         zircon_mapper_file.write("                copy_and_patch_unrolling_h(tile_dir, out_dir, app_name, subtile_count);\n")
         zircon_mapper_file.write("                curr_tile_batch++;\n")
         zircon_mapper_file.write("                subtile_count = 0;\n")
+        zircon_mapper_file.write("                stream_ID = 0;\n")
 
         zircon_mapper_file.write("                out_dir = tile_dir + \"/tile_batch_\" + std::to_string(curr_tile_batch);\n")
         zircon_mapper_file.write("\n")
