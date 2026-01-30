@@ -3,27 +3,27 @@
 
 tile0 tensor_mem_op_0(int **tensor_op){
     float *vals = (float *) tensor_op[0];
-    tile0 tile_op; 
+    tile0 tile_op;
     tile_op.pos1.push_back(0);
     tile_op.pos1.push_back(1);
     tile_op.crd1.push_back(0);
-    tile_op.vals.push_back(vals[0]);    
+    tile_op.vals.push_back(vals[0]);
     return tile_op;
 }
 
 tile1 tensor_mem_op_1(int **tensor_op, int index){
-    
-    int *pos1 = tensor_op[2]; 
+
+    int *pos1 = tensor_op[2];
     int *crd1 = tensor_op[3];
     int *pos2 = tensor_op[4];
     int *crd2 = tensor_op[5];
     float *vals = (float *) tensor_op[6];
-    
+
     tile1 tile_op;
-    
+
     tile_op.pos1.push_back(0);
     tile_op.pos1.push_back(pos1[index + 1] - pos1[index]);
-    
+
     for(int i = pos1[index]; i < pos1[index + 1]; i++) {
         tile_op.crd1.push_back(crd1[i]);
         for(int j = pos2[i]; j < pos2[i + 1]; j++) {
@@ -35,13 +35,13 @@ tile1 tensor_mem_op_1(int **tensor_op, int index){
     for(int i = pos1[index]; i <= pos1[index + 1]; i++) {
         tile_op.pos2.push_back(pos2[i] - pos2[pos1[index]]);
     }
-    
+
     return tile_op;
 }
 
 tile2 tensor_mem_op_2(int **tensor_op, int index){
 
-	int *pos1 = tensor_op[4]; 
+	int *pos1 = tensor_op[4];
 	int *crd1 = tensor_op[5];
 	int *pos2 = tensor_op[6];
 	int *crd2 = tensor_op[7];
@@ -97,8 +97,8 @@ tile2 tensor_mem_op_2(int **tensor_op, int index){
 }
 
 tile3 tensor_mem_op_3(int **tensor_op, int index){
-    
-        int *pos1 = tensor_op[6]; 
+
+        int *pos1 = tensor_op[6];
         int *crd1 = tensor_op[7];
         int *pos2 = tensor_op[8];
         int *crd2 = tensor_op[9];
@@ -111,12 +111,12 @@ tile3 tensor_mem_op_3(int **tensor_op, int index){
         int *pos6 = tensor_op[16];
         int *crd6 = tensor_op[17];
         float *vals = (float *) tensor_op[18];
-    
+
         tile3 tile_op;
-    
+
         tile_op.pos1.push_back(0);
         tile_op.pos1.push_back(pos1[index + 1] - pos1[index]);
-    
+
         for(int i = pos1[index]; i < pos1[index + 1]; i++) {
             tile_op.crd1.push_back(crd1[i]);
             for(int j = pos2[i]; j < pos2[i + 1]; j++) {
@@ -136,11 +136,11 @@ tile3 tensor_mem_op_3(int **tensor_op, int index){
                 }
             }
         }
-    
+
         for(int i = pos1[index]; i <= pos1[index + 1]; i++) {
             tile_op.pos2.push_back(pos2[i] - pos2[pos1[index]]);
         }
-    
+
         for(int i = pos1[index]; i < pos1[index + 1]; i++) {
             for(int j = pos2[i]; j < pos2[i + 1]; j++) {
                 tile_op.pos3.push_back(pos3[j] - pos3[pos2[pos1[index]]]);
@@ -286,45 +286,76 @@ subtile3 tile_mem_op_3(tile3 tile_op, int index){
 }
 
 cg_subtile1 cg_tile_mem_op_1(cg_subtile1 cg_subtile_op, int **store_subtile_op, subtile1 subtile_op, int id_store_op, int stream_ID){
-    
+
     int *pos1 = subtile_op.pos1.data();
     int *crd1 = subtile_op.crd1.data();
     float *vals = subtile_op.vals.data();
-    
-    int stile_pos1_len = subtile_op.pos1.size();	
+
+    int stile_pos1_len = subtile_op.pos1.size();
     int stile_crd1_len = subtile_op.crd1.size();
-    int stile_vals_len = subtile_op.vals.size();    
-        
+    int stile_vals_len = subtile_op.vals.size();
+
     int *op_mode0_start =  store_subtile_op[0];
     int *op_mode0_end = store_subtile_op[1];
     int *op_mode_vals_start = store_subtile_op[2];
     int *op_mode_vals_end = store_subtile_op[3];
 
     op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
-    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
-    
+    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
+
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(stile_pos1_len);
     cg_subtile_op.mode_0.push_back(0);
     cg_subtile_op.mode_0.push_back(pos1[1]);
     cg_subtile_op.mode_0.push_back(stile_crd1_len);
-    
+
     for(int i = 0; i < pos1[1]; i++) {
         cg_subtile_op.mode_0.push_back(crd1[i]);
     }
-    
+
     cg_subtile_op.mode_vals.push_back(stream_ID);
     cg_subtile_op.mode_vals.push_back(stile_vals_len);
-    
+
     for(int i = 0; i < pos1[1]; i++) {
         cg_subtile_op.mode_vals.push_back(vals[i]);
     }
-    
+
     op_mode0_end[id_store_op] = cg_subtile_op.mode_0.size();
     op_mode_vals_end[id_store_op] = cg_subtile_op.mode_vals.size();
-    
+
     return cg_subtile_op;
 }
+
+cg_subtile1 cg_build_tile_mem_op_1(cg_subtile1 cg_subtile_op, subtile1 subtile_op, int stream_ID){
+
+    int *pos1 = subtile_op.pos1.data();
+    int *crd1 = subtile_op.crd1.data();
+    float *vals = subtile_op.vals.data();
+
+    int stile_pos1_len = subtile_op.pos1.size();
+    int stile_crd1_len = subtile_op.crd1.size();
+    int stile_vals_len = subtile_op.vals.size();
+
+    cg_subtile_op.mode_0.push_back(stream_ID);
+    cg_subtile_op.mode_0.push_back(stile_pos1_len);
+    cg_subtile_op.mode_0.push_back(0);
+    cg_subtile_op.mode_0.push_back(pos1[1]);
+    cg_subtile_op.mode_0.push_back(stile_crd1_len);
+
+    for(int i = 0; i < pos1[1]; i++) {
+        cg_subtile_op.mode_0.push_back(crd1[i]);
+    }
+
+    cg_subtile_op.mode_vals.push_back(stream_ID);
+    cg_subtile_op.mode_vals.push_back(stile_vals_len);
+
+    for(int i = 0; i < pos1[1]; i++) {
+        cg_subtile_op.mode_vals.push_back(vals[i]);
+    }
+
+    return cg_subtile_op;
+}
+
 
 cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, subtile2 subtile_op, int id_store_op, int stream_ID){
 
@@ -334,12 +365,12 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     int *crd2 = subtile_op.crd2.data();
     float *vals = subtile_op.vals.data();
 
-    int stile_pos1_len = subtile_op.pos1.size();	
+    int stile_pos1_len = subtile_op.pos1.size();
 	int stile_pos2_len = subtile_op.pos2.size();
 	int stile_crd1_len = subtile_op.crd1.size();
-	int stile_crd2_len = subtile_op.crd2.size(); 
-	int stile_vals_len = subtile_op.vals.size(); 
-    
+	int stile_crd2_len = subtile_op.crd2.size();
+	int stile_vals_len = subtile_op.vals.size();
+
     int *op_mode0_start =  store_subtile_op[0];
     int *op_mode0_end = store_subtile_op[1];
     int *op_mode1_start = store_subtile_op[2];
@@ -349,7 +380,7 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
 
     op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
     op_mode1_start[id_store_op] = cg_subtile_op.mode_1.size();
-    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
+    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
 
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(stile_pos1_len);
@@ -362,7 +393,7 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     }
 
     cg_subtile_op.mode_1.push_back(stream_ID);
-	cg_subtile_op.mode_1.push_back(stile_pos2_len); 
+	cg_subtile_op.mode_1.push_back(stile_pos2_len);
     for(int i = 0; i <= pos1[1]; i++) {
         cg_subtile_op.mode_1.push_back(pos2[i]);
     }
@@ -383,7 +414,7 @@ cg_subtile2 cg_tile_mem_op_2(cg_subtile2 cg_subtile_op, int **store_subtile_op, 
     op_mode_vals_end[id_store_op] = cg_subtile_op.mode_vals.size();
 
     return cg_subtile_op;
-} 
+}
 
 cg_subtile2 cg_build_tile_mem_op_2(cg_subtile2 cg_subtile_op, subtile2 subtile_op, int stream_ID){
 
@@ -393,11 +424,11 @@ cg_subtile2 cg_build_tile_mem_op_2(cg_subtile2 cg_subtile_op, subtile2 subtile_o
     int *crd2 = subtile_op.crd2.data();
     float *vals = subtile_op.vals.data();
 
-    int stile_pos1_len = subtile_op.pos1.size();	
+    int stile_pos1_len = subtile_op.pos1.size();
 	int stile_pos2_len = subtile_op.pos2.size();
 	int stile_crd1_len = subtile_op.crd1.size();
-	int stile_crd2_len = subtile_op.crd2.size(); 
-	int stile_vals_len = subtile_op.vals.size(); 
+	int stile_crd2_len = subtile_op.crd2.size();
+	int stile_vals_len = subtile_op.vals.size();
 
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(stile_pos1_len);
@@ -410,7 +441,7 @@ cg_subtile2 cg_build_tile_mem_op_2(cg_subtile2 cg_subtile_op, subtile2 subtile_o
     }
 
     cg_subtile_op.mode_1.push_back(stream_ID);
-	cg_subtile_op.mode_1.push_back(stile_pos2_len); 
+	cg_subtile_op.mode_1.push_back(stile_pos2_len);
     for(int i = 0; i <= pos1[1]; i++) {
         cg_subtile_op.mode_1.push_back(pos2[i]);
     }
@@ -427,17 +458,43 @@ cg_subtile2 cg_build_tile_mem_op_2(cg_subtile2 cg_subtile_op, subtile2 subtile_o
     }
 
     return cg_subtile_op;
-} 
+}
+
+cg_subtile2 cg_build_tile_mem_op_2_dense(cg_subtile2 cg_subtile_op, subtile2 subtile_op, int stream_ID, int dim1_size, int dim2_size){
+
+
+    cg_subtile_op.mode_0.push_back(stream_ID);
+    cg_subtile_op.mode_0.push_back(2);
+    cg_subtile_op.mode_0.push_back(0);
+    cg_subtile_op.mode_0.push_back(dim1_size);
+
+    cg_subtile_op.mode_1.push_back(stream_ID);
+    cg_subtile_op.mode_1.push_back(2);
+    cg_subtile_op.mode_1.push_back(0);
+    cg_subtile_op.mode_1.push_back(dim2_size);
+
+    float *vals = subtile_op.vals.data();
+	int stile_vals_len = subtile_op.vals.size();
+
+    cg_subtile_op.mode_vals.push_back(stream_ID);
+	cg_subtile_op.mode_vals.push_back(stile_vals_len);
+
+    for(int i = 0; i < stile_vals_len; i++) {
+        cg_subtile_op.mode_vals.push_back(vals[i]);
+    }
+    
+    return cg_subtile_op;
+}
 
 cg_subtile1 cg_tile_zero_op_1(int **store_subtile_op, cg_subtile1 cg_subtile_op, int id_store_op, int stream_ID){
-    
+
     int *op_mode0_start =  store_subtile_op[0];
     int *op_mode0_end = store_subtile_op[1];
     int *op_mode_vals_start = store_subtile_op[2];
     int *op_mode_vals_end = store_subtile_op[3];
 
     op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
-    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
+    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
 
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(2);
@@ -457,7 +514,7 @@ cg_subtile1 cg_tile_zero_op_1(int **store_subtile_op, cg_subtile1 cg_subtile_op,
 }
 
 cg_subtile2 cg_tile_zero_op_2(int **store_subtile_op, cg_subtile2 cg_subtile_op, int id_store_op, int stream_ID){
-      
+
     int *op_mode0_start =  store_subtile_op[0];
     int *op_mode0_end = store_subtile_op[1];
     int *op_mode1_start = store_subtile_op[2];
@@ -467,7 +524,7 @@ cg_subtile2 cg_tile_zero_op_2(int **store_subtile_op, cg_subtile2 cg_subtile_op,
 
     op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
     op_mode1_start[id_store_op] = cg_subtile_op.mode_1.size();
-    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
+    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
 
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(2);
@@ -495,7 +552,7 @@ cg_subtile2 cg_tile_zero_op_2(int **store_subtile_op, cg_subtile2 cg_subtile_op,
 }
 
 cg_subtile3 cg_tile_zero_op_3(int **store_subtile_op, cg_subtile3 cg_subtile_op, int id_store_op, int stream_ID){
-    
+
     int *op_mode0_start =  store_subtile_op[0];
     int *op_mode0_end = store_subtile_op[1];
     int *op_mode1_start = store_subtile_op[2];
@@ -508,7 +565,7 @@ cg_subtile3 cg_tile_zero_op_3(int **store_subtile_op, cg_subtile3 cg_subtile_op,
     op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
     op_mode1_start[id_store_op] = cg_subtile_op.mode_1.size();
     op_mode2_start[id_store_op] = cg_subtile_op.mode_2.size();
-    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
+    op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
 
     cg_subtile_op.mode_0.push_back(stream_ID);
     cg_subtile_op.mode_0.push_back(2);
@@ -543,7 +600,7 @@ cg_subtile3 cg_tile_zero_op_3(int **store_subtile_op, cg_subtile3 cg_subtile_op,
 }
 
 cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, subtile3 subtile_op, int id_store_op, int stream_ID){
-    
+
         int *pos1 = subtile_op.pos1.data();
         int *crd1 = subtile_op.crd1.data();
         int *pos2 = subtile_op.pos2.data();
@@ -551,7 +608,7 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         int *pos3 = subtile_op.pos3.data();
         int *crd3 = subtile_op.crd3.data();
         float *vals = subtile_op.vals.data();
-    
+
         int stile_pos1_len = subtile_op.pos1.size();
         int stile_pos2_len = subtile_op.pos2.size();
         int stile_pos3_len = subtile_op.pos3.size();
@@ -559,7 +616,7 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         int stile_crd2_len = subtile_op.crd2.size();
         int stile_crd3_len = subtile_op.crd3.size();
         int stile_vals_len = subtile_op.vals.size();
-        
+
         int *op_mode0_start =  store_subtile_op[0];
         int *op_mode0_end = store_subtile_op[1];
         int *op_mode1_start = store_subtile_op[2];
@@ -568,12 +625,12 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         int *op_mode2_end = store_subtile_op[5];
         int *op_mode_vals_start = store_subtile_op[6];
         int *op_mode_vals_end = store_subtile_op[7];
-    
+
         op_mode0_start[id_store_op] = cg_subtile_op.mode_0.size();
         op_mode1_start[id_store_op] = cg_subtile_op.mode_1.size();
         op_mode2_start[id_store_op] = cg_subtile_op.mode_2.size();
-        op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size(); 
-    
+        op_mode_vals_start[id_store_op] = cg_subtile_op.mode_vals.size();
+
         cg_subtile_op.mode_0.push_back(stream_ID);
         cg_subtile_op.mode_0.push_back(stile_pos1_len);
 	    cg_subtile_op.mode_0.push_back(0);
@@ -585,12 +642,12 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         }
 
         cg_subtile_op.mode_1.push_back(stream_ID);
-	    cg_subtile_op.mode_1.push_back(stile_pos2_len); 
+	    cg_subtile_op.mode_1.push_back(stile_pos2_len);
         for(int i = 0; i <= pos1[1]; i++) {
             cg_subtile_op.mode_1.push_back(pos2[i]);
         }
 
-    	cg_subtile_op.mode_1.push_back(stile_crd2_len); 
+    	cg_subtile_op.mode_1.push_back(stile_crd2_len);
     	for(int i = 0; i < pos1[1]; i++) {
             for(int j = pos2[i]; j < pos2[i + 1]; j++) {
                 cg_subtile_op.mode_1.push_back(crd2[j]);
@@ -627,18 +684,84 @@ cg_subtile3 cg_tile_mem_op_3(cg_subtile3 cg_subtile_op, int **store_subtile_op, 
         return cg_subtile_op;
 }
 
+cg_subtile3 cg_build_tile_mem_op_3(cg_subtile3 cg_subtile_op, subtile3 subtile_op, int stream_ID){
+
+    int *pos1 = subtile_op.pos1.data();
+    int *crd1 = subtile_op.crd1.data();
+    int *pos2 = subtile_op.pos2.data();
+    int *crd2 = subtile_op.crd2.data();
+    int *pos3 = subtile_op.pos3.data();
+    int *crd3 = subtile_op.crd3.data();
+    float *vals = subtile_op.vals.data();
+
+    int stile_pos1_len = subtile_op.pos1.size();
+    int stile_pos2_len = subtile_op.pos2.size();
+    int stile_pos3_len = subtile_op.pos3.size();
+    int stile_crd1_len = subtile_op.crd1.size();
+    int stile_crd2_len = subtile_op.crd2.size();
+    int stile_crd3_len = subtile_op.crd3.size();
+    int stile_vals_len = subtile_op.vals.size();
+
+    cg_subtile_op.mode_0.push_back(stream_ID);
+    cg_subtile_op.mode_0.push_back(stile_pos1_len);
+    cg_subtile_op.mode_0.push_back(0);
+    cg_subtile_op.mode_0.push_back(pos1[1]);
+    cg_subtile_op.mode_0.push_back(stile_crd1_len);
+
+    for(int i = 0; i < pos1[1]; i++) {
+        cg_subtile_op.mode_0.push_back(crd1[i]);
+    }
+
+    cg_subtile_op.mode_1.push_back(stream_ID);
+    cg_subtile_op.mode_1.push_back(stile_pos2_len);
+    for(int i = 0; i <= pos1[1]; i++) {
+        cg_subtile_op.mode_1.push_back(pos2[i]);
+    }
+
+    cg_subtile_op.mode_1.push_back(stile_crd2_len);
+    for(int i = 0; i < pos1[1]; i++) {
+        for(int j = pos2[i]; j < pos2[i + 1]; j++) {
+            cg_subtile_op.mode_1.push_back(crd2[j]);
+        }
+    }
+    cg_subtile_op.mode_2.push_back(stream_ID);
+    cg_subtile_op.mode_2.push_back(stile_pos3_len);
+    for(int i = 0; i < pos1[1]; i++) {
+        for(int j = pos2[i]; j < pos2[i + 1]; j++) {
+            cg_subtile_op.mode_2.push_back(pos3[j]);
+        }
+    }
+
+    cg_subtile_op.mode_2.push_back(pos3[pos2[pos1[1]]]);
+
+    cg_subtile_op.mode_2.push_back(stile_crd3_len);
+    cg_subtile_op.mode_vals.push_back(stream_ID);
+    cg_subtile_op.mode_vals.push_back(stile_vals_len);
+
+    for(int i = 0; i < pos1[1]; i++) {
+        for(int j = pos2[i]; j < pos2[i + 1]; j++) {
+            for(int k = pos3[j]; k < pos3[j + 1]; k++) {
+                cg_subtile_op.mode_2.push_back(crd3[k]);
+                cg_subtile_op.mode_vals.push_back(vals[k]);
+            }
+        }
+    }
+
+    return cg_subtile_op;
+}
+
 cg_extents1 build_extents_1(cg_extents1 op_extents, int **store_subtile_op, int id_store_op){
-    
+
         int *op_mode0_start =  store_subtile_op[0];
         int *op_mode0_end = store_subtile_op[1];
         int *op_mode_vals_start = store_subtile_op[2];
         int *op_mode_vals_end = store_subtile_op[3];
-    
+
         op_extents.extents_mode_0.push_back(op_mode0_start[id_store_op]);
         op_extents.extents_mode_0.push_back(op_mode0_end[id_store_op]);
         op_extents.extents_mode_vals.push_back(op_mode_vals_start[id_store_op]);
         op_extents.extents_mode_vals.push_back(op_mode_vals_end[id_store_op]);
-    
+
         return op_extents;
 }
 
@@ -707,7 +830,7 @@ int rtl_subtile2_print(subtile2 subtile_op, std::string output_path, std::string
     }
     crd1_file.close();
 
-    ofstream crd2_file; 
+    ofstream crd2_file;
     crd2_file.open(output_path + "/subtile_" + mode_name + "_crd2.txt");
     for(int i = 0; i < subtile_op.crd2.size(); i++){
         crd2_file << subtile_op.crd2[i] << "\n";
@@ -746,7 +869,7 @@ int rtl_output_subtile_printer(float *A_vals, int output_subtile_size, int curr_
     }
 
     output_gold_file.close();
-    
+
     return 0;
 }
 
@@ -868,15 +991,15 @@ subtile2 process_csf_2(subtile2 subtile_op, int dim1, int dim2){
 
     if(!is_present){
         if(subtile_op.crd1[crd1_size - 1] == dim1){
-            subtile_op.pos2[pos2_size - 1] += 1; 
-            subtile_op.crd2.push_back(dim2); 
+            subtile_op.pos2[pos2_size - 1] += 1;
+            subtile_op.crd2.push_back(dim2);
             subtile_op.vals.push_back(1);
         }
         else{
-            subtile_op.pos1[pos1_size - 1] += 1; 
-            subtile_op.crd1.push_back(dim1); 
+            subtile_op.pos1[pos1_size - 1] += 1;
+            subtile_op.crd1.push_back(dim1);
             subtile_op.pos2.push_back(subtile_op.pos2[pos2_size - 1] + 1);
-            subtile_op.crd2.push_back(dim2); 
+            subtile_op.crd2.push_back(dim2);
             subtile_op.vals.push_back(1);
         }
     }
@@ -899,25 +1022,25 @@ subtile3 process_csf_3(subtile3 subtile_op, int dim1, int dim2, int dim3){
     if(!is_present){
         if(subtile_op.crd1[crd1_size - 1] == dim1){
             if(subtile_op.crd2[crd2_size - 1] == dim2){
-                subtile_op.pos3[pos3_size - 1] += 1; 
-                subtile_op.crd3.push_back(dim3); 
+                subtile_op.pos3[pos3_size - 1] += 1;
+                subtile_op.crd3.push_back(dim3);
                 subtile_op.vals.push_back(1);
             }
             else{
-                subtile_op.pos2[pos2_size - 1] += 1; 
-                subtile_op.crd2.push_back(dim2); 
+                subtile_op.pos2[pos2_size - 1] += 1;
+                subtile_op.crd2.push_back(dim2);
                 subtile_op.pos3.push_back(subtile_op.pos3[pos3_size - 1] + 1);
-                subtile_op.crd3.push_back(dim3); 
+                subtile_op.crd3.push_back(dim3);
                 subtile_op.vals.push_back(1);
             }
         }
         else{
-            subtile_op.pos1[pos1_size - 1] += 1; 
-            subtile_op.crd1.push_back(dim1); 
+            subtile_op.pos1[pos1_size - 1] += 1;
+            subtile_op.crd1.push_back(dim1);
             subtile_op.pos2.push_back(subtile_op.pos2[pos2_size - 1] + 1);
-            subtile_op.crd2.push_back(dim2); 
+            subtile_op.crd2.push_back(dim2);
             subtile_op.pos3.push_back(subtile_op.pos3[pos3_size - 1] + 1);
-            subtile_op.crd3.push_back(dim3); 
+            subtile_op.crd3.push_back(dim3);
             subtile_op.vals.push_back(1);
         }
     }

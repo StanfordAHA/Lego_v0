@@ -344,7 +344,7 @@ def cp_tensor_decleration(main_file, cp_source_id, split_dict, mode, output_dir,
         if(zircon_flag):
             main_file.write("    " + "int stream_ID = 0;\n")
             main_file.write("\n")
-        
+
         main_file.write("    std::string output_gold_path = out_dir + \"/" + app_name + "_gold.h\";\n")
         main_file.write("    std::ofstream output_gold_file;\n")
         main_file.write("    std::string subtile_path;\n")
@@ -803,6 +803,7 @@ if __name__ == "__main__":
 
     glb_tile_offset = None
     glb_bank_offset = None
+
     if mode == "onyx" or mode == "opal" or zircon_flag:
 
         # decide the bank and tile offset of GLB base on the chip
@@ -813,7 +814,7 @@ if __name__ == "__main__":
             glb_tile_offset = "0x20000"
             glb_bank_offset = "0x10000"
 
-        mapping_dict = mapping_dict_gen(args.design_meta)
+        mapping_dict = mapping_dict_gen(args.design_meta, app_name)
         main_file = open(os.path.join(args.output_dir, app_name) + "/main.c", "w+")
         main_gen_c_lib_include(main_file)
         main_app_header_include(main_file, app_name, gcheck, ap_gcheck)
@@ -822,7 +823,7 @@ if __name__ == "__main__":
         main_block_2(main_file, mapping_dict, op_list, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug)
         main_block_3(main_file, mapping_dict, dest_read, args.unroll_cgen, glb_tile_offset, glb_bank_offset, args.debug, gcheck, ap_gcheck)
 
-        inputs, outputs, input_order, output_order, output_num_blocks, bitstream_name = meta_scrape(args.design_meta)
+        inputs, outputs, input_order, output_order, output_num_blocks, bitstream_name = meta_scrape(args.design_meta, app_name)
 
         unrolling_header_file = open(os.path.join(args.output_dir, app_name) + "/" + app_name + "_unrolling.h", "w+")
         unrolling(inputs, outputs, input_order, output_order, unrolling_header_file, app_name, unroll, glb_tile_offset, glb_bank_offset, output_num_blocks)
@@ -1159,7 +1160,7 @@ if __name__ == "__main__":
     if(zircon_flag):
         glb_tile_offset = "0x20000"
         glb_bank_offset = "0x10000"
-        mapping_dict = mapping_dict_gen(args.design_meta)
+        mapping_dict = mapping_dict_gen(args.design_meta, app_name)
 
         zircon_mapper_file = open("zircon_mapper.cpp", "w+")
         zircon_mapper_file.write("#include <stdlib.h>\n")
@@ -1230,18 +1231,27 @@ if __name__ == "__main__":
 
 
         for opn in op_list:
+            dim = 0 if cg_source_id[opn] == ['0'] else len(cg_source_id[opn])
             zircon_mapper_file.write(f"            subtile{dim} subtile_{opn};\n")
             for mi in range(dim):
-                zircon_mapper_file.write(f"            build_vec(subtile_{opn}.pos{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_seg\");\n")
-                zircon_mapper_file.write(f"            build_vec(subtile_{opn}.crd{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_crd\");\n")
+                if(tensor_format_dict[opn] != "d"):
+                    zircon_mapper_file.write(f"            build_vec(subtile_{opn}.pos{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_seg\");\n")
+                    zircon_mapper_file.write(f"            build_vec(subtile_{opn}.crd{mi+1}, subtile_path + \"/tensor_{opn}_mode_{mi}_crd\");\n")
             zircon_mapper_file.write(f"            build_vec_val(subtile_{opn}.vals, subtile_path + \"/tensor_{opn}_mode_vals\");\n")
             zircon_mapper_file.write("\n")
-            zircon_mapper_file.write(f"            cg_subtile_{opn}1 = cg_build_tile_mem_op_{dim}(cg_subtile_{opn}1, subtile_{opn}, stream_ID);\n")
+            if(tensor_format_dict[opn] == "d"):
+                dim1_size = cg_split_factor[cg_source_id[opn][0]][1]
+                dim2_size = cg_split_factor[cg_source_id[opn][1]][1] 
+                print(cg_source_id[opn])
+                print(f"dim1_size: {dim1_size}, dim2_size: {dim2_size}")
+                zircon_mapper_file.write(f"            cg_subtile_{opn}1 = cg_build_tile_mem_op_{dim}_dense(cg_subtile_{opn}1, subtile_{opn}, stream_ID, {dim1_size}, {dim2_size});\n")
+            else: 
+                zircon_mapper_file.write(f"            cg_subtile_{opn}1 = cg_build_tile_mem_op_{dim}(cg_subtile_{opn}1, subtile_{opn}, stream_ID);\n")
             zircon_mapper_file.write("\n")
 
-        
 
-        
+
+
         zircon_mapper_file.write("            std::vector<float> output_vals;\n")
         zircon_mapper_file.write("            build_vec_val(output_vals, subtile_path + \"/output_gold.h\");\n")
         zircon_mapper_file.write("\n")
@@ -1257,7 +1267,7 @@ if __name__ == "__main__":
 
         zircon_mapper_file.write("            float* output_subtile_vals = output_vals.data();\n")
         zircon_mapper_file.write("\n")
-        zircon_mapper_file.write("output_subtile_printer(output_subtile_vals, " + str(stile_outsize) + ", subtile_count, output_gold_file, \"int\", true, output_vals.back());\n")
+        zircon_mapper_file.write("output_subtile_printer(output_subtile_vals, " + str(stile_outsize) + ", subtile_count, output_gold_file, \"" + dtype + "\", true, output_vals.back());\n")
 
         zircon_mapper_file.write("            output_gold_file.close();\n")
         zircon_mapper_file.write("\n")
@@ -1267,8 +1277,9 @@ if __name__ == "__main__":
 
         zircon_mapper_file.write("            if(subtile_count == " + str(z_batch_size - 1) + " || subtile_path == subtile_paths.back()) {\n")
 
-       
+
         for opn in op_list:
+
             for mi in range(len(cg_source_id[opn])):
                 zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_{mi}.push_back(0);\n")
                 zircon_mapper_file.write(f"                cg_extents_{opn}1.extents_mode_{mi}.push_back(cg_subtile_{opn}1.mode_{mi}.size());\n")
@@ -1280,7 +1291,7 @@ if __name__ == "__main__":
         zircon_mapper_file.write("                input_data_file.open(input_data_path);\n")
         zircon_mapper_file.write("                input_meta_data_file.open(input_meta_data_path);\n")
         zircon_mapper_file.write("                gcheck_cpp_file.open(gcheck_cpp_path, std::ios::app);\n")
-        zircon_mapper_file.write("\n") 
+        zircon_mapper_file.write("\n")
 
         zircon_mapper_file.write("                int output_subtile_size = " + str(stile_outsize) + ";\n")
         stmt = ""
@@ -1309,7 +1320,7 @@ if __name__ == "__main__":
             cg_source_map_cpy = copy.deepcopy(cg_source_map)
             for tensor_name, mode_list in cg_source_map_cpy.items():
                 mode_list.sort()
-            for i in range(0, tensor_dim):
+            for i in range(0, tensor_dim): 
                 zircon_mapper_file.write("            " + "mode_data_printer(input_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_subtile_" + key + "1.mode_" + str(i) + ");\n")
                 zircon_mapper_file.write("            " + "extent_data_printer(input_meta_data_file, \"" + key + "\", \"" + str(cg_source_map_cpy[key][i]) + "\", cg_extents_" + key + "1.extents_mode_" + str(i) + ", map1, " + str(hardware_pipeline).lower() + ");\n")
                 zircon_mapper_file.write("\n")
@@ -1373,4 +1384,4 @@ if __name__ == "__main__":
         zircon_mapper_file.write("\n")
         zircon_mapper_file.write("    return 0;\n")
         zircon_mapper_file.write("}\n")
-    
+

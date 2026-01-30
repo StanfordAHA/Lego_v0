@@ -44,8 +44,8 @@ def main_block_1(file, unroll, debug):
     file.write("    u32 sys_mask = (1 << AHASOC_PCTRL_SYS_Pos);\n")
     file.write("\n")
     file.write("    // Slower clocks for configuration\n")
-    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, cgra_mask, 0); \n")
-    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 3); \n")
+    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, cgra_mask, 3); \n")
+    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 0); \n")
     file.write("    status = HAL_PtfmCtrl_DisableCG( & PtfmCtl, cgra_mask);\n")
     file.write("    status = HAL_PtfmCtrl_ClearReset( & PtfmCtl, cgra_mask);\n")
     file.write("\n")
@@ -99,7 +99,7 @@ def main_block_1(file, unroll, debug):
     file.write("    }\n")
     file.write("\n")
     file.write("    // Faster clocks for App\n")
-    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 1); // 2^2 = 4 60/4 = 15\n")
+    file.write("    status = HAL_PtfmCtrl_SelectClock( & PtfmCtl, sys_mask, 0); // 2^2 = 4 60/4 = 15\n")
 
 def main_block_2(file, mapping_dict, op_list, unroll, glb_tile_offset, glb_bank_offset, debug):
 
@@ -405,7 +405,7 @@ def main_block_3(file, mapping_dict, dest, unroll, glb_tile_offset, glb_bank_off
         file.write("    // trace_printf(\"total cycles %d\\n\", cycles*2);\n")
 
     file.write("    int *read_base_cyc_count = AHASOC_CGRA_DATA_BASE;\n")
-    file.write("    read_base_cyc_count[0] = cycles * 2;\n")
+    file.write("    read_base_cyc_count[0] = cycles / 8;\n")
 
     file.write("\n")
     if(debug):

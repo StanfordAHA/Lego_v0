@@ -125,12 +125,12 @@ void parse_tile_toml(string tile_toml, std::vector<std::string> &subtile_paths) 
 int build_vec(std::vector<int> &vec, std::string file_path) {
     int val;
 
-    ifstream input_file(file_path);   
+    ifstream input_file(file_path);
 	if (input_file.good()) {
 		vec.clear();
 		while(input_file >> val){
 			vec.push_back(val);
-		}	
+		}
 	} else {
 		throw std::runtime_error("Error: File not found: " + file_path);
 	}
@@ -140,7 +140,7 @@ int build_vec(std::vector<int> &vec, std::string file_path) {
 
 int build_vec_val(std::vector<float> &vec, std::string file_path) {
     float val;
-    ifstream input_file(file_path);   
+    ifstream input_file(file_path);
 	if (input_file.good()) {
     	while(input_file >> setprecision(30) >> val){
 			// FIXME: Temporary fix to avoid precision loss
@@ -156,8 +156,8 @@ int build_vec_val(std::vector<float> &vec, std::string file_path) {
 int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<int> mode_0){
 
 	header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
-	header_file << "\n";		
-	
+	header_file << "\n";
+
 	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 	header_file << "\n";
 
@@ -168,7 +168,7 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 		header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << mode_0[i];
 	}
 	header_file << "\n";
-	header_file << "};"; 
+	header_file << "};";
 	header_file << "\n";
 	header_file << "\n";
 	header_file << std::dec;
@@ -179,13 +179,18 @@ int mode_data_printer(std::ofstream &header_file, std::string tensor_name, std::
 int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::string mode_name, std::vector<float> mode_0, std::string dtype){
 
 	header_file << "const unsigned int app_tensor_" << tensor_name << "_mode_" << mode_name << "_data_size =  " << mode_0.size() << ";";
-	header_file << "\n";		
-	
+	header_file << "\n";
+
 	header_file << "uint16_t app_tensor_" << tensor_name << "_mode_" << mode_name << "_data[] " <<  "__attribute__((section(\".app_tensor_" <<  tensor_name << "_mode_" << mode_name << "_data\"))) = {";
 	header_file << "\n";
 
+	// stream ID
 	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[0]));
-	int run_length = int(abs(mode_0[0]));
+	// run length
+	int run_length = int(abs(mode_0[1]));
+	// std::cout << "run_length init: " << run_length << std::endl;
+	header_file << ", ";
+	header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[1]));
 
 	if(dtype == "int"){
 		for(int i = 1; i < mode_0.size(); i++) {
@@ -193,14 +198,20 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 			header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(mode_0[i]);
 		}
 	} else if (dtype == "bf16"){
-		for (int index = 1; index < mode_0.size();) {
+		for (int index = 2; index < mode_0.size();) {
 			for (int i = 0; i < run_length; i++) {
 				header_file << ", ";
 				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << float2bfbin(mode_0[index], true, false);
 				index++;
 			}
 			if (index < mode_0.size()) {
+				// stream ID
+				header_file << ", ";
+				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[index]));
+				index ++;
+				// run length
 				run_length = int(abs(mode_0[index]));
+				// std::cout << "run_length update: " << run_length << std::endl;
 				header_file << ", ";
 				header_file << "0x" << std::hex << std::setw(3) << std::setfill('0') << int(abs(mode_0[index]));
 				index++;
@@ -211,7 +222,7 @@ int val_data_printer(std::ofstream &header_file, std::string tensor_name, std::s
 	}
 
 	header_file << "\n";
-	header_file << "};"; 
+	header_file << "};";
 	header_file << "\n";
 	header_file << "\n";
 	header_file << std::dec;
@@ -223,12 +234,12 @@ int extent_data_printer(std::ofstream &header_file, std::string tensor_name, std
 	if (!hardware_pipeline) {
 		header_file << "const uint16_t tensor_" << tensor_name << "_mode_" << mode_name << "_extents" << "[" << 2 * map.size() << "] = {";
 		header_file << extents_mode_0[2 * map[0]];
-		header_file << ", "; 
+		header_file << ", ";
 		header_file << extents_mode_0[2 * map[0] + 1];
 		for(int i = 1; i < map.size(); i++){
-			header_file << ", "; 
+			header_file << ", ";
 			header_file << extents_mode_0[2 * map[i]];
-			header_file << ", "; 
+			header_file << ", ";
 			header_file << extents_mode_0[2 * map[i] + 1];
 		}
 	} else {
@@ -306,7 +317,7 @@ int rtl_mode_data_printer(std::vector<int> mode_0, std::string output_path, std:
 	ofstream output_file(output_file_name.c_str());
 	if (is_dense) {
 		// for dense dimension, dump the (0, dim_size) pair
-		// since the matrix is completely dense, data at index 1 in the segment array 
+		// since the matrix is completely dense, data at index 1 in the segment array
 		// will be the size of the dimension
 		output_file << "0\n";
 		output_file <<  mode_0[1] << "\n";
@@ -335,8 +346,8 @@ int rtl_vals_data_printer(std::vector<float> mode_0, std::string output_path, st
 	}
 
 	output_file.close();
-	// TODO: Store integer values to file if dtype is integer 
-	// Propogate data type 
+	// TODO: Store integer values to file if dtype is integer
+	// Propogate data type
 
 	return 0;
 }
@@ -351,7 +362,7 @@ int rtl_lut_data_printer(std::string output_path, std::string lut_name) {
 		// hack to make the name of the file matches that expected by the metamapper
 		lut_name = "div";
 	}
-	
+
 	// the metamapper mapped lut will be looking for a file with the name "tensor_fp_<operation>_mode_vals"
 	std::string output_file_name = output_path + "/tensor_fp_" + lut_name + "_mode_vals";
 	ofstream output_file(output_file_name.c_str());
@@ -363,8 +374,8 @@ int rtl_lut_data_printer(std::string output_path, std::string lut_name) {
 		output_file << "\n";
 	}
 
-	// TODO: Store integer values to file if dtype is integer 
-	// Propogate data type 
+	// TODO: Store integer values to file if dtype is integer
+	// Propogate data type
 
 	return 0;
 }
@@ -391,7 +402,7 @@ int rtl_size_data_printer_2(std::string output_path, std::string tensor_name, in
 }
 
 int rtl_size_data_printer_3(std::string output_path, std::string tensor_name, int dim1, int dim2, int dim3) {
-	
+
 	std::string output_file_name = output_path + "/tensor_" + tensor_name + "_mode_shape";
 	ofstream output_file(output_file_name.c_str());
 
@@ -428,18 +439,18 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
         	output_gold_file << int(op_vals[pA]);
         	if(pA != output_subtile_size - 1){
 				if(ap_gcheck){
-					output_gold_file << "\n"; 
+					output_gold_file << "\n";
 				}
 				else{
             		output_gold_file << ", ";
 				}
         	}
-    	} 
+    	}
 		if(!ap_gcheck){
     		output_gold_file << "};\n";
 		}
-	} 
-    
+	}
+
     if (dtype == "bf16"){
         for (int pA = 0; pA < output_subtile_size; pA++) {
             output_gold_file << float2bfbin(op_vals[pA], false, false);
@@ -466,15 +477,15 @@ int output_subtile_printer(float *op_vals, int output_subtile_size, int curr_sub
 
 int subtile_paths_printer(const std::vector<std::string> &subtile_paths,
 						  const std::string &output_dir,
-						  const std::string &kernel_name, 
+						  const std::string &kernel_name,
 						  const int &batch_size) {
-	
+
 	int batch_idx = 0;
 	for (int i = 0; i < subtile_paths.size(); i += batch_size) {
 		std::string subtile_paths_file_path = output_dir + "/" + kernel_name + "/subtile_paths_" + std::to_string(batch_idx) + ".toml";
 		std::ofstream subtile_paths_file;
 		subtile_paths_file.open(subtile_paths_file_path, std::ios::out);
-		
+
 		if (!subtile_paths_file) {
 			std::cerr << "Error: Cannot open file " << subtile_paths_file_path << "for writing" << std::endl;
 			return 1;
@@ -511,14 +522,14 @@ int header_meta_data(ofstream &header_file, std::string label, int max_run, bool
 		// with pipelining a single run process all the tiles in the glb
 		header_file << "const int runs" << label << " = " << 1 << ";" << "\n";
 	}
-	
-	return 0; 
-} 
+
+	return 0;
+}
 
 int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool ap_gcheck){
 	output_gold_file << "#define AHASOC_CGRA_DATA_BASE    (0x20400000UL)  /*!< (CGRA DATA ) Base Address */" << "\n";
 
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 
 	if (ap_gcheck) {
 		output_gold_file << "#include <sstream>" << "\n";
@@ -538,7 +549,7 @@ int header_check_gold(ofstream &output_gold_file, int output_subtile_size, bool 
 	}
 
 	output_gold_file << "};" << "\n";
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 
 	if (ap_gcheck) {
 		output_gold_file << "int total_op_cnt = 0;\n";
@@ -573,9 +584,9 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_
 
 	if(!ap_gcheck && (unroll == 2)){
 		output_gold_file << type_8_bit << " map[" << max_run << "];\n";
-		output_gold_file << "\n"; 
+		output_gold_file << "\n";
 	}
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 
 	// define the main gold check funtion
 	if (ap_gcheck) {
@@ -584,7 +595,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_
 		output_gold_file << "uint16_t check_gold_data(){" << "\n";
 	}
 
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 
 	output_gold_file << "    " << type_16_bit << " size; " << "\n";
 	output_gold_file << "    " << type_16_bit << " err = 0;" << "\n";
@@ -594,28 +605,28 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_
 	for(int i = 0; i < tensor_dim; i++){
 		output_gold_file << "    " << type_16_bit << " mode" << i << "_idx = 0;" << "\n";
 	}
-	output_gold_file << "    " << type_16_bit << " vals_idx = 0;" << "\n";	
+	output_gold_file << "    " << type_16_bit << " vals_idx = 0;" << "\n";
 
 	if(unroll){
 		for(int i = 0; i < tensor_dim; i++){
 			output_gold_file << "    " << type_16_bit << " mode" << i << "_idx_unroll = 0;" << "\n";
 		}
-		output_gold_file << "    " << type_16_bit << " vals_idx_unroll = 0;" << "\n";	
+		output_gold_file << "    " << type_16_bit << " vals_idx_unroll = 0;" << "\n";
 	}
 
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 	output_gold_file << "    const " << type_32_bit << " read_start_addr = " << glb_bank_offset << ";" << "\n";;
 
 	output_gold_file << "\n";
 	output_gold_file << "    for(" << type_16_bit << " run = 0; run < " << max_run << "; run++){" << "\n";
-	output_gold_file << "\n"; 
+	output_gold_file << "\n";
 	if(ap_gcheck){
 		output_gold_file << "        " << type_16_bit << " gold_num;" << "\n";
 	}
 	else{
 		output_gold_file << "        " << type_16_bit << " *gold_ptr;" << "\n";
 	}
-	
+
 	output_gold_file << "        " << type_16_bit << "* check_ptr;" << "\n";
 	output_gold_file << "        switch(run){" << "\n";
 
@@ -629,17 +640,17 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_
 			output_gold_file << "                gold_ptr = gold_" << map1[i] << "_;" << "\n";
 			output_gold_file << "                check_ptr = check_0_;" << "\n";
 		}
-		
+
 		output_gold_file << "                break;" << "\n";
 	}
 
 	output_gold_file << "            default:" << "\n";
 	output_gold_file << "                break;" << "\n";
-	output_gold_file << "        }\n"; 
-	output_gold_file << "\n"; 
+	output_gold_file << "        }\n";
+	output_gold_file << "\n";
 
 	if(ap_gcheck){
-		output_gold_file << "        std::vector<unsigned short> gold_ptr;\n"; 
+		output_gold_file << "        std::vector<unsigned short> gold_ptr;\n";
 		output_gold_file << "        std::string file_path = std::to_string(gold_num) + \".txt\";\n";
 		output_gold_file << "        int val;\n";
 		output_gold_file << "        std::ifstream input_file(file_path);\n";
@@ -675,7 +686,7 @@ int codegen_check_gold_head(ofstream &output_gold_file, int max_run, int output_
 	}
 
 	return 0;
-} 
+}
 
 int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select, int val){
 
@@ -684,23 +695,23 @@ int codegen_check_gold_unroll_ifdef_open(ofstream &output_gold_file, int select,
 	}
 
 	if(select == 1){
-		output_gold_file << "        if(run < " << val << "){" << "\n"; 
+		output_gold_file << "        if(run < " << val << "){" << "\n";
 	}
 
 	if(select == 10){
-		output_gold_file << "        if(map[run] == 0){" << "\n"; 
+		output_gold_file << "        if(map[run] == 0){" << "\n";
 	}
 
 	if(select == 2){
-		output_gold_file << "        else{" << "\n"; 
+		output_gold_file << "        else{" << "\n";
 	}
 
-	return 0; 
+	return 0;
 }
 
 int codegen_check_gold_outmap(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset){
 	output_gold_file << "        uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << ");" << "\n";
-	return 0; 
+	return 0;
 }
 
 int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset, bool unroll){
@@ -723,12 +734,12 @@ int codegen_check_gold_read_gdb_bin(ofstream &output_gold_file, std::string base
 	output_gold_file << "        read_base_" << base_id << "_file.read((char *) &read_base_" << base_id << "[0], read_base_" << base_id << "_len);\n";
 	output_gold_file << " 	     read_base_" << base_id << "_file.close();\n";
 	output_gold_file << "\n";
-	return 0; 
+	return 0;
 }
 
 int codegen_check_gold_outmap_unroll(ofstream &output_gold_file, std::string base_id, std::string tile_id, std::string glb_tile_offset){
 	output_gold_file << "        uint16_t * read_base_" << base_id << " = (uint16_t*) (AHASOC_CGRA_DATA_BASE + read_start_addr + " << tile_id << " * " << glb_tile_offset << " + " << glb_tile_offset <<  " * 8);" << "\n";
-	return 0; 
+	return 0;
 }
 
 int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_dim, std::string type, bool ap_gcheck){
@@ -739,17 +750,17 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	} else {
 		type_16_bit = "uint16_t";
 	}
-	
-	
+
+
 	if(tensor_dim > 0) {
-		output_gold_file << "\n"; 
+		output_gold_file << "\n";
 		output_gold_file << "            size = read_base_0[mode0_idx" << type << "];" << "\n";
 		output_gold_file << "            " << type_16_bit << " mode0_size = size + 1 + read_base_0[mode0_idx" << type << " + size + 1] + 1;" << "\n";
 		output_gold_file << "            " << type_16_bit << " mode0_stream_size = read_base_0[mode0_idx" << type << " + size + 1];" << "\n";
 		output_gold_file << "            " << type_16_bit << " mode0_base = size + 1 + 1;" << "\n";
 
 		for(int i = 1; i < tensor_dim; i++){
-			output_gold_file << "\n"; 
+			output_gold_file << "\n";
 			output_gold_file << "            size = read_base_" << i << "[mode" << i << "_idx" << type << "];" << "\n";
 			output_gold_file << "            " << type_16_bit << " mode" << i << "_base = size + 1 + 1;" << "\n";
 			output_gold_file << "            " << type_16_bit << " mode" << i << "_size = size + 1 + read_base_" << i << "[mode" << i << "_idx" << type << " + size + 1] + 1;" << "\n";
@@ -757,7 +768,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 		output_gold_file << "            " << type_16_bit << " vals_size = read_base_" << tensor_dim << "[vals_idx" << type <<"] + 1;" << "\n";
 
-		output_gold_file << "\n"; 
+		output_gold_file << "\n";
 		output_gold_file << "            " << type_16_bit << " x0;" << "\n";
 
 		for(int i = 1; i < tensor_dim; i++){
@@ -766,7 +777,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 			output_gold_file << "            " << type_16_bit << " x" << i << "_idx = 0;" << "\n";
 		}
 
-		output_gold_file << "\n"; 
+		output_gold_file << "\n";
 
 		for(int i = 0; i < tensor_dim; i++){
 			output_gold_file << "            for(" << type_16_bit << " i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
@@ -775,10 +786,10 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 			}
 		}
 
-		std::string id; 
-		std::string id_x; 
+		std::string id;
+		std::string id_x;
 
-		id = ""; 
+		id = "";
 
 		for(int i = 0; i < tensor_dim; i++){
 			id += "i" + std::to_string(i);
@@ -794,12 +805,12 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 		for(int i = 0; i < tensor_dim; i++){
 			for(int j = 0; j < tensor_dim - i; j++){
-				output_gold_file << "    "; 
+				output_gold_file << "    ";
 			}
 			output_gold_file << "        }" << "\n";
 		}
 
-		output_gold_file << "\n"; 
+		output_gold_file << "\n";
 
 		id_x = "";
 		for(int i = 0; i < tensor_dim; i++){
@@ -836,7 +847,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 					output_gold_file << "                check_ptr[" << id_x << "] = read_base_" << tensor_dim << "[vals_idx" << type <<" + x" << i << "_idx + " << "i" << i << " + 1];" << "\n";
 				}
 				else{
-					int j = i + 1; 
+					int j = i + 1;
 					for(int k = 0; k < i; k++){
 						output_gold_file << "    ";
 					}
@@ -850,11 +861,11 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 		for(int i = tensor_dim - 1; i > 0; i--){
 			for(int j = 0; j < i; j++){
-				output_gold_file << "    "; 
+				output_gold_file << "    ";
 			}
 			output_gold_file << "            }" << "\n";
 			for(int j = 0; j < i; j++){
-				output_gold_file << "    "; 
+				output_gold_file << "    ";
 			}
 			output_gold_file << "            x" << i << "_idx += x" << i << "_dim;" << "\n";
 		}
@@ -865,7 +876,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 		for(int i = 0; i < tensor_dim; i++){
 			output_gold_file << "            for(" << type_16_bit << " i" << i << " = 0; i" << i << " < STILE_DIM" << i <<  "; i" << i << "++){" << "\n";
 			for(int j = 0; j < i + 1; j++){
-				output_gold_file << "    "; 
+				output_gold_file << "    ";
 			}
 		}
 
@@ -881,7 +892,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 			}
 			output_gold_file << "gold_ptr:\" << gold_ptr[" << id << "] << \" check_ptr:\" << check_ptr[" << id << "] << std::endl;\n";
 		} else {
-			output_gold_file << "                trace_printf(\"error! tile: %d, "; 
+			output_gold_file << "                trace_printf(\"error! tile: %d, ";
 			for(int i = 0; i < tensor_dim; i++){
 				output_gold_file << "i" << i << ": %d ";
 			}
@@ -892,7 +903,7 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 
 			output_gold_file << "gold_ptr[" << id << "], check_ptr[" << id << "]);" << "\n";
 		}
-		
+
 		for(int j = 0; j < tensor_dim; j++){
 			output_gold_file << "    ";
 		}
@@ -914,13 +925,13 @@ int codegen_check_gold_tail(ofstream &output_gold_file, int max_run, int tensor_
 	}
 	else{
 		output_gold_file << "            " << type_16_bit << " vals_size = read_base_0[vals_idx" << type <<"] + 1;" << "\n";
-		output_gold_file << "            if(read_base_0[vals_idx" << type <<" + 1] != gold_ptr[0]){" << "\n"; 
+		output_gold_file << "            if(read_base_0[vals_idx" << type <<" + 1] != gold_ptr[0]){" << "\n";
 		if (ap_gcheck) {
 			output_gold_file << "                std::cout << \"error! tile: \" << run << \", ";
 			output_gold_file << "gold_ptr:\" << gold_ptr[0] << \" check_ptr:\" << read_base_0[vals_idx" << type << " + 1] << std::endl;\n";
         }
         else {
-		    output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n"; 
+		    output_gold_file << "                trace_printf(\"error! tile: %d, gold_ptr:%d check_ptr:%d\\n\", run, gold_ptr[0], read_base_0[vals_idx" << type <<"  + 1]);" << "\n";
         }
 		output_gold_file << "                err++;" << "\n";
 		output_gold_file << "            }" << "\n";
@@ -939,7 +950,7 @@ int codegen_check_gold_ret(ofstream &output_gold_file, bool ap_gcheck){
 	}
 
 	output_gold_file << "    return err;\n";
-	
+
 	output_gold_file << "}\n";
 	return 0;
 }

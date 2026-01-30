@@ -3,7 +3,9 @@
 import json
 
 
-def meta_scrape(meta_file_name):
+def meta_scrape(meta_file_name, app_name):
+
+    print(app_name)
 
     f = open(meta_file_name)
     meta = json.load(f)
@@ -13,7 +15,6 @@ def meta_scrape(meta_file_name):
     output_files = []
     output_order_list = []
     output_num_blocks_list = []
-
 
     # inputs
     for input in meta["IOs"]["inputs"]:
@@ -36,9 +37,9 @@ def meta_scrape(meta_file_name):
 
     return input_files, output_files, input_order_list, output_order_list, output_num_blocks_list, meta["testing"]["bitstream"]
 
-def mapping_dict_gen(design_file):
+def mapping_dict_gen(design_file, app_name):
 
-    inputs, outputs, input_order, output_order, output_num_blocks_list, bitstream_name = meta_scrape(design_file)
+    inputs, outputs, input_order, output_order, output_num_blocks_list, bitstream_name = meta_scrape(design_file, app_name)
     map_dict = {}
     dim_dict = {}
     for input in inputs:
@@ -65,10 +66,15 @@ def mapping_dict_gen(design_file):
 
     mapping_dict = {}
 
+    print(map_dict)
+    print(mapping_dict)
+    print(dim_dict)
+
     for key in map_dict.keys():
         mapping_dict[key] = []
         for i in range(dim_dict[key]):
-            mapping_dict[key].append(map_dict[key][str(i)])
+            if str(i) in map_dict[key].keys():
+                mapping_dict[key].append(map_dict[key][str(i)])
         mapping_dict[key].append(map_dict[key]["vals"])
 
     return mapping_dict
